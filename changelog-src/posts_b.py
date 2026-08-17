@@ -1171,4 +1171,443 @@ what it can write, and whether anybody signed off. If Gartner's 40% is even half
 August is a lot cheaper than the one I do in January.</p>
 <blockquote>Everybody bought a bigger hose this week. Nobody bought a bigger funnel.</blockquote>
 """),
+
+dict(
+slug="v1-2-2-the-roster-says-2-4-trillion",
+version="v1.2.2", date="2026-08-03", read="4 min",
+title="The roster says 2.4 trillion",
+desc="Qwen3.8-Max lands with 2.4 trillion parameters and DeepSeek cuts prices to fourteen cents. Reading the weekend model news from an estimating pipeline.",
+keywords="qwen3.8-max, alibaba ai model, deepseek v4 flash, mixture of experts, open weights, llm pricing, ai model releases august 2026",
+related=["v1-2-integrate-before-you-replace", "v0-6-0-new-year-new-model", "v0-2-0-the-40-dollar-server"],
+svg_alt="Line drawing of a union hall roster board listing 2.4 trillion names next to a punch clock panel where three stick figures have clocked in, labeled 95 billion.",
+svg_caption="You pay for who clocks in.",
+svg=_svg(f'''
+<rect x="35" y="55" width="280" height="175" fill="none" stroke="{G}" stroke-width="2"/>
+<text x="50" y="82" font-family="monospace" font-size="14" fill="{A}">UNION HALL - LOCAL 3.8</text>
+<line x1="35" y1="95" x2="315" y2="95" stroke="{D}" stroke-width="1"/>
+<text x="50" y="118" font-family="monospace" font-size="12" fill="{G}">ON ROSTER:</text>
+<text x="50" y="140" font-family="monospace" font-size="14" fill="{G}">2,400,000,000,000</text>
+<line x1="50" y1="160" x2="300" y2="160" stroke="{D}" stroke-width="1"/>
+<line x1="50" y1="176" x2="300" y2="176" stroke="{D}" stroke-width="1"/>
+<line x1="50" y1="192" x2="300" y2="192" stroke="{D}" stroke-width="1"/>
+<line x1="50" y1="208" x2="300" y2="208" stroke="{D}" stroke-width="1"/>
+<line x1="315" y1="142" x2="378" y2="142" stroke="{M}" stroke-dasharray="4 4" stroke-width="1"/>
+<line x1="370" y1="136" x2="378" y2="142" stroke="{M}" stroke-width="1"/>
+<line x1="370" y1="148" x2="378" y2="142" stroke="{M}" stroke-width="1"/>
+<rect x="382" y="55" width="223" height="175" fill="none" stroke="{G}" stroke-width="2"/>
+<text x="396" y="82" font-family="monospace" font-size="14" fill="{A}">CLOCKED IN TODAY</text>
+<line x1="382" y1="95" x2="605" y2="95" stroke="{D}" stroke-width="1"/>
+<circle cx="420" cy="122" r="9" fill="none" stroke="{G}" stroke-width="2"/>
+<line x1="420" y1="131" x2="420" y2="160" stroke="{G}" stroke-width="2"/>
+<line x1="405" y1="142" x2="435" y2="142" stroke="{G}" stroke-width="2"/>
+<line x1="420" y1="160" x2="408" y2="180" stroke="{G}" stroke-width="2"/>
+<line x1="420" y1="160" x2="432" y2="180" stroke="{G}" stroke-width="2"/>
+<circle cx="468" cy="122" r="9" fill="none" stroke="{G}" stroke-width="2"/>
+<line x1="468" y1="131" x2="468" y2="160" stroke="{G}" stroke-width="2"/>
+<line x1="453" y1="142" x2="483" y2="142" stroke="{G}" stroke-width="2"/>
+<line x1="468" y1="160" x2="456" y2="180" stroke="{G}" stroke-width="2"/>
+<line x1="468" y1="160" x2="480" y2="180" stroke="{G}" stroke-width="2"/>
+<circle cx="516" cy="122" r="9" fill="none" stroke="{G}" stroke-width="2"/>
+<line x1="516" y1="131" x2="516" y2="160" stroke="{G}" stroke-width="2"/>
+<line x1="501" y1="142" x2="531" y2="142" stroke="{G}" stroke-width="2"/>
+<line x1="516" y1="160" x2="504" y2="180" stroke="{G}" stroke-width="2"/>
+<line x1="516" y1="160" x2="528" y2="180" stroke="{G}" stroke-width="2"/>
+<circle cx="572" cy="130" r="15" fill="none" stroke="{D}" stroke-width="2"/>
+<line x1="572" y1="130" x2="572" y2="120" stroke="{D}" stroke-width="2"/>
+<line x1="572" y1="130" x2="580" y2="134" stroke="{D}" stroke-width="2"/>
+<text x="396" y="207" font-family="monospace" font-size="14" fill="{G}">95,000,000,000</text>
+<text x="396" y="223" font-family="monospace" font-size="10" fill="{M}">(3.9 PERCENT OF ROSTER)</text>
+<text x="320" y="290" text-anchor="middle" font-family="monospace" font-size="11" fill="{M}">fig 1. sparse mixture of experts, jobsite edition</text>
+'''),
+body="""
+<p>Alibaba unveiled Qwen3.8-Max this morning: 2.4 trillion parameters, a million-token context window, and an official claim that its performance is top tier globally, trailing only Anthropic's Claude family. <a href="https://www.cnbc.com/2026/08/03/alibaba-ai-model-qwen-rival-anthropic.html">The stock rallied</a>. I read model announcements the way I read sub bids. The number on the cover page is for the bank. The numbers that matter are further down.</p>
+
+<p>The number further down is 95 billion. Qwen3.8-Max is a sparse mixture-of-experts model, which means that of the 2.4 trillion parameters on the books, <a href="https://www.alibabacloud.com/en/press-room/alibaba-unveils-qwen3-8-max">about 95 billion activate on any given token</a>. Call it four percent. Every contractor recognizes this arrangement immediately. It is a union hall with 2.4 trillion names on the roster and 95 billion guys who answer the phone. You are not paying for the roster. You are paying for whoever shows up, and the entire trick of the architecture is getting the right guys to show up for the right job.</p>
+
+<p>That part is not a complaint. Sparse activation is why a model this size can answer at a price anyone would pay, the same way I don't send a full crew to swap a water heater. The complaint goes one sentence over. <em>Trailing only Claude</em> is Alibaba grading its own punch list. Sometimes the sub who grades his own punch list is even right. I still walk the job before I sign.</p>
+
+<h3>The other release</h3>
+
+<p>The louder story for me happened Friday, quietly. DeepSeek shipped <a href="https://simonwillison.net/2026/Jul/31/deepseek-v4-flash-0731/">V4-Flash-0731</a>: 284 billion parameters total, 13 billion active, MIT-licensed weights, priced at fourteen cents per million input tokens. It is not even a new model. It is April's preview with a rebuilt post-training pipeline aimed at coding, agents, and tool use, and <a href="https://www.marktechpost.com/2026/07/31/deepseek-upgrades-deepseek-v4-flash-0731-with-major-agentic-and-coding-gains/">it reportedly beats DeepSeek's own larger Pro preview</a> on the agentic benchmarks they published. Same crew, better foreman.</p>
+
+<p>Fourteen cents per million tokens matters to me in a way 2.4 trillion parameters does not. My estimating platform runs extraction jobs all day — plan pages in, structured line items out, across a couple dozen trades. The economics of that pipeline are boring and unforgiving, like all good economics. At fourteen cents, the model is no longer the expensive part of the run. The expensive part is me, whenever I have to check its work. That has been the trend since {link:v0-6-0-new-year-new-model|January} and it keeps compounding: capability inches up, price falls off a cliff, and the bottleneck migrates to whatever a human still has to touch.</p>
+
+<p>So my read on the weekend is not that China released a big model. It is that both ends of the market moved at once. The top end got a 2.4-trillion-parameter flagship with open weights promised for next week. The bottom end got a frontier-adjacent workhorse under an MIT license for less than the D1 queries that store its output cost me. When I wrote about {link:v1-2-integrate-before-you-replace|integrating before you replace}, this was the standing assumption: the labs will keep leapfrogging each other on a two-week cadence, so build plumbing that does not care who is winning.</p>
+
+<blockquote>A frontier model and a framing crew bill the same way. You pay for who shows up, not who's on the roster.</blockquote>
+
+<p>The Qwen weights are due next week, allegedly. If they land, they get the same treatment everything gets here: the same forty blueprint pages, the same payroll classification suite, the same pass through the eval harness on {link:v0-2-0-the-40-dollar-server|hardware that costs less than the press release}. That leaderboard has one maintainer and no marketing department. Nobody self-reports on it.</p>
+"""),
+
+dict(
+slug="v1-3-1-sovereignty-is-a-line-item",
+version="v1.3.1", date="2026-08-05", read="5 min",
+title="Sovereignty is a line item",
+desc="Palantir grows 93 percent selling AI sovereignty and Microsoft prices security agents in compute units. Enterprise adoption, viewed from a one-man ERP.",
+keywords="palantir earnings q2 2026, ai sovereignty, enterprise ai adoption, project perception, security compute units, data custody, cloudflare d1",
+related=["v1-3-the-human-review-gate", "v1-2-integrate-before-you-replace", "v0-9-9-the-intern-is-a-robot"],
+svg_alt="Line drawing of a large castle with a flag labeled AI sovereignty at 1.94 billion dollars per quarter, beside a small shed labeled also sovereign at five dollars a month.",
+svg_caption="Both keep the data inside the walls.",
+svg=_svg(f'''
+<rect x="70" y="130" width="180" height="85" fill="none" stroke="{G}" stroke-width="2"/>
+<rect x="70" y="115" width="26" height="15" fill="none" stroke="{G}" stroke-width="2"/>
+<rect x="112" y="115" width="26" height="15" fill="none" stroke="{G}" stroke-width="2"/>
+<rect x="154" y="115" width="26" height="15" fill="none" stroke="{G}" stroke-width="2"/>
+<rect x="196" y="115" width="26" height="15" fill="none" stroke="{G}" stroke-width="2"/>
+<rect x="125" y="70" width="70" height="45" fill="none" stroke="{G}" stroke-width="2"/>
+<line x1="160" y1="70" x2="160" y2="38" stroke="{G}" stroke-width="2"/>
+<polygon points="160,38 196,46 160,54" fill="{A}"/>
+<rect x="145" y="175" width="30" height="40" fill="none" stroke="{D}" stroke-width="2"/>
+<path d="M 40 232 Q 55 226 70 232 Q 85 238 100 232 Q 115 226 130 232 Q 145 238 160 232 Q 175 226 190 232 Q 205 238 220 232 Q 235 226 250 232 Q 265 238 280 232" fill="none" stroke="{D}" stroke-width="1.5"/>
+<text x="160" y="255" text-anchor="middle" font-family="monospace" font-size="12" fill="{A}">AI SOVEREIGNTY</text>
+<text x="160" y="271" text-anchor="middle" font-family="monospace" font-size="12" fill="{G}">$1.94B / QTR</text>
+<rect x="440" y="185" width="100" height="30" fill="none" stroke="{G}" stroke-width="2"/>
+<line x1="434" y1="185" x2="490" y2="160" stroke="{G}" stroke-width="2"/>
+<line x1="490" y1="160" x2="546" y2="185" stroke="{G}" stroke-width="2"/>
+<rect x="508" y="196" width="14" height="19" fill="none" stroke="{D}" stroke-width="1.5"/>
+<text x="466" y="206" font-family="monospace" font-size="10" fill="{D}">D1</text>
+<text x="490" y="255" text-anchor="middle" font-family="monospace" font-size="12" fill="{A}">ALSO SOVEREIGN</text>
+<text x="490" y="271" text-anchor="middle" font-family="monospace" font-size="12" fill="{G}">$5 / MO</text>
+<line x1="300" y1="60" x2="300" y2="240" stroke="{M}" stroke-dasharray="2 6" stroke-width="1"/>
+<text x="320" y="290" text-anchor="middle" font-family="monospace" font-size="11" fill="{M}">fig 1. two sovereignty architectures, drawn to financial scale</text>
+'''),
+body="""
+<p>Palantir reported earnings Monday. Revenue up 93 percent to $1.94 billion for the quarter, U.S. commercial up 149 percent, <a href="https://fortune.com/2026/08/03/palantir-earnings-guidance-beat-revenue-profit-ai-demand/">full-year guidance raised by half a billion dollars</a>, stock up 29 percent on the news. Alex Karp told CNBC the growth looks like it will run for at least another eighteen months, which is the kind of forecast I associate with roofers in April.</p>
+
+<p>The interesting part is not the numbers. It is the word Palantir used to explain them: sovereignty. Per <a href="https://www.cnbc.com/2026/08/04/palantir-2q-earnings-ai-sovereign-tools.html">the company's framing</a>, customers are buying the ability to run AI on their own data without that data leaking into the frontier labs' training runs or anybody else's basement. Enterprises spent a decade shipping everything to the cloud, then spent three years wiring that cloud into models they do not control, and are now paying a third party billions of dollars a year to feel like they own their own filing cabinet again.</p>
+
+<p>I want to be careful here, because it is easy to mock a $1.94 billion quarter from a desk in Worcester, and the market disagrees with me at scale. So let me say it straight: the demand is real. I know it is real because contractors ask me the CIO question, except they ask it from a truck, in one sentence. Where does my payroll data live.</p>
+
+<p>Here is my sovereignty architecture. The data lives in D1 — a SQLite database replicated inside Cloudflare's network. Nothing reads it except routes I wrote. No third-party analytics, no data brokers, no training on customer records, and any AI-generated change that touches money goes through {link:v1-3-the-human-review-gate|a review gate} before it posts. I can explain the whole thing in the time it takes a foreman to finish his coffee. Total cost, roughly what the enterprise version spends per second.</p>
+
+<h3>Also Monday</h3>
+
+<p>Microsoft moved <a href="https://www.geekwire.com/2026/microsoft-escalates-the-ai-cybersecurity-race-with-project-perception-and-a-new-in-house-model/">Project Perception into public preview</a> the same day — an agentic security system inside Defender, with red-team agents hunting compromise paths, blue-team agents triaging what they find, and green-team agents applying fixes. It is priced in Security Compute Units. I bill in hours and line items, so I admire the nerve. Somewhere a CFO is about to approve a budget denominated in a unit that did not exist last quarter, measured by the vendor selling it, for work performed by software defending other software. The residential version of this is paying your electrician in Voltage Confidence Points.</p>
+
+<p>Stitch the two stories together and the adoption picture for early August is coherent. Enterprises are no longer buying intelligence. Intelligence got cheap. They are buying back control — over the data, over what the agents did overnight, over the blast radius when something goes sideways. That is the same conclusion I reached from the other direction when I decided to {link:v1-2-integrate-before-you-replace|integrate before replacing anything}. The model is the easy part. Custody is the product.</p>
+
+<blockquote>Sovereignty used to be a word for nations. Now it's a line item growing 93 percent a year.</blockquote>
+
+<p>None of this trickles down to my customers directly. No excavation company in central Massachusetts is signing a Palantir contract. But the question trickles down, because their customers ask where the numbers come from, and then they ask me. Lately, answering in one sentence closes more deals than any feature I have shipped. It turns out I have been selling sovereignty since {link:v0-9-9-the-intern-is-a-robot|before it had a ticker attached}. I just called it knowing where the database is.</p>
+"""),
+
+dict(
+slug="v1-3-2-the-sub-who-starts-before-the-contract",
+version="v1.3.2", date="2026-08-06", read="5 min",
+title="The sub who starts before the contract",
+desc="A worm poisoned 2,234 npm package versions through keyv and cacheable. Freezing deploys, auditing lockfiles, and learning to fear the preinstall hook.",
+keywords="npm supply chain attack, keyv compromise, cacheable, shai-hulud worm, preinstall script, lockfile audit, supply chain security 2026",
+related=["v1-3-the-human-review-gate", "v0-8-0-vibe-coding-has-a-change-order-problem", "v1-1-the-tooling-changed"],
+svg_alt="Line drawing of npm package boxes labeled keyv, cacheable, and flat-cache resting on a dashed ground line while a large segmented worm tunnels beneath them with its mouth open.",
+svg_caption="The worm runs at install time.",
+svg=_svg(f'''
+<line x1="30" y1="145" x2="610" y2="145" stroke="{D}" stroke-dasharray="6 4" stroke-width="1.5"/>
+<rect x="70" y="95" width="120" height="50" fill="none" stroke="{G}" stroke-width="2"/>
+<text x="130" y="116" text-anchor="middle" font-family="monospace" font-size="13" fill="{G}">keyv</text>
+<text x="130" y="134" text-anchor="middle" font-family="monospace" font-size="9" fill="{M}">127M DL / WEEK</text>
+<rect x="260" y="95" width="120" height="50" fill="none" stroke="{G}" stroke-width="2"/>
+<text x="320" y="116" text-anchor="middle" font-family="monospace" font-size="13" fill="{G}">cacheable</text>
+<text x="320" y="134" text-anchor="middle" font-family="monospace" font-size="9" fill="{M}">29M DL / MO</text>
+<rect x="450" y="95" width="130" height="50" fill="none" stroke="{G}" stroke-width="2"/>
+<text x="515" y="116" text-anchor="middle" font-family="monospace" font-size="13" fill="{G}">flat-cache</text>
+<text x="515" y="134" text-anchor="middle" font-family="monospace" font-size="9" fill="{M}">565M DL / MO</text>
+<path d="M 90 255 Q 165 180 240 250 Q 310 305 380 248 Q 425 212 465 230" fill="none" stroke="{A}" stroke-width="9" stroke-linecap="round"/>
+<line x1="158" y1="196" x2="172" y2="210" stroke="{A}" stroke-width="2"/>
+<line x1="233" y1="240" x2="245" y2="256" stroke="{A}" stroke-width="2"/>
+<line x1="308" y1="268" x2="318" y2="284" stroke="{A}" stroke-width="2"/>
+<line x1="375" y1="240" x2="387" y2="256" stroke="{A}" stroke-width="2"/>
+<circle cx="482" cy="222" r="16" fill="none" stroke="{A}" stroke-width="3"/>
+<circle cx="487" cy="216" r="3" fill="{A}"/>
+<line x1="494" y1="212" x2="514" y2="192" stroke="{A}" stroke-width="3"/>
+<line x1="496" y1="228" x2="518" y2="220" stroke="{A}" stroke-width="3"/>
+<text x="524" y="180" font-family="monospace" font-size="10" fill="{A}">preinstall</text>
+<text x="320" y="290" text-anchor="middle" font-family="monospace" font-size="11" fill="{M}">fig 1. the dependency tree, cross-section view</text>
+'''),
+body="""
+<p>Tuesday morning, a worm started publishing malware to npm under some of the most boring names in the registry. By the time researchers tallied it, <a href="https://socket.dev/blog/popular-npm-packages-in-the-keyv-and-cacheable-namespaces-compromised-in-active-supply-chain">the count was 2,234 poisoned versions across 444 packages</a>, centered on keyv — a key-value caching library pulling roughly 127 million downloads a week — and its extended family: cacheable, flat-cache, file-entry-cache, cache-manager. These are not exotic packages. They are the gravel under half the JavaScript ecosystem. <a href="https://www.wiz.io/blog/keyv-and-cacheable-npm-supply-chain-attack">Wiz pegs the payload</a> as a descendant of the Shai-Hulud malware family, named for the sandworm in Dune, presumably because big thing under the surface that eats you when you fall into a rhythm was already taken.</p>
+
+<p>The mechanics are worth understanding even if you never touch Node. Attackers compromised the GitHub account of the maintainer. The poisoned packages carry a preinstall hook — a script that runs the moment you install, before your code runs, before your tests run, before anything. <a href="https://www.aikido.dev/blog/keyv-and-friends-compromised-in-npm-supply-chain-attack">The hook</a> downloads a standalone runtime, executes an obfuscated second stage, harvests cloud credentials, CI tokens, and npm tokens, then uses the stolen npm tokens to republish trojaned versions of whatever else those tokens can reach. That last step is the worm part. Every infected developer becomes a distributor.</p>
+
+<h3>Wednesday, instead of my actual job</h3>
+
+<p>My stack is JavaScript on Cloudflare Workers, which means my stack is npm, which means Wednesday's schedule was decided for me. I froze deploys. I grepped every lockfile — the ERP, the estimating platform, anything with a package.json — for the affected names. Two repos had cacheable-request in the dependency tree, both pinned to versions that predate the compromise, because lockfiles pin exact versions and I do not update dependencies recreationally. I rotated the tokens anyway. Then I added --ignore-scripts to every CI install, which I should have done years ago and which, statistically, so should you.</p>
+
+<p>To be precise about the exposure: Workers do not run npm installs in production, so the runtime was never at risk. The build pipeline was. The laptop was. The place where the Stripe keys and the Twilio secrets live is an environment file on a machine that runs npm install several times a day, and that is exactly the machine this worm was written for. The perimeter is wherever the install happens.</p>
+
+<p>The uncomfortable part is that this is the precise failure mode I keep designing against in my own software. Every AI-generated change that touches my systems goes through {link:v1-3-the-human-review-gate|a review gate}, because I do not execute unreviewed changes against payroll. And yet npm's default behavior is to execute unreviewed code from the internet, automatically, at install time, with my credentials, as a convenience feature. The {link:v0-8-0-vibe-coding-has-a-change-order-problem|vibe coding era} makes it worse. Agents install dependencies with great enthusiasm and zero suspicion, and some of the poisoned packages reportedly planted hooks aimed at code editors and coding agents specifically. The attackers have noticed who does the installing now, the same way I noticed last month that {link:v1-1-the-tooling-changed|the tooling changed} faster than the habits around it.</p>
+
+<blockquote>A preinstall script is a subcontractor who starts work before you've met him, in a room you didn't know your house had.</blockquote>
+
+<p>And a word for the maintainer, who is having a worse week than any of us. One person, maintaining free infrastructure that 127 million weekly installs lean on, and the whole blast radius traces back to one compromised account. I run payroll software alone, so I do not get to feel superior about the bus factor. I get to feel identified. The main difference between us is that my customers pay me, and his mostly opened GitHub issues.</p>
+
+<p>Rotate your tokens. Not because you found something — because finding something was never the part of this you were going to be good at.</p>
+"""),
+
+dict(
+slug="v1-3-3-one-plug-four-sockets",
+version="v1.3.3", date="2026-08-07", read="4 min",
+title="One plug, four sockets",
+desc="OpenAI, AWS, Cursor, GitHub, and Vercel ship Agent Plugins, one package format for skills and MCP configs. What a shared socket means for my tooling sprawl.",
+keywords="agent plugins, open standard, agent skills, mcp servers, claude code, cursor, copilot, codex, plugin marketplace, developer tooling",
+related=["v0-3-0-mcp-usb-c-of-ai", "v1-1-the-tooling-changed", "v1-3-the-human-review-gate"],
+svg_alt="Line drawing of a power strip with four identical sockets labeled Claude Code, Cursor, Copilot, and Codex, an amber plug labeled Agent Plugin v1.0 hovering above, and a closed drawer labeled old adapters, do not open.",
+svg_caption="One plug, four sockets. The drawer of old adapters stays shut.",
+svg=_svg(f'''
+<text x="260" y="20" fill="{A}" font-family="monospace" font-size="11" text-anchor="middle">AGENT PLUGIN v1.0</text>
+<rect x="228" y="30" width="64" height="36" rx="5" fill="none" stroke="{A}" stroke-width="2"/>
+<line x1="246" y1="66" x2="246" y2="88" stroke="{A}" stroke-width="2"/>
+<line x1="274" y1="66" x2="274" y2="88" stroke="{A}" stroke-width="2"/>
+<path d="M292 48 C 360 48 400 26 460 26" fill="none" stroke="{A}" stroke-width="1.5"/>
+<line x1="260" y1="92" x2="260" y2="124" stroke="{D}" stroke-width="1" stroke-dasharray="4 4"/>
+<rect x="70" y="110" width="500" height="100" rx="8" fill="none" stroke="{G}" stroke-width="2"/>
+<rect x="95" y="128" width="90" height="46" rx="4" fill="none" stroke="{D}" stroke-width="1.5"/>
+<line x1="128" y1="141" x2="128" y2="161" stroke="{G}" stroke-width="2"/>
+<line x1="152" y1="141" x2="152" y2="161" stroke="{G}" stroke-width="2"/>
+<text x="140" y="196" fill="{M}" font-family="monospace" font-size="9" text-anchor="middle">CLAUDE CODE</text>
+<rect x="215" y="128" width="90" height="46" rx="4" fill="none" stroke="{D}" stroke-width="1.5"/>
+<line x1="248" y1="141" x2="248" y2="161" stroke="{G}" stroke-width="2"/>
+<line x1="272" y1="141" x2="272" y2="161" stroke="{G}" stroke-width="2"/>
+<text x="260" y="196" fill="{M}" font-family="monospace" font-size="9" text-anchor="middle">CURSOR</text>
+<rect x="335" y="128" width="90" height="46" rx="4" fill="none" stroke="{D}" stroke-width="1.5"/>
+<line x1="368" y1="141" x2="368" y2="161" stroke="{G}" stroke-width="2"/>
+<line x1="392" y1="141" x2="392" y2="161" stroke="{G}" stroke-width="2"/>
+<text x="380" y="196" fill="{M}" font-family="monospace" font-size="9" text-anchor="middle">COPILOT</text>
+<rect x="455" y="128" width="90" height="46" rx="4" fill="none" stroke="{D}" stroke-width="1.5"/>
+<line x1="488" y1="141" x2="488" y2="161" stroke="{G}" stroke-width="2"/>
+<line x1="512" y1="141" x2="512" y2="161" stroke="{G}" stroke-width="2"/>
+<text x="500" y="196" fill="{M}" font-family="monospace" font-size="9" text-anchor="middle">CODEX</text>
+<rect x="70" y="232" width="200" height="34" rx="3" fill="none" stroke="{D}" stroke-width="1.5"/>
+<line x1="155" y1="240" x2="185" y2="240" stroke="{D}" stroke-width="2"/>
+<text x="170" y="258" fill="{M}" font-family="monospace" font-size="9" text-anchor="middle">OLD ADAPTERS. DO NOT OPEN.</text>
+<text x="320" y="290" fill="{M}" font-family="monospace" font-size="11" text-anchor="middle">fig 1. one plug, four sockets, zero rewrites (claimed)</text>
+'''),
+body="""
+<p>OpenAI announced a plugin standard at 9:41 on Thursday night, Pacific time. That was 12:41 this morning in Worcester. I know the exact minute because I was awake watching a payroll run migrate, which tells you something about both of our release schedules.</p>
+
+<p>The standard is called Agent Plugins. OpenAI built it with AWS, Cursor, GitHub, VS Code, and Vercel: one package format that bundles agent skills and MCP server configurations together, so the same plugin installs into Claude Code, Cursor, Copilot, or Codex without being rewritten for each one. <a href="https://9to5mac.com/2026/08/06/gpt-5-turning-one-as-openai-shares-new-agent-plugins-standard/">The coverage</a> mostly framed it as a birthday present, since GPT-5 turns one this week. I read it as something better: an admission that the ecosystem has a duplication problem, signed by the companies that caused it.</p>
+
+<p>The notable absence is Anthropic, which wrote the Agent Skills spec the whole thing sits on. Standards coalitions are like trade associations. Everybody joins the one they didn't found.</p>
+
+<h3>The cost-codes problem</h3>
+
+<p>Here is why I care. I maintain a skill file that teaches coding agents how my construction ERP thinks about cost codes. Which ledger bucket concrete goes in. Why a change order is not an invoice. What retainage means, so an agent doesn't try to collect money we contractually agreed not to collect yet. That knowledge exists once per tool, in slightly different formats, and the copies drift. Drift in documentation is annoying. Drift in the file that tells an agent where money goes is a bookkeeping incident with extra steps.</p>
+
+<p>Same story for MCP servers. The config for the server that fronts my D1 database is declared in one shape for one tool and a different shape for another. When I rotated a token last month I missed a copy and spent twenty minutes debugging an agent that was politely, confidently wrong. A single portable package for skill plus server config is not a moonshot. It is the moonshot's janitor. I have wanted it since I wrote about {link:v0-3-0-mcp-usb-c-of-ai|MCP being the USB-C of AI}. MCP standardized the cable. This standardizes the toolbox hanging off it.</p>
+
+<p>On a jobsite the equivalent is battery platforms. Every trade shows up loyal to one color of power tool, and the batteries don't cross. Nobody defends this arrangement. It persists because each vendor makes money on the batteries. If the tool companies ever announced a shared battery, you would not interrogate their motives. You would buy fewer batteries and say thank you.</p>
+
+<h3>Bigger marketplaces, heavier doors</h3>
+
+<p>The same day, quietly, the <a href="https://code.claude.com/docs/en/changelog">Claude Code changelog</a> picked up owner-level wildcards for allowing or blocking entire plugin marketplaces, plus a fix for a Bash permission bypass. That pairing reads less like coincidence and more like a preview of the next problem. A shared plugin format makes marketplaces bigger, and bigger marketplaces make the allow-list the load-bearing wall. An owner wildcard is the software version of trusting a sub no matter which truck he drives up in. Which is fine, right up until the sub sells the truck.</p>
+
+<p>I wrote three weeks ago that {link:v1-1-the-tooling-changed|the tooling changed}. It keeps changing, and the direction is consistent: the interesting work is moving out of the editor and into the packaging, the permissions, the plumbing. My {link:v1-3-the-human-review-gate|review gate} does not care what format a skill arrived in. It cares what the agent did after reading it. A portable plugin that can walk into four tools can walk bad instructions into four tools, at the same speed, under the same signature.</p>
+
+<p>I converted the cost-codes skill this morning. It installed clean into two tools. The third accepted it and then behaved as if it had never met me, which in fairness is also how new hires handle my cost codes.</p>
+
+<blockquote>A standard is an argument everyone agreed to stop having. Read the fine print to find out who lost.</blockquote>
+
+<p>I have been burned by fits-all-standard-fittings before. I own a drawer of fittings it didn't fit. So the old skill copies stay in the repo for now, commented out, like the previous owner's wiring you leave in the wall until you are sure the new circuit holds.</p>
+
+<p>Version 1.0 of their standard. Version 1.3.3 of me. We will both need patches by Labor Day, and only one of us has a working group.</p>
+"""),
+
+dict(
+slug="v1-4-2-a-mortgage-for-the-machines",
+version="v1.4.2", date="2026-08-10", read="5 min",
+title="A mortgage for the machines",
+desc="Nvidia and six Wall Street giants plan $500 billion in GPU-backed financing. A construction take on lending against collateral that depreciates by benchmark.",
+keywords="nvidia, gpu financing, ai data centers, compute infrastructure, blackrock, kkr, goldman sachs, asset class, depreciation, tsmc, cloudflare workers",
+related=["v0-5-0-measured-in-gigawatts", "v0-2-0-the-40-dollar-server", "v1-4-adoption-is-the-deliverable"],
+svg_alt="Line drawing of a bank facade whose four columns are GPU cards with cooling fans, under a pediment reading Bank of Compute, with an amber Now Leasing sign staked beside the steps.",
+svg_caption="The columns are load-bearing until the next benchmark ships.",
+svg=_svg(f'''
+<polygon points="120,84 320,30 520,84" fill="none" stroke="{G}" stroke-width="2"/>
+<text x="320" y="74" fill="{G}" font-family="monospace" font-size="13" text-anchor="middle">BANK OF COMPUTE</text>
+<rect x="120" y="84" width="400" height="16" fill="none" stroke="{G}" stroke-width="2"/>
+<rect x="145" y="100" width="50" height="104" rx="3" fill="none" stroke="{D}" stroke-width="1.5"/>
+<circle cx="170" cy="134" r="15" fill="none" stroke="{D}" stroke-width="1.5"/>
+<circle cx="170" cy="134" r="4" fill="none" stroke="{D}" stroke-width="1"/>
+<line x1="152" y1="164" x2="188" y2="164" stroke="{D}" stroke-width="1"/>
+<line x1="152" y1="176" x2="188" y2="176" stroke="{D}" stroke-width="1"/>
+<line x1="152" y1="188" x2="188" y2="188" stroke="{D}" stroke-width="1"/>
+<rect x="245" y="100" width="50" height="104" rx="3" fill="none" stroke="{D}" stroke-width="1.5"/>
+<circle cx="270" cy="134" r="15" fill="none" stroke="{D}" stroke-width="1.5"/>
+<circle cx="270" cy="134" r="4" fill="none" stroke="{D}" stroke-width="1"/>
+<line x1="252" y1="164" x2="288" y2="164" stroke="{D}" stroke-width="1"/>
+<line x1="252" y1="176" x2="288" y2="176" stroke="{D}" stroke-width="1"/>
+<line x1="252" y1="188" x2="288" y2="188" stroke="{D}" stroke-width="1"/>
+<rect x="345" y="100" width="50" height="104" rx="3" fill="none" stroke="{D}" stroke-width="1.5"/>
+<circle cx="370" cy="134" r="15" fill="none" stroke="{D}" stroke-width="1.5"/>
+<circle cx="370" cy="134" r="4" fill="none" stroke="{D}" stroke-width="1"/>
+<line x1="352" y1="164" x2="388" y2="164" stroke="{D}" stroke-width="1"/>
+<line x1="352" y1="176" x2="388" y2="176" stroke="{D}" stroke-width="1"/>
+<line x1="352" y1="188" x2="388" y2="188" stroke="{D}" stroke-width="1"/>
+<rect x="445" y="100" width="50" height="104" rx="3" fill="none" stroke="{D}" stroke-width="1.5"/>
+<circle cx="470" cy="134" r="15" fill="none" stroke="{D}" stroke-width="1.5"/>
+<circle cx="470" cy="134" r="4" fill="none" stroke="{D}" stroke-width="1"/>
+<line x1="452" y1="164" x2="488" y2="164" stroke="{D}" stroke-width="1"/>
+<line x1="452" y1="176" x2="488" y2="176" stroke="{D}" stroke-width="1"/>
+<line x1="452" y1="188" x2="488" y2="188" stroke="{D}" stroke-width="1"/>
+<rect x="110" y="204" width="420" height="12" fill="none" stroke="{G}" stroke-width="2"/>
+<rect x="92" y="216" width="456" height="12" fill="none" stroke="{G}" stroke-width="2"/>
+<rect x="545" y="104" width="90" height="40" fill="none" stroke="{A}" stroke-width="2"/>
+<text x="590" y="121" fill="{A}" font-family="monospace" font-size="10" text-anchor="middle">NOW</text>
+<text x="590" y="136" fill="{A}" font-family="monospace" font-size="10" text-anchor="middle">LEASING</text>
+<line x1="590" y1="144" x2="590" y2="228" stroke="{A}" stroke-width="2"/>
+<text x="320" y="290" fill="{M}" font-family="monospace" font-size="11" text-anchor="middle">fig 1. collateral, air-cooled, eighteen-month half-life</text>
+'''),
+body="""
+<p>Nvidia announced this morning that it is partnering with Apollo, BlackRock, Blackstone, Brookfield, Goldman Sachs, and KKR to stand up <a href="https://nvidianews.nvidia.com/news/nvidia-partners-with-apollo-blackrock-blackstone-brookfield-goldman-sachs-and-kkr-to-establish-ai-compute-infrastructure-financing-platforms-to-mobilize-over-500-billion-of-third-party-capital">six financing platforms meant to mobilize more than $500 billion</a> of third-party capital for AI data centers. Jensen Huang <a href="https://www.cnbc.com/2026/08/10/nvidia-wall-street-asset-managers-500-billion-ai-push.html">told CNBC</a> his chips are an investable asset. I build software for a construction company, and construction has been borrowing against equipment since before the equipment had opinions. So I have notes.</p>
+
+<p>The structure, as announced: six pools of capital, one per firm, that lend to Nvidia's customers so those customers can buy Nvidia hardware and build the concrete boxes to house it. The debt lives with investors instead of on Nvidia's balance sheet. The pitch is that compute is infrastructure now, like commercial real estate or toll roads, and deserves the same financing machinery.</p>
+
+<h3>What the bank knows about an excavator</h3>
+
+<p>Banks lend against excavators happily. Not because bankers love excavators, but because a used excavator has a knowable price. There is an auction market, decades of comps, and the comforting fact that a 2015 machine still digs a hole in 2026. A building is collateral for fifty years. A toll road collects tolls until the asphalt gives out, and then you repave the asphalt. That is what asset class means: the thing holds value on a schedule everyone can model.</p>
+
+<p>A GPU depreciates by press release. The resale value of last generation gets set the morning the next generation's benchmark table goes up. I am not saying the chips become worthless. Old accelerators run inference fine, the way my old trucks still haul material. I am saying the depreciation curve is written by the manufacturer, and in this deal the manufacturer is also arranging the loans. When the guy selling you the machine also sets its useful life and coordinates your financing, my industry would at minimum read that contract twice.</p>
+
+<p>I have watched a bank repossess a skid steer. One flatbed, one afternoon, and everyone involved knew what it would bring at auction. I would genuinely like to read the repossession plan for a hundred thousand accelerators bolted into a building that was engineered around their plumbing.</p>
+
+<p>Also worth noting: these are memorandums of understanding, subject to final agreements. In my trade that is a letter of intent, and the contractors who mobilize crews on a letter of intent are the ones we tell stories about at association dinners.</p>
+
+<h3>The units keep changing</h3>
+
+<p>The demand underneath the deal is not fake. The same morning, <a href="https://techstartups.com/2026/08/10/top-tech-news-today-august-10-2026-apple-google-meta-openai-unitree-more/">TSMC's July sales came in up 45 percent</a>, on advanced chips it cannot package fast enough. Nobody is financing a mirage. The question was never whether people want compute. The question is who holds the paper when the collateral turns two generations old, and how that paper gets marked in the meantime.</p>
+
+<p>Back in December I wrote that the industry had started {link:v0-5-0-measured-in-gigawatts|measuring itself in gigawatts}. Eight months later it measures itself in basis points. That is the usual order of operations for a boom: first engineering units, then financial units. You can learn a lot by watching which units show up in the press releases.</p>
+
+<p>Where I sit in all this: nowhere, gratefully. My whole operation — payroll, scheduling, the dialer, the estimating tenants — runs on Cloudflare Workers and a D1 database. I once wrote a love letter to {link:v0-2-0-the-40-dollar-server|a $40 server}. I own zero accelerators. I rent intelligence by the token the same way I rent a crane by the day, because a crane is a wonderful thing to use and a terrible thing to own. The $500 billion is for people making the other choice at a scale I cannot picture, financed by firms that normally hold airports.</p>
+
+<p>To be fair to the deal, there is a real problem inside it. Somebody has to carry the cost of this buildout, and firms that specialize in big illiquid assets stepping up is arguably the system working as designed. That has been true of every financing innovation, right up until the year it wasn't.</p>
+
+<blockquote>Land holds its value because land never ships a faster version of itself.</blockquote>
+
+<p>My August infrastructure bill will round to a tank of diesel. Somewhere out there, half a trillion dollars is shopping for buildings with substations. My substation is a wall outlet, and I plan to keep it that way for as long as the math lets me.</p>
+"""),
+
+dict(
+slug="v1-6-1-the-price-increase-that-wasnt",
+version="v1.6.1", date="2026-08-12", read="4 min",
+title="The price increase that wasn't",
+desc="Anthropic makes Sonnet 5 intro pricing permanent and cancels the September hike to $3/$15. What a change order in my favor does to per-estimate token math.",
+keywords="claude sonnet 5, anthropic pricing, api pricing change, token costs, cancelled price increase, llm unit economics, estimating saas, cost per estimate",
+related=["v0-8-0-vibe-coding-has-a-change-order-problem", "v1-4-adoption-is-the-deliverable", "v1-5-agents-are-done-piloting"],
+svg_alt="Line drawing of a price tag with $3/$15 struck through and $2/$10 beneath it, next to a September 1 calendar page crossed out with an amber X.",
+svg_caption="The rarest document in procurement: a cancelled increase.",
+svg=_svg(f'''
+<path d="M170 122 C 130 90 112 68 96 40" fill="none" stroke="{D}" stroke-width="1.5"/>
+<polygon points="150,84 340,84 385,127 340,170 150,170" fill="none" stroke="{G}" stroke-width="2"/>
+<circle cx="175" cy="127" r="6" fill="none" stroke="{G}" stroke-width="1.5"/>
+<text x="265" y="118" fill="{D}" font-family="monospace" font-size="18" text-anchor="middle">$3 / $15</text>
+<line x1="212" y1="112" x2="318" y2="112" stroke="{A}" stroke-width="2"/>
+<text x="265" y="152" fill="{G}" font-family="monospace" font-size="20" text-anchor="middle">$2 / $10</text>
+<text x="265" y="192" fill="{M}" font-family="monospace" font-size="10" text-anchor="middle">PER MILLION TOKENS</text>
+<line x1="455" y1="66" x2="455" y2="82" stroke="{D}" stroke-width="2"/>
+<line x1="535" y1="66" x2="535" y2="82" stroke="{D}" stroke-width="2"/>
+<rect x="430" y="74" width="130" height="112" rx="4" fill="none" stroke="{D}" stroke-width="1.5"/>
+<line x1="430" y1="102" x2="560" y2="102" stroke="{D}" stroke-width="1.5"/>
+<text x="495" y="94" fill="{D}" font-family="monospace" font-size="12" text-anchor="middle">SEP</text>
+<text x="495" y="162" fill="{D}" font-family="monospace" font-size="38" text-anchor="middle">1</text>
+<line x1="438" y1="108" x2="552" y2="180" stroke="{A}" stroke-width="2"/>
+<line x1="552" y1="108" x2="438" y2="180" stroke="{A}" stroke-width="2"/>
+<text x="320" y="290" fill="{M}" font-family="monospace" font-size="11" text-anchor="middle">fig 1. the increase, struck through in the field</text>
+'''),
+body="""
+<p>On Monday, Anthropic cancelled a price increase. I want to type that sentence again, slowly, because nothing like it has ever happened to me in the physical economy. A supplier scheduled a 50 percent increase, published the effective date, and then called it off.</p>
+
+<p>The details. Sonnet 5 launched in June at $2 per million input tokens and $10 per million output, labeled introductory pricing through August 31. The jump to $3/$15 on September 1 was <a href="https://datafloq.com/anthropic-confirms-claude-sonnet-5-prices-rise-50-on-september-1/">confirmed in writing</a> recently enough that I built a budget around it. This week the introductory rate <a href="https://enterprisedna.co/resources/news/anthropic-claude-sonnet-5-pricing-permanent-reversal-august-2026/">became the permanent rate</a>. The increase is off. The <a href="https://platform.claude.com/docs/en/about-claude/pricing">pricing page</a> now just says what it says, with no asterisk counting down to Labor Day.</p>
+
+<p>I had a line item for this. An actual row in an actual spreadsheet. I meter tokens per workflow because the workflows bill real customers: estimate generation for the estimating tenants, call summaries coming off the dialer, the nightly anomaly pass over payroll before anything gets my signature. A generated estimate costs me about four cents of tokens today. The September rate would have made it six. Four cents to six sounds like nothing until you multiply it by every estimate every tenant runs, at which point it becomes a real number with its own row and its own opinions.</p>
+
+<p>In my other life this is called a change order, and I have {link:v0-8-0-vibe-coding-has-a-change-order-problem|written about those}. What I have never seen is a change order in the customer's favor that the customer didn't fight for. No lumber yard has ever called me to say the increase is off and the old price stands. Prices ratchet. Ratcheting is the entire personality of a price.</p>
+
+<p>Introductory pricing is a gym membership. It exists to let you build habits at one number and get billed at another. Everyone who wired Sonnet 5 into production in June did the June math knowing the September math was coming, the way you join a gym in January knowing what happens to the rate when the resolution wears off. Making the intro rate permanent is the gym deciding to stay cheap. Gyms do not do this. Something changed.</p>
+
+<p>My read on what changed: models are shipping like software patches now, several a month, from more vendors than I can keep in my head. When the capability gap between releases narrows, the number on the pricing page becomes the benchmark that matters most. And businesses were visibly budgeting for September 1, which is poison for the thing that actually decides these markets. I keep saying {link:v1-4-adoption-is-the-deliverable|adoption is the deliverable}. Predictable unit cost is the schedule of values underneath it. Nobody standardizes on a meter that announces it will spin faster in the fall.</p>
+
+<p>What I actually did about it: almost nothing, which is the good part. The margin math from June still holds, and boring is the best available news in a cost model. The routing stays as it was — the cheap model summarizes calls, the good model touches anything a customer signs. I wrote yesterday that {link:v1-5-agents-are-done-piloting|agents are done piloting}, and production systems get to be picky about their suppliers. Because here is the fine print I carry around: permanent, in an API doc, means until the next doc commit. A price that can be lowered by a web page update can be raised by one.</p>
+
+<blockquote>No supplier in the physical world has ever un-raised a price on me. The first one to do it sells thinking by the pound.</blockquote>
+
+<p>Still. I have negotiated steel, lumber, diesel surcharges, and dumpster fees, and I got this concession by doing nothing at all except being one of many customers with a spreadsheet. Competition did the negotiating. It is a strange feeling, sitting on the side of the table the market fights for.</p>
+
+<p>The September 1 row stays in the spreadsheet. It reads zero now. Every budget deserves one monument.</p>
+"""),
+
+dict(
+slug="v1-6-2-compute-is-real-estate-now",
+version="v1.6.2", date="2026-08-13", read="4 min",
+title="Compute is real estate now",
+desc="Anthropic leases a bitcoin mine through 2048, Cognition talks a $40B round, and vibe coding hits $13.3 billion. The week compute became real estate.",
+keywords="anthropic riot platforms lease, ai compute financing, cognition 40 billion valuation, lovable series c 13.3 billion, accel ai fund, ai capex real estate",
+related=["v1-4-2-a-mortgage-for-the-machines", "v0-5-0-measured-in-gigawatts", "v0-8-0-vibe-coding-has-a-change-order-problem"],
+svg_alt="Green phosphor line drawing of a data center building with an amber FOR LEASE yard sign out front reading 191 MW, THRU 2048",
+svg_caption="The gold rush, refinanced.",
+svg=_svg(f'''
+<line x1="20" y1="252" x2="620" y2="252" stroke="{D}" stroke-width="2"/>
+<rect x="70" y="90" width="200" height="162" fill="none" stroke="{G}" stroke-width="2"/>
+<line x1="120" y1="90" x2="120" y2="252" stroke="{D}" stroke-width="1"/>
+<line x1="170" y1="90" x2="170" y2="252" stroke="{D}" stroke-width="1"/>
+<line x1="220" y1="90" x2="220" y2="252" stroke="{D}" stroke-width="1"/>
+<line x1="70" y1="130" x2="270" y2="130" stroke="{D}" stroke-width="1"/>
+<line x1="70" y1="170" x2="270" y2="170" stroke="{D}" stroke-width="1"/>
+<line x1="70" y1="210" x2="270" y2="210" stroke="{D}" stroke-width="1"/>
+<circle cx="95" cy="110" r="3" fill="{A}"/>
+<circle cx="145" cy="150" r="3" fill="{A}"/>
+<circle cx="245" cy="110" r="3" fill="{A}"/>
+<circle cx="195" cy="230" r="3" fill="{A}"/>
+<line x1="170" y1="90" x2="170" y2="58" stroke="{G}" stroke-width="2"/>
+<circle cx="170" cy="52" r="5" fill="none" stroke="{A}" stroke-width="2"/>
+<circle cx="560" cy="58" r="18" fill="none" stroke="{D}" stroke-width="2"/>
+<line x1="430" y1="252" x2="430" y2="184" stroke="{G}" stroke-width="2"/>
+<rect x="338" y="118" width="184" height="66" fill="none" stroke="{A}" stroke-width="2"/>
+<text x="430" y="146" font-family="monospace" font-size="19" fill="{A}" text-anchor="middle">FOR LEASE</text>
+<text x="430" y="170" font-family="monospace" font-size="12" fill="{D}" text-anchor="middle">191 MW - THRU 2048</text>
+<text x="320" y="290" font-family="monospace" font-size="12" fill="{M}" text-anchor="middle">fig. 1 - the picks and shovels, now with a mortgage</text>
+'''),
+body="""
+<p>Some weeks the AI news is about models. This week it was about term sheets. The term sheets were more interesting.</p>
+<p>I already wrote up Monday's half-trillion-dollar opener — {link:v1-4-2-a-mortgage-for-the-machines|Nvidia arranging GPU-backed financing with six Wall Street firms} — so I will not relitigate it here, except to note what happened next: by midweek the abstraction grew a street address.</p>
+<p>Tuesday made it concrete. Anthropic signed a <a href="https://www.cnbc.com/2026/08/11/riot-platforms-signs-anthropic-deal-as-miners-shift-to-ai-infrastructure-.html">$9.1 billion, 20-year computing lease with Riot Platforms</a>, a bitcoin miner in Rockdale, Texas. The deal covers 191 megawatts and runs through June 2048, with extension options that push the total to $16.1 billion. Riot's stock jumped like the land had been rezoned, because functionally it had. The miners spent a decade getting yelled at about their power draw, and it turns out the power draw was the business. They never had the best models. They had the substations. I wrote in December that {link:v0-5-0-measured-in-gigawatts|this industry is measured in gigawatts now}, and the miners figured it out well before the pundits did.</p>
+<p>June 2048 deserves a moment of silence. I work in construction software, so long commitments are my native format. A roof warranty runs thirty years. A slab is forever. My longest software commitment is an annual plan I resent. Anthropic just signed what my industry would call a build-to-suit lease with two option periods. We do not call that innovation. We call that a tenant.</p>
+<h3>Meanwhile, downstream</h3>
+<p>Wednesday the application layer reported in. Cognition, the company behind the Devin coding agent, is <a href="https://www.bloomberg.com/news/articles/2026-08-12/ai-startup-cognition-in-new-funding-talks-at-40-billion-value">in funding talks at a valuation of at least $40 billion</a>, up more than 50 percent from its last round. Lovable <a href="https://techcrunch.com/2026/08/12/lovable-confirms-new-13-3b-valuation-raises-another-400m/">confirmed a $400 million Series C at $13.3 billion</a>, double its December valuation, eight months apart, with revenue reportedly heading toward $600 million. And Accel <a href="https://www.bloomberg.com/news/articles/2026-08-11/accel-raises-3-5-billion-to-invest-in-emerging-global-ai-startups">closed $3.5 billion in new funds</a> on Tuesday to keep the conveyor stocked.</p>
+<p>I use these tools and I like them. I also wrote in March that vibe coding {link:v0-8-0-vibe-coding-has-a-change-order-problem|has a change-order problem}: the demo is cheap and the twentieth revision is where the money goes. That problem did not get solved this week. It got valued at $13.3 billion. Which, to be fair, is also how change orders work.</p>
+<p>Here is where I sit in the new capital stack. My ERP runs payroll, dispatch and a phone dialer for real construction crews on Cloudflare Workers and a D1 database, and the monthly bill is closer to a phone plan than a lease. But every token I buy now has, somewhere above it, a leased megawatt, a financing platform, and a bond desk. I am the last tenant in the building, subletting a corner of a corner, and my rent is so small the landlord's landlord will never learn my name.</p>
+<blockquote>When the picks and shovels come with a twenty-year mortgage, it is not a gold rush anymore. It is real estate.</blockquote>
+<p>None of this week's news tells you whether the models get better next quarter. It tells you the money has stopped pricing that question week to week. Nobody signs a lease through 2048 because they believe in a demo. They sign it because they believe in the rent.</p>
+<p>I ran payroll Wednesday night. A few seconds of compute, billed in fractions of a cent, executed on hardware I will never see, financed by people who will never hear of me. The stack held. Rent is due on the first either way.</p>
+"""),
+
+dict(
+slug="v1-8-1-the-ear-is-not-an-audit-log",
+version="v1.8.1", date="2026-08-15", read="3 min",
+title="The ear is not an audit log",
+desc="The first AI-generated song cracked the Hot 100 and nobody caught it by ear. The vendor ran a query. Notes on provenance from a man who keeps audit logs.",
+keywords="ai generated song hot 100, rubberz fenix flexin ai, treblo ai music platform, ai content provenance, ai detection audit logs, song of the summer 2026",
+related=["v0-7-0-the-pizzeria-turing-test", "v1-3-the-human-review-gate", "v1-2-integrate-before-you-replace"],
+svg_alt="Green organic audio waveform that becomes a perfect amber square wave under a magnifying glass, above a SQL query that returns one row",
+svg_caption="Two months of arguing, settled in 0.04 seconds.",
+svg=_svg(f'''
+<line x1="30" y1="140" x2="610" y2="140" stroke="{M}" stroke-width="1"/>
+<polyline points="30,140 48,118 64,156 80,108 96,162 112,124 130,150 146,104 162,166 178,128 194,146 210,112 226,158 242,126 258,148 274,116 290,152 304,130 318,142" fill="none" stroke="{G}" stroke-width="2"/>
+<polyline points="322,140 322,108 350,108 350,172 378,172 378,108 406,108 406,172 434,172 434,108 462,108 462,172 490,172 490,108 518,108 518,172 546,172 546,108 574,108 574,172 602,172 602,140 610,140" fill="none" stroke="{A}" stroke-width="2"/>
+<circle cx="322" cy="140" r="46" fill="none" stroke="{D}" stroke-width="2"/>
+<line x1="355" y1="173" x2="396" y2="214" stroke="{D}" stroke-width="4"/>
+<text x="320" y="242" font-family="monospace" font-size="13" fill="{D}" text-anchor="middle">SELECT origin FROM hot100 WHERE rank = 58;</text>
+<text x="320" y="262" font-family="monospace" font-size="13" fill="{A}" text-anchor="middle">1 row returned (0.04s)</text>
+<text x="320" y="290" font-family="monospace" font-size="12" fill="{M}" text-anchor="middle">fig. 1 - the ear vs. the audit log</text>
+'''),
+body="""
+<p>Bloomberg spent Friday explaining that <a href="https://www.bloomberg.com/news/articles/2026-08-14/the-robots-have-stolen-your-summer">the robots have stolen your summer</a> — the markets, the economy, and, in the item I have not been able to put down, possibly the song of the summer. I looked into the song. The story underneath is better than the headline.</p>
+<p>The song is Rubberz, by Shoreline Mafia rapper Fenix Flexin and producer Purps on the Beat, released June 5. It is street rap over posh British eighties synth-pop, and it did what hits do: number 58 on the Hot 100, millions of views, and a summer-long argument about whether a machine made it. Fenix said no sir for two months. Then a producer named Medasin published a viral forensic breakdown. Then Treblo, the AI music platform in question, <a href="https://stereogum.com/2507265/treblo-appears-to-confirm-fenix-flexins-rubberz-is-the-first-ai-generated-hot-100-hit/news">confirmed through its own vetting software</a> that the track was generated on its platform, making it the first AI-generated song to chart on the Hot 100. Days later, Fenix <a href="https://stereogum.com/2507554/fenix-flexin-finally-admits-he-used-ai-for-rubberz/news">conceded on Instagram</a>: <em>never said I didn't use AI, i said it had nun to do w recording process</em>.</p>
+<p>Here is the part I care about, as a man who keeps databases for a living. Nobody proved it by listening. Millions of ears, professional and amateur, argued at a coin flip for two months. The proof came from the vendor checking its own records. The decisive instrument was not an ear. It was a lookup.</p>
+<p>I have run this experiment at much lower stakes. In February I put an AI on the phones at a pizzeria and {link:v0-7-0-the-pizzeria-turing-test|watched customers fail to notice}. The lesson then is the lesson now: past a certain quality bar, human detection is a rounding error. You catch the machine in the logs, or you do not catch it at all.</p>
+<p>Which is why every AI-touched row in my estimating platform carries provenance columns. A line item a model drafts stays marked as drafted until a human approves it, and the approval writes a name and a timestamp into D1. Not because customers ask — nobody has ever asked whether their drywall estimate was handmade — but because when a number turns out wrong, the first question is where it came from, and vibes are not an admissible answer. That was the whole argument of {link:v1-3-the-human-review-gate|the human review gate}: the gate matters, but the record that the gate existed matters more.</p>
+<p>The Hot 100, it turns out, has no review gate. It measures consumption, not provenance. So the question of what made the song was unanswerable by the chart, undetectable by the audience, and settled only when the one party holding logs decided to open them. The music industry spent a summer learning what I learned running estimates: the audit trail is not bureaucracy. It is the only witness that does not guess.</p>
+<p>Boing Boing, the same day as the Bloomberg piece, quoted Jaron Lanier arguing that <a href="https://boingboing.net/2026/08/14/jaron-lanier-there-is-no-ai.html">there is no AI, only people</a>. Rubberz supports the thesis. There were people everywhere in this story: a rapper with a British-accent alibi, a producer, a platform, and a vendor employee with read access to production. The machine never confessed. A person ran the lookup.</p>
+<blockquote>Nobody caught the robot by listening. The robot's vendor ran a query.</blockquote>
+<p>The song is still up, still streaming, and the market has shrugged, because nobody un-hears a summer. The only thing that changed is a column value. Keep your logs. Sooner or later they are the only ear that works.</p>
+"""),
 ]
