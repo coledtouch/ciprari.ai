@@ -1,0 +1,9 @@
+// Deploys the built changelog-site folder to the "changelog" Worker (changelog.ciprari.ai).
+// Used by GitHub Actions after build_blog.py generates the site.
+{
+  "name": "changelog",
+  "compatibility_date": "2026-08-12",
+  "assets": {
+    "directory": "./changelog-site"
+  }
+}
