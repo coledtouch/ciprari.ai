@@ -313,6 +313,17 @@ if(cur)document.documentElement.setAttribute("data-theme",cur);else document.doc
 mark();setTimeout(function(){{k.classList.remove("open");}},250);}});}});
 }})();</script>
 
+<script>(function(){{try{{
+if(navigator.doNotTrack==="1")return;
+var s="";try{{s=new URL(location.href).searchParams.get("utm_source")||"";}}catch(e){{}}
+var p=JSON.stringify({{event:"blog",path:location.pathname,ref:document.referrer||"",
+meta:s?("utm:"+s.slice(0,30)):""}});
+var ep="https://coleos-api.coleciprari.workers.dev/track";
+/* text/plain keeps the beacon a simple request — no CORS preflight to lose */
+if(navigator.sendBeacon){{navigator.sendBeacon(ep,new Blob([p],{{type:"text/plain"}}));}}
+else{{fetch(ep,{{method:"POST",body:p,keepalive:true}}).catch(function(){{}});}}
+}}catch(e){{}}}})();</script>
+
 </body>
 </html>"""
 
