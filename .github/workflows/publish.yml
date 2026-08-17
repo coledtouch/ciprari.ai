@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "auto | post | rollout | stub (pipeline test, no API call)"
+        description: "auto | post | rollout | stub (pipeline test, no API) | dry (real API, no publish)"
         default: "auto"
 
 permissions:
@@ -21,9 +21,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -40,6 +40,8 @@ jobs:
           MODE="${{ github.event.inputs.mode || 'auto' }}"
           if [ "$MODE" = "stub" ]; then
             python3 writer/writer.py auto --stub
+          elif [ "$MODE" = "dry" ]; then
+            python3 writer/writer.py auto
           else
             python3 writer/writer.py "$MODE"
           fi
@@ -54,21 +56,21 @@ jobs:
           grep -q "${{ steps.write.outputs.slug }}" changelog-site/feed.xml
           echo "feed contains ${{ steps.write.outputs.slug }}"
 
-      # stub runs stop here: nothing is deployed or committed
+      # stub and dry runs stop here: nothing is deployed or committed
       - name: Deploy to Cloudflare
-        if: ${{ github.event.inputs.mode != 'stub' }}
+        if: ${{ github.event.inputs.mode != 'stub' && github.event.inputs.mode != 'dry' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ba46412ff1f79be9aef72d7f1895fd78
         run: npx wrangler@4 deploy --config wrangler.jsonc
 
       - name: IndexNow ping (non-fatal)
-        if: ${{ github.event.inputs.mode != 'stub' }}
+        if: ${{ github.event.inputs.mode != 'stub' && github.event.inputs.mode != 'dry' }}
         run: |
           curl -sf "https://api.indexnow.org/indexnow?url=https://changelog.ciprari.ai/${{ steps.write.outputs.slug }}&key=c01e0s1ndexn0w2026ciprari&keyLocation=https://changelog.ciprari.ai/c01e0s1ndexn0w2026ciprari.txt" || true
 
       - name: Commit the new post back to the repo
-        if: ${{ github.event.inputs.mode != 'stub' }}
+        if: ${{ github.event.inputs.mode != 'stub' && github.event.inputs.mode != 'dry' }}
         run: |
           git config user.name "coleos-writer"
           git config user.email "info@coenconstruction.com"
