@@ -50,8 +50,9 @@ h1.site{font-size:30px;color:var(--hot);letter-spacing:1px;margin:6px 0 4px;text
 .cur{display:inline-block;width:9px;height:17px;background:var(--hot);vertical-align:-2px;animation:bl 1.1s steps(1) infinite}
 @keyframes bl{50%{opacity:0}}
 /* ---- CRT monitor frame ---- */
-.crt{background:var(--bezel);border:1px solid var(--line);border-radius:8px;padding:10px 10px 6px;position:relative;box-shadow:0 4px 24px rgba(0,0,0,.5)}
-.crt .screen{background:#04120a;border:1px solid #0c2417;border-radius:4px;overflow:hidden;position:relative}
+.crt{display:block;background:var(--bezel);border:1px solid var(--line);border-radius:8px;padding:10px 10px 6px;position:relative;box-shadow:0 4px 24px rgba(0,0,0,.5)}
+.crt .screen{display:block;background:#04120a;border:1px solid #0c2417;border-radius:4px;overflow:hidden;position:relative}
+.crt .screen svg{display:block;width:100%;height:auto}
 .crt .screen svg{display:block;width:100%;height:auto}
 .crt .screen:after{content:"";position:absolute;inset:0;pointer-events:none;
 background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px)}
