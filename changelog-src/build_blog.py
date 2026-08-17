@@ -97,6 +97,36 @@ article li{margin-bottom:8px}
 article code{color:var(--amber);background:#0d1a12;padding:1px 6px;border:1px solid var(--line);font-size:13px}
 hr.sig{border:0;border-top:1px dashed var(--line);margin:34px 0 16px}
 .sig-line{color:var(--dim);font-size:13px}.sig-line b{color:var(--hot)}
+/* ---- archive search + surprise me ---- */
+.findbar{display:flex;gap:8px;align-items:center;margin:26px 0 6px;flex-wrap:wrap}
+.findbar .fw{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;
+  border:1px solid var(--line);background:var(--panel);padding:9px 12px}
+.findbar .fico{color:var(--mut);font-size:13px;flex:none}
+.findbar input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);
+  font-family:var(--mono);font-size:13.5px}
+.findbar input::placeholder{color:var(--mut)}
+.findbar .fw:focus-within{border-color:var(--hot);box-shadow:0 0 12px rgba(var(--glow),.16)}
+.fbtn{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer;
+  font-family:var(--mono);font-size:12.5px;padding:9px 14px;letter-spacing:.5px}
+.fbtn:hover{color:var(--hot);border-color:var(--hot)}
+.findmsg{color:var(--mut);font-size:12px;min-height:17px;margin-bottom:4px}
+
+/* ---- reactions ---- */
+.react{border:1px solid var(--line);background:var(--panel);padding:15px 17px;margin-top:26px}
+.react .rh{color:var(--mut);font-size:11px;letter-spacing:2px;margin-bottom:11px}
+.rbtns{display:flex;gap:9px;flex-wrap:wrap}
+.rb{flex:1;min-width:135px;display:flex;flex-direction:column;gap:2px;align-items:flex-start;
+  border:1px solid var(--line);background:var(--panel2);color:var(--dim);cursor:pointer;
+  font-family:var(--mono);padding:10px 12px;position:relative;transition:border-color .15s,color .15s}
+.rb b{color:var(--ink);font-size:13px;font-weight:normal}
+.rb span{font-size:10.5px;color:var(--mut)}
+.rb .rn{position:absolute;right:10px;top:9px;font-style:normal;font-size:12px;color:var(--hot)}
+.rb:hover{border-color:var(--hot)}
+.rb.on{border-color:var(--hot);background:rgba(var(--glow),.07)}
+.rb.on b{color:var(--hot)}
+.rb.wait{opacity:.55}
+.rnote{color:var(--mut);font-size:10.5px;margin-top:9px}
+
 .related{border:1px solid var(--line);background:var(--panel);padding:16px 18px;margin-top:28px}
 .related .rh{color:var(--mut);font-size:11px;letter-spacing:2px;margin-bottom:10px}
 .related a{display:block;font-size:13.5px;margin-bottom:7px}
@@ -125,6 +155,12 @@ html[data-theme=violet]{--hot:#c479ff;--ink:#e2c6ff;--dim:#9a6fc9;--mut:#5a3a7a;
 html[data-theme=amber]{--bg:#0d0905;--panel:#130d06;--panel2:#171005;--bezel:#1c1508}
 html[data-theme=cyan]{--bg:#050b0e;--panel:#071216;--panel2:#05161c;--bezel:#0c1a20}
 html[data-theme=violet]{--bg:#0a060e;--panel:#0e0913;--panel2:#120a19;--bezel:#170f20}
+/* ---- honour the OS reduced-motion setting: keep the look, drop the movement ---- */
+@media (prefers-reduced-motion: reduce){{
+  *,*:before,*:after{{animation-duration:.001ms !important;animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;scroll-behavior:auto !important}}
+  .cur{{animation:none !important;opacity:1 !important}}
+}}
 /* ---- floating hue knob: a CRT brightness knob that changes the phosphor ---- */
 .hueknob{position:fixed;right:16px;bottom:16px;z-index:9000}
 .hueknob .knob{width:46px;height:46px;border-radius:50%;cursor:pointer;padding:0;
@@ -344,6 +380,43 @@ def related_block(p):
     rows = "".join(f'<a href="/{r["slug"]}"><b>{r["version"]}</b> — {esc(r["title"])}</a>' for r in rel)
     return f'<div class="related"><div class="rh">RELATED RELEASES</div>{rows}</div>'
 
+def reactions(p):
+    """One tap, no account, no comment thread to moderate. Tapping again undoes it."""
+    return f"""
+<div class="react" data-slug="{p['slug']}">
+  <div class="rh">WAS THIS ANY GOOD?</div>
+  <div class="rbtns">
+    <button class="rb" data-k="shipped"><b>Ships</b><span>useful in practice</span><i class="rn"></i></button>
+    <button class="rb" data-k="useful"><b>Learned something</b><span>new to me</span><i class="rn"></i></button>
+    <button class="rb" data-k="funny"><b>Made me laugh</b><span>worth the read</span><i class="rn"></i></button>
+  </div>
+  <div class="rnote">Anonymous, one tap, no account. Tap again to undo.</div>
+</div>
+<script>(function(){{
+var box=document.querySelector(".react"); if(!box) return;
+var slug=box.getAttribute("data-slug"),
+    api="https://coleos-api.coleciprari.workers.dev/react",
+    btns=[].slice.call(box.querySelectorAll(".rb")),busy=false;
+function paint(d){{
+  var c=(d&&d.counts)||{{}},mine=d&&d.mine;
+  btns.forEach(function(b){{
+    var k=b.getAttribute("data-k"),n=c[k]||0;
+    b.querySelector(".rn").textContent=n?n:"";
+    b.classList.toggle("on",mine===k);
+  }});
+}}
+fetch(api+"?slug="+encodeURIComponent(slug)).then(function(r){{return r.json();}}).then(paint).catch(function(){{}});
+btns.forEach(function(b){{
+  b.addEventListener("click",function(){{
+    if(busy) return; busy=true; b.classList.add("wait");
+    fetch(api,{{method:"POST",headers:{{"Content-Type":"application/json"}},
+      body:JSON.stringify({{slug:slug,kind:b.getAttribute("data-k")}})}})
+      .then(function(r){{return r.json();}}).then(paint)
+      .catch(function(){{}}).then(function(){{ busy=false; b.classList.remove("wait"); }});
+  }});
+}});
+}})();</script>"""
+
 def build():
     os.makedirs(OUT, exist_ok=True)
     os.makedirs(OUT + "/og", exist_ok=True)
@@ -368,6 +441,7 @@ def build():
   <div class="hero">{crt(p, hero=True)}</div>
   <div itemprop="articleBody">{crosslink(p["body"])}</div>
   {sig()}
+  {reactions(p)}
   {related_block(p)}
   {newsletter(compact=True)}
   {nextrel}
@@ -397,8 +471,10 @@ def build():
     for p in POSTS:
         d = datetime.date.fromisoformat(p["date"])
         sun = '<span class="sun">☀ rollout report</span>' if p.get("rollout") else ""
+        hay = esc(" ".join([p["title"], p["desc"], p.get("keywords", ""), p["version"],
+                            d.strftime("%b %Y"), "rollout" if p.get("rollout") else ""]).lower())
         commits += f"""
-<div class="commit">
+<div class="commit" data-find="{hay}" data-slug="{p['slug']}">
   <span class="node" aria-hidden="true"></span><span class="wire" aria-hidden="true"></span>
   <a class="card" href="/{p["slug"]}">
     <div class="vd"><b>{p["version"]}</b><span>{d.strftime("%b %d, %Y")}</span><span>{p["read"]}</span>{sun}</div>
@@ -420,7 +496,39 @@ def build():
   New releases Mon · Wed · Fri, and the <strong>Rollout Report</strong> every Sunday.</p>
 </header>
 {newsletter()}
+<div class="findbar">
+  <label class="fw"><span class="fico" aria-hidden="true">&#9906;</span>
+    <input id="find" type="search" placeholder="Search {len(POSTS)} releases — try 'agents', 'payroll', 'rollout'"
+      aria-label="Search releases" autocomplete="off"></label>
+  <button id="lucky" class="fbtn" title="Open a release at random">Surprise me</button>
+</div>
+<div id="findmsg" class="findmsg" role="status" aria-live="polite"></div>
 <div class="timeline">{commits}</div>
+<script>(function(){{
+var q=document.getElementById("find"),msg=document.getElementById("findmsg"),
+    rows=[].slice.call(document.querySelectorAll(".commit"));
+if(!q) return;
+function apply(){{
+  var v=q.value.trim().toLowerCase(),n=0;
+  rows.forEach(function(r){{
+    var hit=!v||(r.getAttribute("data-find")||"").indexOf(v)>-1;
+    r.style.display=hit?"":"none"; if(hit)n++;
+  }});
+  msg.textContent=v?(n?n+" release"+(n===1?"":"s")+" match \\u201c"+q.value.trim()+"\\u201d"
+                      :"Nothing matches \\u201c"+q.value.trim()+"\\u201d — try a broader word."):"";
+}}
+q.addEventListener("input",apply);
+q.addEventListener("keydown",function(e){{ if(e.key==="Escape"){{ q.value=""; apply(); }} }});
+document.getElementById("lucky").addEventListener("click",function(){{
+  var pool=rows.filter(function(r){{return r.style.display!=="none";}});
+  if(!pool.length) pool=rows;
+  var pick=pool[Math.floor(Math.random()*pool.length)];
+  if(pick) location.href="/"+pick.getAttribute("data-slug");
+}});
+/* deep link: /?q=agents pre-filters the archive */
+try{{ var pre=new URL(location.href).searchParams.get("q");
+  if(pre){{ q.value=pre; apply(); }} }}catch(e){{}}
+}})();</script>
 <script type="application/ld+json">
 {{"@context":"https://schema.org","@type":"Blog","name":"changelog.ciprari.ai",
 "url":"{BASE}/","description":"Release notes from Cole Ciprari — Business Systems Architect.",
