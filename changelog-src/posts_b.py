@@ -1610,4 +1610,52 @@ body="""
 <blockquote>Nobody caught the robot by listening. The robot's vendor ran a query.</blockquote>
 <p>The song is still up, still streaming, and the market has shrugged, because nobody un-hears a summer. The only thing that changed is a column value. Keep your logs. Sooner or later they are the only ear that works.</p>
 """),
+
+dict(
+slug="v1-10-0-your-data-has-a-buyer",
+version="v1.10.0", date="2026-08-18", read="4 min",
+title="Your data has a buyer. You just haven't priced it yet.",
+desc="Google paid $10 million for Spirit Airlines' operational data in bankruptcy court. Every database you run has the same forward life, whether you've thought about it or not.",
+keywords="Spirit Airlines bankruptcy data sale, Google AI training data, enterprise data valuation, database audit, data governance, business systems architecture",
+related=["v1-8-1-the-ear-is-not-an-audit-log", "v1-2-integrate-before-you-replace", "v1-3-the-human-review-gate"],
+svg_alt="A phosphor line-art auction scene with a gavel on the left, three stacked database cylinders in the center with glowing price tags, and a conveyor belt on the right carrying more databases toward a scale",
+svg_caption="The appraiser doesn't care whether you knew what you had.",
+svg=_svg('''
+<rect x="80" y="180" width="40" height="80" fill="none" stroke="#33ff66" stroke-width="2"/><circle cx="100" cy="160" r="15" fill="#ffd75e"/><line x1="100" y1="145" x2="100" y2="100" stroke="#ffd75e" stroke-width="3"/><line x1="85" y1="115" x2="115" y2="115" stroke="#ffd75e" stroke-width="3"/><ellipse cx="280" cy="200" rx="50" ry="20" fill="none" stroke="#33ff66" stroke-width="2"/><ellipse cx="280" cy="180" rx="50" ry="20" fill="none" stroke="#33ff66" stroke-width="2"/><ellipse cx="280" cy="160" rx="50" ry="20" fill="none" stroke="#33ff66" stroke-width="2"/><path d="M 230 160 L 220 150 L 240 150 L 230 140 L 250 140 L 240 130 Z" fill="#ffd75e"/><text x="270" y="145" font-family="monospace" font-size="12" fill="#33ff66">$10M</text><rect x="450" y="170" width="80" height="60" fill="none" stroke="#4fae7c" stroke-width="2"/><rect x="455" y="175" width="70" height="10" fill="#2d6b4a"/><rect x="455" y="190" width="70" height="10" fill="#2d6b4a"/><rect x="455" y="205" width="70" height="10" fill="#2d6b4a"/><line x1="350" y1="200" x2="430" y2="200" stroke="#4fae7c" stroke-width="2" stroke-dasharray="5,5"/><polygon points="425,195 440,200 425,205" fill="#4fae7c"/><ellipse cx="390" cy="200" rx="30" ry="15" fill="none" stroke="#4fae7c" stroke-width="2"/><text x="180" y="285" font-family="monospace" font-size="11" fill="#4fae7c">Every database is an asset. Eventually someone makes an offer.</text>
+'''),
+body="""
+<p><cite index="2-2,2-3">Google won a bankruptcy auction last week for Spirit Airlines' operational data, paying $10 million for 100 million emails, 500 million Teams chats, payroll records, and revenue management systems</cite>. The <a href="https://news.bloomberglaw.com/bankruptcy-law/google-aims-to-boost-ai-with-purchase-of-spirit-airlines-data" target="_blank" rel="noopener">court filing</a> lists the assets the way you'd list equipment in a construction liquidation: finance data, accounting records, operations logs, fraud audits, employee productivity metrics. <cite index="3-3">Google plans to use it to improve AI models and products</cite>.</p>
+
+<p>Spirit didn't build those systems to sell them. They built them to run an airline. Then the airline stopped running and the systems went to auction, because in bankruptcy court everything with a serial number or a schema gets appraised. The data had a buyer. Spirit just didn't know the price until the gavel came down.</p>
+
+<p>I run eight production platforms solo. Every one of them has a database. Every database has tables I didn't design, columns I inherited, and rows I wish I'd never written. If any of those platforms went into acquisition talks tomorrow—not bankruptcy, just a standard sale—the data would be in the term sheet. It would have a line item. It would have a buyer. I don't know the number, but the number exists, and it's not zero.</p>
+
+<h3>The schema you inherit</h3>
+
+<p>I didn't design most of what's in those databases. I inherited it. Every business system I've ever taken over has been the same: tables nobody remembers creating, columns with names like <code>temp_flag_2</code>, foreign keys to entities that were deprecated four years ago, and a <code>notes</code> field that contains everything from job-site photos to API tokens somebody pasted in 2019.</p>
+
+<p>You can't delete it because you don't know what still depends on it. You can't audit it because you don't have time. You can't export it cleanly because half of it violates the constraints you wish you'd enforced six years ago. So it accumulates. Then one day it has a price.</p>
+
+<p>This is not a data governance sermon. This is {link:v1-8-1-the-ear-is-not-an-audit-log|the same argument I made about call recordings}: once it's written down, it's evidence, and evidence has a forward life you don't control. <cite index="2-3">Spirit's Teams chats were internal communications</cite>. Now <a href="https://skift.com/2026/08/17/google-scoops-up-spirits-data-in-bankruptcy-sale-to-train-ai/" target="_blank" rel="noopener">they're an AI training asset</a> in a Bloomberg article. The distinction collapsed the moment the bankruptcy petition got filed.</p>
+
+<h3>Scrubbing is not the same as never having written it</h3>
+
+<p><cite index="5-6">The data will be de-identified before sale, containing no customer information or personally identifiable information</cite>. <cite index="6-5">It will be deidentified—meaning it won't be associated with individual people and the buyer agrees not to attempt to re-identify the users</cite>. That's the standard. It's also not a technical guarantee, it's a contract term. The data still exists. The structure still exists. The relationships still exist. You're just betting that nobody re-links it.</p>
+
+<p>I don't store anything I wouldn't want in a bankruptcy exhibit. That's not paranoia—it's {link:v1-3-the-human-review-gate|the same reason I run review gates}: production systems live longer than the assumptions that created them. The Slack channel you opened for a two-week sprint in 2021 is still logging. The <code>debug_log</code> table you meant to truncate quarterly has three years of API responses in it. The CSV export somebody ran for a board meeting is in an S3 bucket with public-read accidentally enabled.</p>
+
+<p>None of that was created for an acquirer or a bankruptcy trustee or an AI training run. But once it's written, the only question is who gets to read it and when.</p>
+
+<h3>I audit what I own, not what I wish I owned</h3>
+
+<p>Every quarter I run the same script against every database I operate: <code>SELECT table_name, pg_size_pretty(pg_total_relation_size(quote_ident(table_name)))</code>. It tells me what's growing. Then I open the biggest tables and ask whether I'd defend their contents in a deposition. If the answer is no, I either delete the table or fix the code that writes to it.</p>
+
+<p>This is not about compliance. It's about {link:v1-2-integrate-before-you-replace|knowing what you run}. <cite index="3-14">Spirit had employee data dating back to 1986</cite>. I promise you nobody in 2026 remembered why half those tables existed. They were just there. Then <a href="https://www.axios.com/2026/08/17/google-spirit-airlines-bankruptcy" target="_blank" rel="noopener">they were worth $10 million</a>.</p>
+
+<p>The eight platforms I ship solo don't have compliance teams or data governance boards. They have me, a query console, and a calendar reminder every ninety days. If I don't know what's in the database, I don't get to pretend it's not my problem when it shows up in a contract exhibit.</p>
+
+<blockquote>Your data has a buyer. You just haven't met them yet, and the meeting probably won't be voluntary.</blockquote>
+
+<p>Spirit's data went to auction because Spirit went bankrupt. Your data might go to an acquirer, a subpoena, a partner integration, or a model training run you didn't plan for. The price gets set either way. The only variable is whether you knew what you were holding when the bid came in.</p>
+"""),
 ]
