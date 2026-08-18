@@ -48,6 +48,17 @@ def pick_mode(arg):
     return "rollout" if today_et().weekday() == 6 else "post"
 
 
+def already_published(date_str):
+    """True if the catalog already has a post bylined today.
+
+    GitHub's cron is best-effort — runs are routinely late and occasionally
+    skipped entirely — so the workflow fires several times a day and relies on
+    this check to stay idempotent. Whichever attempt lands first wins; the rest
+    exit quietly instead of publishing a duplicate.
+    """
+    return any(p["date"] == date_str for p in ALL)
+
+
 def parse_ver(v):
     m = re.match(r"v(\d+)\.(\d+)\.(\d+)$", v)
     return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
@@ -99,9 +110,9 @@ def build_prompt(mode, version, date_str):
             "production business systems")
 
     system = f"""You are the ghostwriter for changelog.ciprari.ai, the engineering blog of Cole
-Ciprari — a Business Systems Architect in Worcester, MA who has shipped 9 production platforms
+Ciprari — a Business Systems Architect in Worcester, MA who has shipped 10 production platforms
 solo (a 120-route construction ERP at coenconstruction.com, estimate.pro, curbscript.com,
-thepunchlist.ai, north.construction, valhalla-k9.com, and three Base44 apps) and runs this blog
+thepunchlist.ai, north.construction, valhalla-k9.com, hiremariaelena.com, and three Base44 apps) and runs this blog
 as version-numbered releases of himself.
 
 VOICE — non-negotiable:
@@ -301,6 +312,14 @@ def main():
     version = next_version(mode)
     date_str = today_et().strftime("%Y-%m-%d")
     print(f"mode={mode} version={version} date={date_str} model={MODEL} stub={stub}")
+
+    gh_out = os.environ.get("GITHUB_OUTPUT")
+    if not stub and already_published(date_str):
+        print(f"already published for {date_str} — nothing to do")
+        if gh_out:
+            with open(gh_out, "a") as f:
+                f.write("skip=true\n")
+        return
 
     backup = open(POSTS_B_PATH, encoding="utf-8").read()
     system, user = build_prompt(mode, version, date_str)
