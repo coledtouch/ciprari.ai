@@ -2,8 +2,9 @@ name: write-and-publish
 
 on:
   schedule:
-    - cron: "0 13 * * 1-6"     # 9:00 AM Eastern (EDT) Mon–Sat — regular post
-    - cron: "10 13 * * 0"      # 9:10 AM Eastern (EDT) Sunday — Rollout Report
+    - cron: "17 13 * * *"      #  9:17 AM Eastern (EDT) — primary
+    - cron: "23 15 * * *"      # 11:23 AM Eastern (EDT) — retry
+    - cron: "41 18 * * *"      #  2:41 PM Eastern (EDT) — last chance
   workflow_dispatch:
     inputs:
       mode:
