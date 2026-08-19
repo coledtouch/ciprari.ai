@@ -1658,4 +1658,56 @@ body="""
 
 <p>Spirit's data went to auction because Spirit went bankrupt. Your data might go to an acquirer, a subpoena, a partner integration, or a model training run you didn't plan for. The price gets set either way. The only variable is whether you knew what you were holding when the bid came in.</p>
 """),
+
+dict(
+slug="v1-11-0-the-classifier-caught-what-you-missed",
+version="v1.11.0", date="2026-08-19", read="4 min",
+title="The classifier caught what you missed",
+desc="Anthropic's auto mode catches 89% of harmful actions; humans catch 13.6%. Approval fatigue is now a named exploit. The human review gate isn't safer if nobody's actually reviewing.",
+keywords="Claude Code auto mode, approval fatigue security, AI coding agents, human review gates, production systems automation, agent governance 2026",
+related=["v1-3-the-human-review-gate", "v0-9-9-the-intern-is-a-robot", "v1-5-agents-are-done-piloting"],
+svg_alt="A phosphor terminal showing two columns of checkboxes \u2014 the left column labeled 'Human' with most boxes unchecked and one glowing red check, the right column labeled 'Classifier' with most boxes properly checked in green",
+svg_caption="97% approval rate is not a review process. It's a surrender signal.",
+svg=_svg('''
+<rect x="40" y="40" width="260" height="220" fill="none" stroke="#4fae7c" stroke-width="2"/><text x="170" y="70" font-family="monospace" font-size="14" fill="#33ff66" text-anchor="middle">Human</text><rect x="60" y="90" width="16" height="16" fill="none" stroke="#4fae7c" stroke-width="1.5"/><rect x="60" y="115" width="16" height="16" fill="none" stroke="#4fae7c" stroke-width="1.5"/><rect x="60" y="140" width="16" height="16" fill="none" stroke="#4fae7c" stroke-width="1.5"/><rect x="60" y="165" width="16" height="16" fill="none" stroke="#4fae7c" stroke-width="1.5"/><rect x="60" y="190" width="16" height="16" fill="none" stroke="#4fae7c" stroke-width="1.5"/><rect x="60" y="215" width="16" height="16" fill="none" stroke="#4fae7c" stroke-width="1.5"/><polyline points="62,223 66,227 74,217" fill="none" stroke="#ff4444" stroke-width="2"/><text x="85" y="103" font-family="monospace" font-size="10" fill="#4fae7c">run tests</text><text x="85" y="128" font-family="monospace" font-size="10" fill="#4fae7c">read config</text><text x="85" y="153" font-family="monospace" font-size="10" fill="#4fae7c">edit file</text><text x="85" y="178" font-family="monospace" font-size="10" fill="#4fae7c">write log</text><text x="85" y="203" font-family="monospace" font-size="10" fill="#4fae7c">update deps</text><text x="85" y="228" font-family="monospace" font-size="10" fill="#ff4444">curl prod db</text><rect x="340" y="40" width="260" height="220" fill="none" stroke="#4fae7c" stroke-width="2"/><text x="470" y="70" font-family="monospace" font-size="14" fill="#33ff66" text-anchor="middle">Classifier</text><rect x="360" y="90" width="16" height="16" fill="none" stroke="#33ff66" stroke-width="1.5"/><polyline points="362,98 366,102 374,92" fill="none" stroke="#33ff66" stroke-width="2"/><rect x="360" y="115" width="16" height="16" fill="none" stroke="#33ff66" stroke-width="1.5"/><polyline points="362,123 366,127 374,117" fill="none" stroke="#33ff66" stroke-width="2"/><rect x="360" y="140" width="16" height="16" fill="none" stroke="#33ff66" stroke-width="1.5"/><polyline points="362,148 366,152 374,142" fill="none" stroke="#33ff66" stroke-width="2"/><rect x="360" y="165" width="16" height="16" fill="none" stroke="#33ff66" stroke-width="1.5"/><polyline points="362,173 366,177 374,167" fill="none" stroke="#33ff66" stroke-width="2"/><rect x="360" y="190" width="16" height="16" fill="none" stroke="#33ff66" stroke-width="1.5"/><polyline points="362,198 366,202 374,192" fill="none" stroke="#33ff66" stroke-width="2"/><rect x="360" y="215" width="16" height="16" fill="none" stroke="#ff4444" stroke-width="2"/><line x1="362" y1="217" x2="374" y2="229" stroke="#ff4444" stroke-width="2"/><line x1="374" y1="217" x2="362" y2="229" stroke="#ff4444" stroke-width="2"/><text x="385" y="103" font-family="monospace" font-size="10" fill="#33ff66">run tests</text><text x="385" y="128" font-family="monospace" font-size="10" fill="#33ff66">read config</text><text x="385" y="153" font-family="monospace" font-size="10" fill="#33ff66">edit file</text><text x="385" y="178" font-family="monospace" font-size="10" fill="#33ff66">write log</text><text x="385" y="203" font-family="monospace" font-size="10" fill="#33ff66">update deps</text><text x="385" y="228" font-family="monospace" font-size="10" fill="#ff4444">curl prod db</text><text x="320" y="290" font-family="monospace" font-size="11" fill="#ffd75e" text-anchor="middle">13.6% vs 89%</text>
+'''),
+body="""
+<p><cite index="24-7,29-4">Anthropic ran a study with 1,053 paid testers and found that auto mode—an AI safety classifier—caught 89% of harmful actions in Claude Code, while human review caught 13.6%</cite>. <cite index="30-2">Human performance fell to about 5% after 50 prompts</cite>. On <a href="https://claude.com/blog/auto-mode-default-in-claude-code" target="_blank" rel="noopener">August 14</a>, <cite index="24-1,26-1">Anthropic made auto mode the default for Pro, Max, and Team accounts</cite>. The classifier is now the <a href="https://techcrunch.com/2026/08/09/anthropic-is-turning-claude-codes-auto-mode-on-by-default/" target="_blank" rel="noopener">first line of defense</a>, not the human.</p>
+
+<p>This is not a feel-good story about keeping humans in the loop. This is admission that the loop stopped working because nobody was paying attention anymore.</p>
+
+<p>I run {link:v1-3-the-human-review-gate|review gates} in production. Every payroll run, every invoice batch, every nightly sync that moves data between the ERP and the estimating SaaS gets a confirmation step. I built those gates in 2019, back when I had time to read what I was approving. By 2023 I was approving on muscle memory. By 2024 I stopped pretending the gate was doing anything except slowing me down. The gate was still there. I just wasn't.</p>
+
+<h3>Approval fatigue is now a named exploit</h3>
+
+<p><cite index="34-3,34-4">Approval fatigue is a documented, named technique that adversaries deliberately engineer for, with an open threat-detection ruleset adding an entry in March 2026 for "Human Approval Fatigue Exploitation"</cite>. <cite index="34-4">An attacker instructs an agent to generate rapid repeated permission requests, uses minimizing language to make dangerous actions read as routine, or embeds a risky operation inside a batch of benign ones</cite>. The <a href="https://github.com/Agent-Threat-Rule/agent-threat-rules/blob/main/rules/agent-manipulation/ATR-2026-00118-approval-fatigue.yaml" target="_blank" rel="noopener">ATR-2026-00118 rule</a> is in production security tooling now. It's not theoretical.</p>
+
+<p><cite index="24-8,31-5">Claude Code users approve 97% of permission prompts</cite>. That number is not a measure of trust. It's a measure of surrender. <cite index="35-3">If a user denies an MFA request five times and then approves on the sixth, that's not authentication—that's surrender</cite>. Same dynamic, different surface.</p>
+
+<p>I've watched this play out in my own systems. The construction ERP has a two-step confirmation for deleting a job. The first time you see it, you read both prompts. The hundredth time, you're hitting Enter twice before the text renders. The gate doesn't stop you from deleting the wrong job. It just adds two keystrokes to the mistake.</p>
+
+<h3>The classifier is not supervision, it's containment</h3>
+
+<p><cite index="32-5">A separate classifier reviews each proposed action and lets Claude proceed unless the action is judged irreversible, destructive, or outside your environment</cite>. <cite index="32-7,32-8">The classifier is a distinct model from the one writing your code; the agent proposing an action is not the thing approving it</cite>. This is the same architecture I use for {link:v0-9-9-the-intern-is-a-robot|agent workflows}: the thing that executes is not the thing that decides whether execution is safe.</p>
+
+<p>I don't let agents approve their own API calls. I don't let the payroll script decide whether the pay period is correct. I don't let the Twilio dialer choose which list it's calling. Those are classification problems, and I solve them the same way Anthropic did: a separate, narrow model that only answers one question. Is this action inside the safety envelope or not?</p>
+
+<p>The difference is I'm not calling it a review gate anymore. I'm calling it a containment layer. <cite index="32-15,32-16">Auto mode does not eliminate risk; the classifier is a model, and models are wrong sometimes</cite>. So are humans, especially humans on their fiftieth approval prompt of the morning. The question is which one fails less often under load.</p>
+
+<p>Anthropic's answer is clear. The AI does.</p>
+
+<h3>I stopped pretending the human was supervising</h3>
+
+<p>I pulled the confirmation prompts out of three workflows last month. The invoice approval gate in the estimating SaaS, the nightly database sync confirmation, and the SMS broadcast check in the review-request pipeline. All three had the same problem: I was clicking through them by reflex, and the only thing they were catching was my attention span.</p>
+
+<p>I replaced them with the same pattern <a href="https://www.helpnetsecurity.com/2026/08/10/anthropic-claude-code-auto-mode/" target="_blank" rel="noopener">Anthropic is using</a>: a classifier that checks whether the proposed action matches expected bounds, and a hard stop if it doesn't. The invoice gate now checks whether the total is within 15% of the estimate and whether the line items map to active jobs. The sync checks row counts and schema drift. The SMS gate checks list size and whether it's calling a production number or a sandbox.</p>
+
+<p>None of those are supervised by me anymore. They're contained by rules I wrote once and a model that applies them every time. If the check fails, I get paged. If it passes, it runs. I'm not in the loop. I'm in the exception path, which is where {link:v1-5-agents-are-done-piloting|I should have been all along}.</p>
+
+<blockquote>The human review gate isn't safer if the human isn't reviewing.</blockquote>
+
+<p>Approval fatigue is not a training problem. It's an architecture problem. If the system depends on a human reading every prompt with full attention, the system fails the first time the human has a deadline. <cite index="38-13,38-14">Approval fatigue is a real security bug; the right direction is to let agents do low-risk work without constant interruption, classify risky actions before execution, and deny dangerous operations</cite>. That's not removing the human. That's putting the human somewhere they can actually function.</p>
+
+<p>I'll still review the payroll before it posts. I'll still check the high-dollar change orders before they go out. But I'm done pretending that a confirmation dialog in the middle of a 47-step nightly process is a control. It's a speed bump that stopped working the day I learned to ignore it.</p>
+"""),
 ]
