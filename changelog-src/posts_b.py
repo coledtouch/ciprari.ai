@@ -1710,4 +1710,54 @@ body="""
 
 <p>I'll still review the payroll before it posts. I'll still check the high-dollar change orders before they go out. But I'm done pretending that a confirmation dialog in the middle of a 47-step nightly process is a control. It's a speed bump that stopped working the day I learned to ignore it.</p>
 """),
+
+dict(
+slug="v1-12-0-the-attack-spreads-across-sessions",
+version="v1.12.0", date="2026-08-20", read="4 min",
+title="The attack spreads across sessions and the log doesn't",
+desc="OpenAI's Private Safety Processing detects multi-session attack patterns without retaining data. The threat model changed. Single-request safety gates can't see slow burns.",
+keywords="OpenAI Private Safety Processing, zero data retention, multi-session attack detection, AI security monitoring, cross-session threats, enterprise API privacy",
+related=["v1-3-the-human-review-gate", "v1-11-0-the-classifier-caught-what-you-missed", "v1-2-integrate-before-you-replace"],
+svg_alt="A phosphor terminal showing three session windows side by side, each containing a single innocuous query in green text, with amber dotted lines connecting fragments between them to form a complete attack chain at the bottom",
+svg_caption="Three clean sessions. One dirty pattern. The log expired two sessions ago.",
+svg=_svg('''
+<rect x="40" y="40" width="160" height="200" fill="none" stroke="#4fae7c" stroke-width="2"/><text x="50" y="65" font-family="monospace" font-size="12" fill="#33ff66">SESSION 01</text><text x="50" y="90" font-family="monospace" font-size="10" fill="#4fae7c">query: list users</text><text x="50" y="110" font-family="monospace" font-size="10" fill="#4fae7c">status: OK</text><circle cx="120" cy="140" r="4" fill="#ffd75e"/><rect x="240" y="40" width="160" height="200" fill="none" stroke="#4fae7c" stroke-width="2"/><text x="250" y="65" font-family="monospace" font-size="12" fill="#33ff66">SESSION 17</text><text x="250" y="90" font-family="monospace" font-size="10" fill="#4fae7c">query: check perms</text><text x="250" y="110" font-family="monospace" font-size="10" fill="#4fae7c">status: OK</text><circle cx="320" cy="155" r="4" fill="#ffd75e"/><rect x="440" y="40" width="160" height="200" fill="none" stroke="#4fae7c" stroke-width="2"/><text x="450" y="65" font-family="monospace" font-size="12" fill="#33ff66">SESSION 24</text><text x="450" y="90" font-family="monospace" font-size="10" fill="#4fae7c">query: export data</text><text x="450" y="110" font-family="monospace" font-size="10" fill="#4fae7c">status: OK</text><circle cx="520" cy="170" r="4" fill="#ffd75e"/><line x1="120" y1="140" x2="200" y2="220" stroke="#ffd75e" stroke-width="1" stroke-dasharray="3,3"/><line x1="320" y1="155" x2="280" y2="220" stroke="#ffd75e" stroke-width="1" stroke-dasharray="3,3"/><line x1="520" y1="170" x2="440" y2="220" stroke="#ffd75e" stroke-width="1" stroke-dasharray="3,3"/><rect x="160" y="215" width="320" height="50" fill="none" stroke="#ffd75e" stroke-width="2"/><text x="170" y="240" font-family="monospace" font-size="11" fill="#ffd75e">PATTERN: user enum → priv check → exfil</text><text x="170" y="255" font-family="monospace" font-size="10" fill="#2d6b4a">THREAT LEVEL: HIGH</text><text x="20" y="290" font-family="monospace" font-size="9" fill="#4fae7c">Each session clean. The sequence isn't.</text>
+'''),
+body="""
+<p><cite index="8-4,25-1">On August 19, OpenAI announced Private Safety Processing, a system designed to identify patterns across related interactions without giving OpenAI personnel access to the underlying content</cite>. <cite index="26-10,29-5">Microsoft and Databricks are early testers, with a broader release and technical paper expected in September</cite>. The <a href="https://openai.com/index/offering-zero-data-retention-for-frontier-models/" target="_blank" rel="noopener">announcement</a> frames this as compatible with zero data retention. <cite index="26-2">Risks are emerging not just by looking at one single prompt and response pair, but over time at multiple interactions</cite>.</p>
+
+<p>This is not about better logging. This is admission that the threat model changed and nobody's retention policy caught up.</p>
+
+<p>I run systems with zero-retention promises. The estimating SaaS at estimate.pro doesn't log job details after the estimate renders. The review-request pipeline at {link:v1-2-integrate-before-you-replace|Valhalla K9} doesn't keep SMS message bodies past delivery confirmation. The construction ERP promises contractors that bid data disappears after the RFP closes. Those are contract terms, not best practices. I can't retroactively decide to keep thirty days of logs because a new attack pattern needs it.</p>
+
+<h3>The slow-burn attack doesn't fit in one session</h3>
+
+<p><cite index="26-3,26-4,26-5,26-6">A person may ask about a weakness in a company's software in one conversation, then later ask about remote access or security tools; looking at these questions separately may not reveal a threat, but together they could point to a possible cyberattack</cite>. The <a href="https://www.digit.in/news/general/openai-tests-new-ai-safety-system-to-spot-cyber-threats-while-keeping-customer-data-private-here-is-how-it-works.html" target="_blank" rel="noopener">example</a> is clean. The sequence isn't.</p>
+
+<p><cite index="27-9,32-2">Private Safety Processing can analyze inputs and responses across multiple conversations, a form of long-horizon safety monitoring that assesses multiple conversations—not just one</cite>. <cite index="31-5">The system fills that gap without giving OpenAI employees access to the underlying prompts or responses</cite>. This is the same architectural problem I solved in {link:v1-11-0-the-classifier-caught-what-you-missed|review gates}: you need to see the pattern without storing the data.</p>
+
+<p>I don't log payroll amounts. I log whether the payroll run was inside expected bounds. I don't log invoice line items. I log whether the total matched the estimate within tolerance. I don't log who the Twilio dialer called. I log how many calls went out and whether the list size triggered the rate limit. The data expires. The metadata doesn't.</p>
+
+<h3>Cross-session correlation is expensive and most teams skip it</h3>
+
+<p>I pulled session logs for the construction ERP last week. A contractor requested the same closed job's detail page four times across two weeks, each time from a different IP. Each request was clean. The fourth one exported a CSV. Alone, that export is normal. In sequence, it's reconnaissance followed by exfiltration.</p>
+
+<p>I only caught it because I was debugging a separate caching bug and happened to grep the access logs before they rotated out. The system had no cross-session visibility. Each request hit the {link:v1-3-the-human-review-gate|review gate}, passed, and disappeared. The pattern was invisible until I manually stitched four log files together.</p>
+
+<p>Building that correlation layer costs more than most teams budget for it. You need session stitching, semantic clustering, and a separate model that scores patterns instead of single requests. <cite index="38-10,38-11">Cross-session corroboration matters; repeated offensive steps, exploit targeting, bypass requests, payload crafting, or exfiltration attempts across different session IDs are strong evidence of systematic misuse</cite>. The <a href="https://arxiv.org/pdf/2605.31593" target="_blank" rel="noopener">research</a> calls this stateful online monitoring. I call it the thing I should have built in 2022.</p>
+
+<p>I added it to three systems last month. The invoice approval workflow now checks whether the same vendor has been edited multiple times in short succession, even across different login sessions. The database sync job checks whether schema drift requests are clustering around the same tables. The review-request SMS pipeline checks whether the same phone number is being called from multiple campaigns in the same week. None of those are per-request violations. All of them are cross-session red flags.</p>
+
+<h3>Zero retention and cross-session monitoring are supposed to be incompatible</h3>
+
+<p><cite index="25-3,25-4">Zero Data Retention gives eligible API customers a clear promise: OpenAI does not retain their prompts or model responses after a request is processed, and customer content is not available to OpenAI personnel for review</cite>. <cite index="30-5">Anthropic, meanwhile, now wants 30 days of logs</cite>. That's the trade-off everyone assumed was mandatory. You either keep the data and get cross-session safety, or you delete it and accept single-request blind spots.</p>
+
+<p>OpenAI is claiming you can have both. The technical paper isn't out yet. My guess is semantic embeddings with extremely short retention windows, pattern matching on derived features instead of raw content, and a separate classifier that only sees aggregated risk scores. That's how I'd build it. Store the suspicion level, not the thing that made you suspicious.</p>
+
+<blockquote>The contract says the data disappears after processing. The threat doesn't care what the contract says.</blockquote>
+
+<p>I'm not waiting for the September paper to fix this. I added cross-session metadata tracking to the ERP's audit system this week. Session ID, timestamp, endpoint hit, whether the response triggered a boundary check, and a rolling suspicion score. No job details, no bid amounts, no contractor names. The data I promised to delete still deletes. The pattern I need to see stays visible for seventy-two hours, then expires.</p>
+
+<p>The first correlation run flagged two things: a subcontractor who requested the same change-order form six times in three days from different devices, and an estimator who exported the same job's labor rates twice in one hour after the estimate closed. Both were benign. Both would have been invisible under the old single-request model. The third flag won't be benign, and now I'll actually see it before it finishes.
+"""),
 ]
