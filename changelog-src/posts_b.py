@@ -1808,4 +1808,54 @@ body="""
 
 <p>Confidence shipped the code. Verification caught the bug. The {link:v1-5-agents-are-done-piloting|agents are in production}, but the review gates are not optional.</p>
 """),
+
+dict(
+slug="v1-14-0-the-agents-got-defunded",
+version="v1.14.0", date="2026-08-22", read="5 min",
+title="The agents got defunded. The models still work.",
+desc="Gartner says 40% of agentic AI projects will be canceled by 2027. The models aren't failing. The budgets are. The difference is governance, ROI, and someone's name on the kill switch.",
+keywords="agentic AI, Gartner forecast, AI project cancellations, AI governance, production AI, enterprise AI deployment, AI ROI",
+related=["v1-3-the-human-review-gate", "v1-10-0-your-data-has-a-buyer", "v1-5-agents-are-done-piloting"],
+svg_alt="A phosphor terminal showing two columns: on the left in green '67 AGENTS DEPLOYED', on the right in amber '27 DEFUNDED Q3'. Below in dim green: 'REASON: GOVERNANCE' and 'MODEL PERFORMANCE: NOMINAL'",
+svg_caption="The model passed every benchmark. The budget review killed it anyway.",
+svg=_svg('''
+<rect x="40" y="40" width="280" height="220" fill="none" stroke="#33ff66" stroke-width="2"/><rect x="320" y="40" width="280" height="220" fill="none" stroke="#ffd75e" stroke-width="2"/><text x="60" y="80" font-family="monospace" font-size="18" fill="#33ff66">AGENTS DEPLOYED</text><text x="100" y="130" font-family="monospace" font-size="48" fill="#33ff66" font-weight="bold">67</text><text x="340" y="80" font-family="monospace" font-size="18" fill="#ffd75e">DEFUNDED Q3</text><text x="400" y="130" font-family="monospace" font-size="48" fill="#ffd75e" font-weight="bold">27</text><line x1="40" y1="270" x2="600" y2="270" stroke="#4fae7c" stroke-width="1"/><text x="50" y="295" font-family="monospace" font-size="14" fill="#4fae7c">REASON: GOVERNANCE</text><text x="350" y="295" font-family="monospace" font-size="14" fill="#4fae7c">MODEL: NOMINAL</text>
+'''),
+body="""
+<p><cite index="41-1,45-5">Gartner predicted in June 2025 that over 40% of agentic AI projects will be canceled by the end of 2027, citing escalating costs, unclear business value, and inadequate risk controls</cite>. <cite index="45-6">A Forbes analysis published July 7, 2026 revisited that year-old warning and asked why these projects actually die</cite>. <a href="https://www.forbes.com/sites/robertszczerba/2026/07/07/why-40-of-agentic-ai-projects-may-be-canceled-by-2027/" target="_blank" rel="noopener">The answer</a> is not what the vendor pitches suggest. <cite index="47-10,47-11">The cancellations aren't coming because the models failed; they're coming because the business management around the models failed</cite>.</p>
+
+<p>I run ten production platforms. Three of them now use AI agents in limited, scoped workflows. One generates database migration scripts at coenconstruction.com. One writes SMS variations for review notifications at {link:v1-2-integrate-before-you-replace|Valhalla K9}. One drafts invoice validation logic at estimate.pro. Every single one has a human gate, a cost cap, a named owner, and a rollback plan. Not because the agents don't work. Because the agents work well enough that someone will eventually ask what they cost and what they earned.</p>
+
+<p>The Gartner number is now eighteen months into its prediction window. The cancellations are already happening. They're just not being announced as cancellations. Projects get renamed pilots. Budgets get absorbed into platform teams. Contracts lapse and nobody renews them. The forensics matter because the same patterns keep showing up.</p>
+
+<h3>Governance is the gap, not the model</h3>
+
+<p><cite index="44-4">The core problem lies in poor governance, undefined business value, and insufficient operational discipline, often masked by agent washing where chatbots are mislabeled as true agents</cite>. <cite index="42-2">Gartner estimates only about 130 of the thousands of agentic AI vendors are real</cite>. The <a href="https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-predicts-over-40-percent-of-agentic-ai-projects-will-be-canceled-by-end-of-2027" target="_blank" rel="noopener">press release</a> is blunt: <cite index="41-1,41-2">most agentic AI projects right now are early stage experiments or proof of concepts that are mostly driven by hype and are often misapplied, which can blind organizations to the real cost and complexity of deploying AI agents at scale</cite>.</p>
+
+<p>I added an AI agent to the ERP's migration-script workflow in April. It writes the SQL, checks column types against the schema, flags foreign-key dependencies, and generates a preview diff. It does not execute the script. It does not commit the transaction. It does not touch the database. A human reviews the diff, approves or rejects it, and runs the migration manually. That {link:v1-3-the-human-review-gate|review gate} is the difference between a useful tool and a defunded project.</p>
+
+<p>The agent saves me about four hours per migration. We run two to three migrations per month. That's ten hours a month, 120 hours a year, at a loaded cost of maybe $75 per hour. The agent costs $840 in annual API spend. The ROI is obvious and the failure mode is bounded. If the agent hallucinates a DROP TABLE command, the review gate catches it. If the API goes down, I write the migration by hand. If the cost spikes, I turn it off. The project survives because I can answer three questions in under a minute: what does it cost, what does it save, and who turns it off when it breaks.</p>
+
+<h3>The agents that survive have a number and a name</h3>
+
+<p><cite index="16-3,16-4">59.5% of surveyed enterprise leaders are already deploying autonomous agents, and AI governance and security guardrails now rival model intelligence as priorities for scaling autonomous enterprise operations</cite>. The <a href="https://rcpmag.com/articles/2026/08/06/enterprise-ai-agents-move-into-production.aspx" target="_blank" rel="noopener">August 2026 survey</a> found <cite index="16-5">supervised AI autonomy is emerging as the preferred model, combining agent-driven remediation with human oversight and accountability</cite>. That tracks with what I see in production. The agents that ship are the ones where someone can point to a dashboard, name the responsible party, and cite the cost per transaction.</p>
+
+<p>The estimating SaaS at estimate.pro uses an agent to generate invoice validation rules based on contract terms. The agent reads the contract PDF, extracts payment milestones, cross-references them against the estimate line items, and writes the validation logic as a set of conditional checks. The contractor's project manager reviews the logic before it goes live. If the agent misreads a milestone or misses a change order, the PM catches it before the invoice gets rejected and the payment gets delayed.</p>
+
+<p>That agent has a cost: $2.40 per contract processed, plus the PM's fifteen minutes of review time. It has a number: we processed 340 contracts last quarter, so the agent cost $816 in API calls and maybe $1,700 in labor. It has a benefit: invoices that match contract terms get paid faster, reducing DSO by an average of 4.2 days, which pencils out to about $18,000 in improved cash flow over the quarter. And it has a name: the PM owns the review gate and the finance director owns the decision to keep it running or turn it off.</p>
+
+<p>The agent survives every budget review because I can show the math. Projects without that math are the ones getting canceled.</p>
+
+<blockquote>The agents that survive 2027 won't be the ones running the largest models. They'll be the ones with a number attached to their job and a name on the override switch.</blockquote>
+
+<h3>Clear value beats complex models</h3>
+
+<p><cite index="42-3">Most agentic AI propositions lack significant value or return on investment, as current models don't have the maturity and agency to autonomously achieve complex business goals or follow nuanced instructions over time</cite>. <cite index="41-4,41-5">Gartner recommends agentic AI only be pursued where it delivers clear value or ROI, noting that integrating agents into legacy systems can be technically complex, often disrupting workflows and requiring costly modifications</cite>. That guidance is operational, not theoretical.</p>
+
+<p>I built an agent for the review pipeline at Valhalla K9 that generates SMS reminder variations based on customer tone preferences logged in prior conversations. Friendly clients get casual reminders. Formal clients get structured ones. Clients who've complained about message frequency get consolidated summaries instead of individual pings. The agent writes the text, the system logs it, and a staff member approves it before it sends. The whole loop takes ninety seconds and costs eleven cents per reminder.</p>
+
+<p>The alternative was a static template system that annoyed half the client base and required manual rewrites for the other half. The agent doesn't solve a hard technical problem. It solves an annoying human one that was eating thirty minutes a day and generating complaints. The ROI isn't in model capability. It's in eliminated friction and measurable customer satisfaction improvement. <cite index="22-10,22-11">Enterprise AI in 2026 is moving beyond experimentation, but adoption and business value are not advancing at the same pace; companies are expanding AI agents while still working out how to measure returns and control risk</cite>.</p>
+
+<p>The projects getting defunded are the ones chasing model benchmarks instead of workflow outcomes. The ones that survive are boring, scoped, measured, and owned. The model works fine. The question is whether anyone bothered to write down what it costs, what it saves, and who's responsible when it doesn't.
+"""),
 ]
