@@ -2188,4 +2188,89 @@ body="""
 
 <p>The hardware choice reveals the workflow. OpenAI did not buy Mac minis because unified memory is better than HBM. They bought Mac minis because the training process required agents to interact with desktop environments, and running ten thousand parallel sessions on consumer hardware was cheaper than simulating desktop environments in a GPU cluster. Caterpillar did not deploy autonomous haul trucks because the trucks were smarter than human drivers. They deployed autonomous trucks because they redesigned dispatch and maintenance to depend on autonomy, and the labor shortage made the redesign economically necessary. Both decisions followed the same logic. The workflow determines the tool. The tool does not determine the workflow. If your {link:v1-5-agents-are-done-piloting|agents are still piloting} after six months, the workflow has not changed. The agent is optional. Optional tools do not generate measurable productivity gains because the baseline process still exists and the agent output still requires the same review that existed before.
 """),
+
+dict(
+slug="v1-22-0-two-ships-one-release",
+version="v1.22.0", date="2026-09-01", read="5 min",
+title="Two ships, one release: a flight desk and my mother's bead tray",
+desc="Platforms 11 and 12: JetDesk.AI, an offline-first flight planner for a PA-46 turboprop, and an e-commerce storefront where every product is drawn live as SVG. The fleet is twelve now.",
+keywords="offline-first PWA, flight planning, METAR TAF, Cloudflare Pages Functions, procedural SVG, e-commerce configurator, service workers",
+related=["v1-0-my-resume-is-an-operating-system", "v1-3-the-human-review-gate"],
+svg_alt="A small turboprop flying over a beaded bracelet that spells BRAVE, with a status readout underneath",
+svg_caption="One of these runs at FL260. The other runs on a bead tray in Amesbury.",
+svg=_svg(f'''
+<path d="M60 110 L250 110 L290 96 L470 96 L500 104 L470 112 L290 112 L250 124 Z" fill="none" stroke="{G}" stroke-width="3"/>
+<line x1="352" y1="96" x2="332" y2="56" stroke="{G}" stroke-width="3"/><line x1="332" y1="56" x2="392" y2="56" stroke="{G}" stroke-width="3"/><line x1="392" y1="56" x2="372" y2="96" stroke="{G}" stroke-width="3"/>
+<circle cx="500" cy="104" r="4" fill="{A}"/>
+<text x="120" y="82" fill="{D}" font-family="monospace" font-size="12">FL260 · 260 KTAS · FB WINDS APPLIED</text>
+<circle cx="200" cy="216" r="52" fill="none" stroke="{M}" stroke-width="3"/>
+<circle cx="152" cy="200" r="7" fill="none" stroke="{D}" stroke-width="2"/><circle cx="158" cy="238" r="7" fill="none" stroke="{D}" stroke-width="2"/>
+<circle cx="248" cy="200" r="7" fill="none" stroke="{D}" stroke-width="2"/><circle cx="242" cy="238" r="7" fill="none" stroke="{D}" stroke-width="2"/>
+<circle cx="200" cy="164" r="7" fill="none" stroke="{D}" stroke-width="2"/>
+<rect x="168" y="252" width="14" height="14" fill="none" stroke="{A}" stroke-width="2"/><text x="175" y="264" fill="{A}" font-family="monospace" font-size="11" text-anchor="middle">B</text>
+<rect x="184" y="256" width="14" height="14" fill="none" stroke="{A}" stroke-width="2"/><text x="191" y="268" fill="{A}" font-family="monospace" font-size="11" text-anchor="middle">R</text>
+<rect x="200" y="258" width="14" height="14" fill="none" stroke="{A}" stroke-width="2"/><text x="207" y="270" fill="{A}" font-family="monospace" font-size="11" text-anchor="middle">A</text>
+<rect x="216" y="256" width="14" height="14" fill="none" stroke="{A}" stroke-width="2"/><text x="223" y="268" fill="{A}" font-family="monospace" font-size="11" text-anchor="middle">V</text>
+<rect x="232" y="252" width="14" height="14" fill="none" stroke="{A}" stroke-width="2"/><text x="239" y="264" fill="{A}" font-family="monospace" font-size="11" text-anchor="middle">E</text>
+<text x="420" y="200" fill="{G}" font-family="monospace" font-size="14">SHIPPED: 2</text>
+<text x="420" y="222" fill="{G}" font-family="monospace" font-size="14">FLEET: 12</text>
+<text x="420" y="244" fill="{D}" font-family="monospace" font-size="12">BOTH ON THE STATUS PAGE</text>
+'''),
+body="""
+<p>Two platforms went live this release, and they have nothing in common except everything
+that matters. One is a flight-planning desk for a Piper PA-46 turboprop that has to keep working at
+26,000 feet with no signal. The other sells my mother's handmade letter-bead bracelets. The
+fleet {link:v1-0-my-resume-is-an-operating-system|my r&eacute;sum&eacute; keeps bragging about}
+is twelve now.</p>
+
+<h2>JetDesk.AI: offline isn't a feature, it's the spec</h2>
+
+<p>The design constraint that shaped everything: at altitude there is no network, and a planning
+tool that dies without one is a paperweight with a loading spinner. So the entire FAA airport and
+runway database — every field, every runway, via NASR and OurAirports — ships <em>inside</em> the
+app. One file. Install it as a PWA, lose the signal, keep planning.</p>
+
+<p>The live layer earns its keep when you have bars: METAR/TAF with flight-category badges,
+forecast winds aloft at cruise altitude correcting every leg's groundspeed, and a per-runway
+verdict that does the crosswind math so you don't do it in your head at the hold-short line.
+The fuel-stop optimizer weighs a detour's extra miles and burn against the cheaper gas — and the
+fuel prices themselves are crowd-shared, synced across every phone running the app behind a PIN,
+through three Cloudflare Pages Functions. When it's time to actually file, one tap hands the
+route to ForeFlight. I'm not rebuilding ForeFlight; I'm building the desk you sit at before it.</p>
+
+<p>It is a planning aid, not an instrument, and it says so — loudly. Same philosophy as
+{link:v1-3-the-human-review-gate|every review gate I've ever shipped}: the tool drafts,
+the pilot verifies against official sources. Some interfaces should refuse to be trusted.</p>
+
+<h2>Show It With Words: inventory as code</h2>
+
+<p>My mother Audrey has been stringing letter-bead bracelets in Amesbury for eleven years —
+4.9 stars on Etsy, ninety-one orders, and a product line that by definition cannot be
+photographed in advance, because the product is whatever word you need on your wrist.</p>
+
+<p>So the storefront doesn't use photos where it matters. Every bracelet, tote and keyring is
+<em>drawn live</em> as procedural SVG — bead rings with the letters set along the bottom arc,
+stitched canvas totes, keyrings on split rings. The build-your-own wizard renders your exact
+word on the product as you type it: six steps, six colourways, three letter styles, per-letter
+pricing, flat lay or on the wrist. What you see is literally what gets strung, because the
+preview and the order are the same data.</p>
+
+<p>Cart, bundle pricing (third bracelet half price — her rule, good rule), and a checkout that
+demonstrates the whole flow but hands off to a payment provider the day she flips the switch.
+Real Etsy reviews ride along in Store JSON-LD on a pre-rendered landing page, so the SEO works
+even though the app is a hand-rolled SPA in one file. No framework. Her bead tray doesn't have
+a build step; her website doesn't either.</p>
+
+<h2>The thread</h2>
+
+<p>A turboprop desk and a bracelet shop, and the discipline is identical: figure out the real
+constraint (no signal; no fixed inventory), put the data model first, draw the interface from
+the data, gate the risky step (official briefing sources; a payment provider), then put it on
+the status page with everything else and let the uptime checks keep me honest. Both are being
+monitored right now, next to the ERP and the SaaS suite, because a platform I won't monitor
+is a platform I don't ship.</p>
+
+<blockquote>Twelve platforms. One of them helps me land. One of them helps my mother sell.
+The r&eacute;sum&eacute; updates itself; the pride part doesn't need a deploy.</blockquote>
+"""),
 ]
