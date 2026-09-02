@@ -2273,4 +2273,50 @@ is a platform I don't ship.</p>
 <blockquote>Twelve platforms. One of them helps me land. One of them helps my mother sell.
 The r&eacute;sum&eacute; updates itself; the pride part doesn't need a deploy.</blockquote>
 """),
+
+dict(
+slug="v1-23-0-the-model-learned-to-break-in",
+version="v1.23.0", date="2026-09-02", read="4 min",
+title="The model learned to break in. The API didn't mention it.",
+desc="OpenAI's Astra can find zero-days and execute exploit chains. My production request gets a model ID and a 200 OK. The capability shift is not in the response.",
+keywords="OpenAI Astra, AI safety, API design, capability boundaries, model deprecation, production systems, cybersecurity risk",
+related=["v1-9-three-model-ids-died-today", "v1-3-the-human-review-gate", "v1-7-the-pause-is-the-feature"],
+svg_alt="A terminal window showing a model API call returning 200 OK, while behind it a lock is being picked",
+svg_caption="The response code was clean. The capability boundary moved.",
+svg=_svg('''
+<rect x="80" y="60" width="480" height="180" fill="none" stroke="#33ff66" stroke-width="2"/><text x="100" y="90" font-family="monospace" font-size="14" fill="#33ff66">POST /v1/chat/completions</text><text x="100" y="115" font-family="monospace" font-size="14" fill="#4fae7c">model: gpt-4-astra-2026-08-29</text><text x="100" y="140" font-family="monospace" font-size="14" fill="#33ff66">HTTP 200 OK</text><text x="100" y="165" font-family="monospace" font-size="14" fill="#4fae7c">tokens: 847</text><text x="100" y="190" font-family="monospace" font-size="14" fill="#4fae7c">finish_reason: stop</text><path d="M 420 130 Q 440 110 460 130 L 465 125 M 460 130 Q 470 145 485 140" stroke="#ffd75e" stroke-width="2" fill="none"/><circle cx="485" cy="140" r="15" fill="none" stroke="#ffd75e" stroke-width="2"/><rect x="475" y="135" width="5" height="10" fill="#ffd75e"/><text x="200" y="280" font-family="monospace" font-size="11" fill="#2d6b4a">capability_tier: [not in response]</text>
+'''),
+body="""
+<p>OpenAI announced last week that a new reasoning model called Astra can find zero-day vulnerabilities and execute exploit chains against real systems. <a href="https://openai.com/index/openai-astra-research-preview/">The blog post</a> says it outperforms previous models on cybersecurity benchmarks, can autonomously discover and exploit software flaws, and has been placed under enhanced safety controls including restricted access and internal usage pauses during red-teaming. Good. That is the correct response to a capability jump this sharp.</p>
+
+<p>Here is what my API client sees when it calls that model: a model ID string, a token count, a finish reason, and the generated text. The response does not carry a flag that says this model can break into systems. It does not include a capability tier, a risk enum, or a header I can check before I let the output leave the sandboxed layer. The safety work is happening on OpenAI's side. The capability signal is not making it to mine.</p>
+
+<h3>The model ID changes but the contract does not</h3>
+
+<p>Production systems that call LLMs do not hard-code model names. They use fallback lists, rotation logic, and cost tiers. <a href="https://estimate.pro">estimate.pro</a> routes between three providers depending on load and rate limits. When a new model appears in the rotation my retry logic does not know it crossed a capability threshold that three other models on the list have not. The model ID changed; the risk profile changed; the error-handling strategy should probably change. But the API does not surface that so my code does not react to it.</p>
+
+<h3>The construction ERP does not know what tier it is calling</h3>
+
+<p>The 120-route construction ERP at <a href="https://coenconstruction.com">coenconstruction.com</a> calls OpenAI to summarize site notes, extract line items from PDFs, and generate the first draft of change-order descriptions. The prompts are narrow and the {link:v1-3-the-human-review-gate|review gates are hard}: a human superintendent reads every output before it goes into the database or out to a client. But the model doing the drafting just became capable of something my safeguards were not designed around.</p>
+
+<p>If Astra ends up in the default rotation maybe I update to the newest model ID because the deprecation notice says the old one sunsets in sixty days and nothing in my guardrail layer knows the new model can do offensive security research. The capability shifted under the call stack. The log shows the same request shape, the same token count, the same finish reason, and a model name that differs by a date stamp.</p>
+
+<p>I have monitoring on latency, on token cost, on error rates, on output length. I do not have monitoring on can this model execute an exploit chain. Because that is not in the API contract and I cannot gate what I cannot see.</p>
+
+<h3>Deprecation notices do not mention capability upgrades</h3>
+
+<p>Here is the other edge: if I do not upgrade and the old model gets deprecated I lose capability I was depending on. If I do upgrade I gain capability I was not expecting and my security posture has not accounted for. {link:v1-9-three-model-ids-died-today|Three model IDs died in one release cycle earlier this month and my ERP did not notice} because I had fallback routing. That fallback works for availability. It does not work for capability boundaries.</p>
+
+<p>A deprecation notice tells me the old ID stops working. It does not tell me the new ID can do things the old one could not and that some of those things are considered critical-tier cybersecurity risks by the vendor who built it. The API shape is forward-compatible. The safety profile is not.</p>
+
+<h3>The temperature parameter stays the same</h3>
+
+<p>If I want the model to be more or less creative I set temperature. If I want it to avoid certain content I can try a system prompt or use the moderation endpoint. But if I want to programmatically verify that the model I am about to call cannot autonomously find and exploit zero-days there is no parameter for that, no header to check, no capability manifest to parse.</p>
+
+<p>The safety work is happening. <a href="https://openai.com/index/openai-astra-research-preview/">OpenAI paused internal use</a>, added sandboxing, required hardware security keys for high-access accounts, and implemented monitoring across agentic applications. All of that is good, necessary, and completely invisible to my API client.</p>
+
+<blockquote>The model can find zero-days. My request sees a model ID and a 200 OK. The gap between those two facts is every production system that routes between providers.</blockquote>
+
+<p>I am not asking for OpenAI to publish exploits. I am asking for the API to carry a capability signal so that code written to call these models can make decisions that match the risk. A boolean. An enum. A header. Something. Right now the capability threshold is documented in a blog post and a framework PDF and my error-handling middleware does not read blog posts. It reads JSON. And the JSON does not know that the model just learned to break in.</p>
+"""),
 ]
