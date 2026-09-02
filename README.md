@@ -5,7 +5,7 @@ No desktop app, no laptop. The machine can be off.
 
 ## How it works
 
-1. **9:00 AM ET Mon/Wed/Fri** (9:10 Sundays for the Rollout Report), GitHub Actions wakes up.
+1. **Every morning around 9:17 AM ET** (Sundays write the Rollout Report), GitHub Actions wakes up.
 2. `writer/writer.py` calls the Claude API — with its built-in web search — to research real,
    current news and write the post in the established voice, art included.
 3. The post is validated (crosslinks, source links, format), appended to

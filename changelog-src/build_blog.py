@@ -242,7 +242,7 @@ def newsletter(compact=False):
     return f"""
 <div class="nl">
   <div class="nh">▚▞ {head}</div>
-  <div class="nd">New releases Monday, Wednesday and Friday, plus the Sunday <b>Rollout Report</b> —
+  <div class="nd">A new release every day, plus the Sunday <b>Rollout Report</b> —
   the week's AI and tech news, summarized by a human with production access. No spam. Unsubscribe by
   emailing a mildly disappointed <a href="mailto:cole@ciprari.ai">cole@ciprari.ai</a>.</div>
   <form class="nlf" novalidate>
@@ -493,7 +493,7 @@ def build():
   AI that survives contact with real operations, odd tech news, and dispatches from a résumé that
   ships updates. The résumé itself boots at
   <a href="https://ciprari.ai" target="_blank" rel="noopener">ciprari.ai</a>.
-  New releases Mon · Wed · Fri, and the <strong>Rollout Report</strong> every Sunday.</p>
+  A new release every day, and the <strong>Rollout Report</strong> every Sunday.</p>
 </header>
 {newsletter()}
 <div class="findbar">
@@ -537,7 +537,7 @@ try{{ var pre=new URL(location.href).searchParams.get("q");
 </script>"""
     with open(f"{OUT}/index.html", "w", encoding="utf-8") as f:
         f.write(page("changelog.ciprari.ai — release notes from Cole Ciprari",
-                     "Release notes from Cole Ciprari, Business Systems Architect: agentic AI in real operations, odd tech news, funny dispatches. New posts Mon/Wed/Fri + the Sunday Rollout Report.",
+                     "Release notes from Cole Ciprari, Business Systems Architect: agentic AI in real operations, odd tech news, funny dispatches. A new post every day + the Sunday Rollout Report.",
                      "/", index_body, "/og/og-home.png", og_type="website",
                      keywords="Cole Ciprari, changelog, AI blog, agentic AI, business systems architect, tech news"))
 
