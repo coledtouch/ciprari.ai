@@ -278,7 +278,8 @@ def page(title, desc, path, body, og_img, og_type="article", keywords="", extra_
 <meta name="author" content="Cole Ciprari">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="{BASE}{path}">
-<link rel="icon" href="/favicon.ico">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -641,7 +642,7 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const u = new URL(e.request.url);
   if (e.request.method !== "GET" || u.origin !== location.origin) return;
-  const isArt = u.pathname.startsWith("/og/") || /\\.(png|ico|webmanifest)$/.test(u.pathname);
+  const isArt = u.pathname.startsWith("/og/") || /\\.(png|ico|svg|webmanifest)$/.test(u.pathname);
   if (isArt) {
     e.respondWith(caches.open(C).then((c) => c.match(e.request).then(
       (r) => r || fetch(e.request).then((n) => { c.put(e.request, n.clone()); return n; }))));
@@ -680,9 +681,24 @@ self.addEventListener("fetch", (e) => {
         icon(f"{OUT}/icon-512.png", 512)
         icon(f"{OUT}/icon-512-maskable.png", 512, pad_ratio=0.08)
         icon(f"{OUT}/icon-180.png", 180)
-        print("pwa: manifest + sw + 4 icons")
+        # Browser-tab favicon: the same glyph, rendered big and let Pillow downsample
+        # into a multi-size .ico (the head links it as the fallback to favicon.svg).
+        icon(f"{OUT}/favicon-src.png", 256)
+        Image.open(f"{OUT}/favicon-src.png").save(f"{OUT}/favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)])
+        os.remove(f"{OUT}/favicon-src.png")
+        print("pwa: manifest + sw + 4 icons + favicon.ico")
     except Exception as e:
         print("pwa icons skipped:", e)
+
+    # Vector favicon (crisp at any size, honoured by every modern browser): the ▚▞
+    # checker on the phosphor-dark tile with the amber cursor, no Pillow needed.
+    with open(f"{OUT}/favicon.svg", "w", encoding="utf-8") as f:
+        f.write('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+                '<rect width="64" height="64" rx="10" fill="#070d0a"/>'
+                '<path d="M12 12h20v20H12zM32 32h20v20H32z" fill="#33ff66"/>'
+                '<path d="M32 12h20v20H32zM12 32h20v20H12z" fill="#123c28"/>'
+                '<rect x="54" y="46" width="5" height="6" fill="#ffd75e"/>'
+                '</svg>')
 
     print("posts:", len(POSTS))
     print("files:", len(os.listdir(OUT)), "top-level;", len(os.listdir(OUT + '/og')), "og images")

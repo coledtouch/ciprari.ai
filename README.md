@@ -39,9 +39,23 @@ No desktop app, no laptop. The machine can be off.
   nothing is published.
 - Cost: roughly a few cents per post (Claude Sonnet + a handful of web searches).
 
+## Posts staged from the ColeOS Root Console
+
+The Adviser in ciprari.ai's admin console can write a post too (`add_post`) — a project
+launch, a build note, a rollout. It lands in a review queue on the `coleos-api` worker, and
+Cole's **Publish post** button dispatches `publish-staged.yml` here, which runs
+`writer/apply_staged.py`: pull the queue, validate with the same rules as `writer.py`,
+append to `posts_b.py`, build, deploy, commit back. Needs two more secrets:
+
+- on this repo: `COLEOS_ADMIN_TOKEN` (the worker's admin bearer token, so the Action can read the queue)
+- on the worker: `GH_DISPATCH_TOKEN_CHANGELOG` (fine-grained GitHub token, this repo only, Actions: Read and write)
+
 ## Files
 
 - `writer/writer.py` — research + writing via Claude API, validation, version bumping
+- `writer/apply_staged.py` — publishes posts staged from the Root Console (reuses writer.py's rules)
 - `changelog-src/` — `posts_a.py`, `posts_b.py` (the catalog), `build_blog.py` (static build)
-- `.github/workflows/publish.yml` — the schedule and pipeline
+- `.github/workflows/publish.yml` — the daily schedule and pipeline
+- `.github/workflows/deploy-on-push.yml` — merge to main = rebuild + deploy
+- `.github/workflows/publish-staged.yml` — console-dispatched publish of staged posts
 - `wrangler.jsonc` — assets-only deploy of `changelog-site/` (built, gitignored)
