@@ -2369,4 +2369,58 @@ body="""
 
 <p>A boolean. A safeguard-tier string. A response header. Something. Right now {link:v1-23-0-the-model-learned-to-break-in|the capability threshold is documented in blog posts and launch announcements} and my error-handling middleware does not read launch announcements. It reads JSON. And the JSON does not tell me which twin I just called.</p>
 """),
+
+dict(
+slug="v1-25-0-the-bill-dropped-seventy-two-percent",
+version="v1.25.0", date="2026-09-04", read="4 min",
+title="The bill dropped 72%. The integration didn't.",
+desc="Microsoft cut MAI-Transcribe-2 to ten cents an hour, a 72% drop in five months. That's not a price change. That's a line item that stopped mattering while the code stayed the same.",
+keywords="MAI-Transcribe-2, speech recognition pricing, transcription cost reduction, Microsoft AI, production cost changes, vendor lock-in, API pricing",
+related=["v1-6-1-the-price-increase-that-wasnt", "v1-16-0-nvidia-raised-the-invoice-fifteen-percent", "v1-9-three-model-ids-died-today"],
+svg_alt="Two identical terminal windows showing API integration code, with a price tag changing from $0.36 to $0.10 while the code remains unchanged",
+svg_caption="The price changed. The vendor didn't. The code doesn't care.",
+svg=_svg('''
+<rect x="80" y="40" width="220" height="180" fill="none" stroke="#33ff66" stroke-width="2"/><text x="90" y="65" font-family="monospace" font-size="12" fill="#33ff66">MAI-Transcribe API</text><text x="90" y="85" font-family="monospace" font-size="11" fill="#4fae7c">const config = {</text><text x="100" y="100" font-family="monospace" font-size="11" fill="#4fae7c">  model: 'mai-transcribe-2',</text><text x="100" y="115" font-family="monospace" font-size="11" fill="#4fae7c">  endpoint: api.microsoft.ai,</text><text x="100" y="130" font-family="monospace" font-size="11" fill="#4fae7c">  language: 'en-US'</text><text x="90" y="145" font-family="monospace" font-size="11" fill="#4fae7c">}</text><line x1="90" y1="160" x2="290" y2="160" stroke="#ffd75e" stroke-width="1" stroke-dasharray="3,3"/><text x="90" y="180" font-family="monospace" font-size="10" fill="#ffd75e">April: $0.36/hr</text><text x="90" y="195" font-family="monospace" font-size="10" fill="#ffd75e">Sept: $0.10/hr  ↓72%</text><rect x="320" y="40" width="220" height="180" fill="none" stroke="#33ff66" stroke-width="2"/><text x="330" y="65" font-family="monospace" font-size="12" fill="#33ff66">MAI-Transcribe API</text><text x="330" y="85" font-family="monospace" font-size="11" fill="#4fae7c">const config = {</text><text x="340" y="100" font-family="monospace" font-size="11" fill="#4fae7c">  model: 'mai-transcribe-2',</text><text x="340" y="115" font-family="monospace" font-size="11" fill="#4fae7c">  endpoint: api.microsoft.ai,</text><text x="340" y="130" font-family="monospace" font-size="11" fill="#4fae7c">  language: 'en-US'</text><text x="330" y="145" font-family="monospace" font-size="11" fill="#4fae7c">}</text><line x1="330" y1="160" x2="530" y2="160" stroke="#2d6b4a" stroke-width="1"/><text x="330" y="180" font-family="monospace" font-size="10" fill="#33ff66">Integration: unchanged</text><text x="330" y="195" font-family="monospace" font-size="10" fill="#33ff66">Vendor: unchanged</text><text x="240" y="270" font-family="monospace" font-size="9" fill="#4fae7c" text-anchor="middle">Same call. Smaller invoice. No deploy.</text>
+'''),
+body="""
+<p><a href="https://www.unite.ai/mai-transcribe-2-tops-fleurs-benchmark-across-60-languages-microsoft-says/">Microsoft released MAI-Transcribe-2 on September 3</a>, a speech-recognition model the company says beats OpenAI, Google, and ElevenLabs on accuracy, latency, and price. <cite index="29-3">Microsoft priced it at $0.10 per hour of audio</cite>. <cite index="31-4,31-5">When Microsoft AI shipped the first model in this line five months ago it charged $0.36 an hour, so Thursday's early-bird price cuts that by roughly 72%</cite>. The model changed. The capability changed. The price changed. The API endpoint and the integration code did not.</p>
+
+<p><cite index="31-6">For an enterprise processing 100,000 hours of call-center audio a year — a modest volume for a large bank or telecom — the bill drops from $36,000 to $10,000</cite>. That is not a price cut. That is a line item that stopped being a problem. The budget meeting became shorter. The code did not.</p>
+
+<h3>The vendor stayed the same so the integration stayed cheap</h3>
+
+<p>I run <a href="https://thepunchlist.ai">thepunchlist.ai</a>, a task-tracking platform for construction crews that transcribes voice memos from superintendents into action items. Every voice memo is an API call. Every call used to cost money worth tracking. At ten cents an hour of audio a site superintendent recording ninety seconds of notes costs one-sixth of a cent. The cost stopped mattering but the integration is still there, still working, still calling the same endpoint.</p>
+
+<p>When the price drops 72% and the model ID stays stable and the response schema does not change the production system does not notice. No deploy. No migration script. No new error-handling branch. The monitoring dashboard shows lower cost-per-request and that is the whole event.</p>
+
+<p>Compare that to the {link:v1-9-three-model-ids-died-today|deprecation treadmill}. A model gets deprecated, a fallback list needs updating, a migration timeline goes on a roadmap, a Slack thread starts about whether the replacement has the same function-calling shape. A price cut with a stable vendor is the opposite of that. It is free money and zero work.</p>
+
+<h3>The price changed faster than my forecasting cycle</h3>
+
+<p>Five months ago Microsoft charged $0.36 an hour. Today it charges $0.10. That is April to September. My annual budget got built in December. The line item I forecasted for transcription is now three times too high and I have done nothing to earn that margin back except continue calling an API that already worked.</p>
+
+<p>I do not re-forecast monthly on vendor pricing changes because most vendors do not move prices this fast. {link:v1-6-1-the-price-increase-that-wasnt|Most pricing changes are increases dressed as holds}, not cuts this steep. A 72% reduction in five months is not normal price discovery. It is a land grab or a margin sacrifice or both.</p>
+
+<p>For a production system that means my cost structure improved faster than my finance process could track it. The P&L shows transcription under budget. I did not optimize anything. The vendor optimized and I got the benefit because I was already integrated.</p>
+
+<h3>The code does not care that the model is ten times faster</h3>
+
+<p><cite index="31-1">Microsoft says MAI-Transcribe-2 is faster, more accurate, and cheaper than anything OpenAI, Google, or ElevenLabs currently sells</cite>. <cite index="30-6">Faster inference with substantially lower latency, especially for long-form audio, with up to 10× faster processing than leading competitors</cite>. My integration does not know that and does not need to.</p>
+
+<p>The API call completes faster so my request timeout does not fire and my retry logic does not run. Latency in the monitoring dashboard trends down. The user experience improves. I shipped none of that. The vendor shipped it and I inherited it because the API contract did not break.</p>
+
+<p>The 120-route construction ERP at <a href="https://coenconstruction.com">coenconstruction.com</a> uses transcription to turn foreman voice notes into structured change-order line items. Faster transcription means the foreman sees the parsed result sooner. That happened because Microsoft made their model faster, not because I made my code faster. The {link:v1-4-adoption-is-the-deliverable|adoption curve} got easier and I was not in the room when it happened.</p>
+
+<h3>Commodity pricing is the best kind of lock-in</h3>
+
+<p>When a vendor cuts the price 72% and keeps the API stable they are not doing you a favor. They are making it expensive to leave. The integration already works. The cost already dropped below the threshold where anyone would argue about it. The next quarterly review will not include a line item for evaluating competitor transcription APIs because the current one is cheap, fast, and stable.</p>
+
+<p>That is {link:v1-16-0-nvidia-raised-the-invoice-fifteen-percent|the opposite of Nvidia raising prices fifteen percent}. Nvidia raised the price and the model did not improve so the lock-in is hardware availability and lead time, not value. Microsoft cut the price while the model got faster and more accurate so the lock-in is that switching has a cost and staying does not.</p>
+
+<p><a href="https://microsoft.ai/news/mai-transcribe-2-is-the-fastest-most-accurate-and-cheapest-speech-recognition-model-in-the-world/">Microsoft's own announcement</a> lists diarization, word-level timestamps, keyword biasing, and configurable transcription styles. Every one of those is a feature I can now use without changing vendors. The integration is already done. The cost is already low. The next feature I need is more likely to be in this model than in a competitor I would have to integrate from scratch.</p>
+
+<blockquote>The bill dropped 72% in five months and the code did not notice. That is not a pricing event. That is the vendor buying the next three years of my integration budget with a line item I no longer track.</blockquote>
+
+<p>The cheapest integration is the one you already shipped. Microsoft just made that integration cheaper to run and harder to replace. The production system that benefits most is the one that did the integration early and then did nothing.</p>
+"""),
 ]
