@@ -2423,4 +2423,58 @@ body="""
 
 <p>The cheapest integration is the one you already shipped. Microsoft just made that integration cheaper to run and harder to replace. The production system that benefits most is the one that did the integration early and then did nothing.</p>
 """),
+
+dict(
+slug="v1-26-0-the-model-says-agi-the-api-says-staged-rollout",
+version="v1.26.0", date="2026-09-05", read="5 min",
+title="The model says AGI. The API says staged rollout.",
+desc="OpenAI released GPT-6 Astra yesterday and called it AGI. The price is 2.5x GPT-5.6. The rollout is gated. The integration work is the same as it always was.",
+keywords="GPT-6 Astra, AGI, OpenAI API pricing, staged rollout, frontier model deployment, production AI integration, model evaluation",
+related=["v1-9-three-model-ids-died-today", "v1-23-0-the-model-learned-to-break-in", "v1-24-0-the-model-has-a-twin-the-api-doesnt-tell-me"],
+svg_alt="A phosphor terminal window showing GPT-6 Astra API pricing at $10/$50 per million tokens, with a second window showing 'Access: Staged Rollout' and a third showing a to-do list of integration tasks",
+svg_caption="The announcement says AGI. The checklist says Thursday.",
+svg=_svg('''
+<rect x="40" y="40" width="280" height="180" fill="none" stroke="#33ff66" stroke-width="2"/><text x="50" y="65" font-family="monospace" font-size="14" fill="#33ff66">GPT-6 ASTRA API</text><line x1="50" y1="72" x2="300" y2="72" stroke="#4fae7c" stroke-width="1"/><text x="50" y="95" font-family="monospace" font-size="12" fill="#ffd75e">INPUT:  $10/M tokens</text><text x="50" y="115" font-family="monospace" font-size="12" fill="#ffd75e">OUTPUT: $50/M tokens</text><text x="50" y="135" font-family="monospace" font-size="11" fill="#4fae7c">2.5x GPT-5.6 Sol</text><text x="50" y="155" font-family="monospace" font-size="11" fill="#33ff66">Context: 1M tokens</text><text x="50" y="175" font-family="monospace" font-size="11" fill="#33ff66">Mode: Frontier / AGI-era</text><rect x="340" y="40" width="260" height="100" fill="none" stroke="#ffd75e" stroke-width="2"/><text x="350" y="65" font-family="monospace" font-size="14" fill="#ffd75e">ROLLOUT STATUS</text><line x1="350" y1="72" x2="580" y2="72" stroke="#ffd75e" stroke-width="1"/><text x="350" y="95" font-family="monospace" font-size="11" fill="#4fae7c">Stage: Limited access</text><text x="350" y="115" font-family="monospace" font-size="11" fill="#4fae7c">Cyber: Gated (Daybreak)</text><rect x="340" y="160" width="260" height="140" fill="none" stroke="#33ff66" stroke-width="2"/><text x="350" y="185" font-family="monospace" font-size="12" fill="#33ff66">INTEGRATION CHECKLIST</text><line x1="350" y1="192" x2="580" y2="192" stroke="#4fae7c" stroke-width="1"/><text x="350" y="212" font-family="monospace" font-size="10" fill="#4fae7c">[ ] Test with prod prompts</text><text x="350" y="230" font-family="monospace" font-size="10" fill="#4fae7c">[ ] Measure latency vs Sol</text><text x="350" y="248" font-family="monospace" font-size="10" fill="#4fae7c">[ ] Compare cost at scale</text><text x="350" y="266" font-family="monospace" font-size="10" fill="#4fae7c">[ ] Update fallback list</text><text x="320" y="290" font-family="monospace" font-size="10" fill="#2d6b4a" text-anchor="middle">The future is staged. The work is not.</text>
+'''),
+body="""
+<p><a href="https://techstartups.com/2026/09/04/top-tech-news-today-september-4-2026-amazon-google-microsoft-nvidia-openai-tesla-more/">OpenAI released GPT-6 Astra yesterday</a> and called it AGI. <cite index="28-10,28-11">OpenAI says Astra is its newest frontier AI model and the company's most ambitious attempt yet to push artificial intelligence beyond chat, setting new internal benchmarks across software engineering, computer use, web browsing, science, cybersecurity, and other professional tasks</cite>. <cite index="37-2,37-3">The API pricing is $10 per million input tokens and $50 per million output tokens, putting it firmly in frontier-model territory, above GPT-5.6 and in the same general range as other top-tier reasoning models</cite>. The model changed. The branding changed. The integration work did not.</p>
+
+<p>I run ten production platforms. Every one calls at least one LLM API. When a new frontier model drops with a 2.5x price increase and a staged rollout the question is not whether it is AGI. The question is whether it finishes more requests correctly on the first try so I can retire a retry loop and make back the cost difference.</p>
+
+<h3>The announcement is instant and the access is not</h3>
+
+<p><cite index="43-2,43-3,43-4">OpenAI launched GPT-6 Astra on September 3, 2026, ending months of speculation, with the rollout starting that Thursday with enterprise customers in OpenAI's Daybreak cybersecurity program, and access through the OpenAI API, Amazon Web Services, and the ChatGPT Plus, Pro, Business, and Enterprise plans arriving in the days after</cite>. That means the model is real and the press release is live but the API key might not work yet.</p>
+
+<p>When <a href="https://thepunchlist.ai">thepunchlist.ai</a> calls an OpenAI endpoint to turn a voice memo into structured action items the code does not know whether the new model is available on my account yet. A 404 or a permission error means the fallback list runs and the request lands on GPT-5.6 Sol or Claude Sonnet or whatever comes next. The staged rollout turns every call into a question about whether the {link:v1-9-three-model-ids-died-today|model ID is live yet}.</p>
+
+<p>Compare that to a price drop on a model that already works. When Microsoft cut MAI-Transcribe-2 to ten cents an hour the integration did not notice because the endpoint stayed the same. A staged rollout for a new model means my code has to handle the case where the model is announced but not available, and that handling is the same work whether the model is labeled AGI or GPT-5.7.</p>
+
+<h3>The price is 2.5x and the cost is not just tokens</h3>
+
+<p><cite index="38-7">Astra's API pricing is roughly two and a half times the cost of GPT-5.6 Sol, which runs at $4 and $20 per million tokens for input and output respectively</cite>. For a request that generates 200 output tokens on a 1,000-token prompt the cost moves from $0.005 to $0.0125. That is not a rounding error when you are processing 100,000 requests a day.</p>
+
+<p>The 120-route construction ERP at <a href="https://coenconstruction.com">coenconstruction.com</a> calls GPT-4 Turbo to parse change-order line items from foreman notes. The integration works. The cost is predictable. Switching to Astra means I pay 2.5x per request unless Astra completes more requests correctly on the first attempt. If the retry rate drops enough the total cost can go down even when the per-token price goes up.</p>
+
+<p>That is the {link:v1-6-1-the-price-increase-that-wasnt|math that matters in production}. The model announcement does not include a retry-rate comparison so I cannot forecast the cost impact until I run real prompts against both models and count how many times each one needs a second attempt. The AGI branding is not part of that calculation.</p>
+
+<h3>The cybersecurity gate means some features do not ship to everyone</h3>
+
+<p><cite index="39-13">OpenAI says Astra meets the Critical cybersecurity threshold under its Preparedness Framework, with the public model refusing advanced cyber tasks like proof-of-concept exploits while looser safeguards go to vetted organizations through the Daybreak program</cite>. That means the model has two behavior profiles and the API does not tell you which one you are calling.</p>
+
+<p>When {link:v1-23-0-the-model-learned-to-break-in|a model learns to do something the vendor considers risky} the response is to gate the capability behind an access review. That makes sense for red teams and security researchers but it creates a {link:v1-24-0-the-model-has-a-twin-the-api-doesnt-tell-me|version mismatch problem for everyone else}. If I am testing Astra against production prompts I do not know whether the responses I see match the responses a Daybreak customer would see on the same input.</p>
+
+<p>The gating also means benchmark scores are not portable. <cite index="42-14,42-15">ARC Prize independently reports Astra at 99.9% on ARC-AGI-3 Semi-Private with OpenAI's Provider Adapter harness, but 62.7% with ARC Prize's provider-neutral Standard harness, though Astra used fewer actions than the median tested human on 96% of levels</cite>. That spread is not a rounding error. It is the difference between a demo result and a production result.</p>
+
+<h3>The label is AGI and the integration is still a checklist</h3>
+
+<p><cite index="38-4">OpenAI president Greg Brockman described the release as a generational leap that some are already framing as an early step toward AGI</cite>. That framing does not change the deployment checklist. Test the new model against production prompts. Measure latency compared to the current model. Compare total cost at expected scale including retries. Update the fallback list. Deploy to a canary route. Monitor error rates. Roll out to prod.</p>
+
+<p>When <a href="https://estimate.pro">estimate.pro</a> added GPT-4 Turbo support for generating cost estimates from takeoff sheets the integration work was the same as adding support for any other model. The API shape was identical. The prompt engineering was nearly identical. The monitoring logic was identical. The model capability changed but the integration surface did not.</p>
+
+<blockquote>AGI or GPT-5.7, the integration work is the same and the rollout is staged either way.</blockquote>
+
+<p>Astra might be AGI by some definition that matters in a research lab. In production it is a new model ID with a 2.5x price, a staged rollout, a cybersecurity gate, and a list of integration tasks that looks exactly like the list for every other frontier release. The {link:v1-14-0-the-agents-got-defunded|demo is instant and the deployment is not}. The announcement says Thursday and the checklist says next month. The model says AGI and the API says staged rollout.</p>
+
+<p>The label does not change the work. The work is testing whether the new model solves more of your problems correctly on the first attempt so you can justify the higher per-token cost or switch back to the cheaper one that already runs in production. That is the same work whether the press release calls it AGI or GPT-6 or the next incremental release. The future arrived yesterday. The integration starts Monday.</p>
+"""),
 ]
