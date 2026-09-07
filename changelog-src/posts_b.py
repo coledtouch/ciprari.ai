@@ -2521,4 +2521,48 @@ body="""
 
 <p>The gate went up around the best model, the music publishers sued for the full statutory maximum, Cisco gave 90,000 people agents with approval gates, and McKinsey confirmed that a third of buyers are now builders. The pattern is clear. Capability is no longer scarce. Access, liability, and coordination are the new constraints, and the companies that ship production systems in the next six months are the ones that priced all three into the architecture from day one.</p>
 """),
+
+dict(
+slug="v1-27-0-the-model-is-ga-the-region-is-not",
+version="v1.27.0", date="2026-09-07", read="4 min",
+title="The model is GA. The region is not.",
+desc="Claude reached general availability in Microsoft Foundry on June 29. European customers still cannot deploy it. The compute is in Azure but the inference is not.",
+keywords="Claude Microsoft Foundry, Azure data residency, EU GDPR compliance, Anthropic deployment, cloud model availability, third-party AI infrastructure",
+related=["v1-9-three-model-ids-died-today", "v1-6-2-compute-is-real-estate-now", "v1-24-0-the-model-has-a-twin-the-api-doesnt-tell-me"],
+svg_alt="A phosphor terminal showing three windows: one labeled 'Claude Foundry Status: GA', another showing 'EU Data Zone: Coming 2026', and a deployment command returning 'Error: Region not available'",
+svg_caption="Generally available does not mean deployable.",
+svg=_svg('''
+<rect x="40" y="40" width="560" height="220" fill="none" stroke="#33ff66" stroke-width="2"/><text x="60" y="70" font-family="monospace" font-size="14" fill="#33ff66">CLAUDE FOUNDRY STATUS</text><line x1="60" y1="75" x2="580" y2="75" stroke="#4fae7c" stroke-width="1"/><text x="60" y="100" font-family="monospace" font-size="12" fill="#33ff66">Model: Claude Opus 4.8</text><text x="60" y="120" font-family="monospace" font-size="12" fill="#33ff66">Status: GA (June 29, 2026)</text><text x="60" y="140" font-family="monospace" font-size="12" fill="#ffd75e">Regions: US, Global</text><text x="60" y="160" font-family="monospace" font-size="12" fill="#4fae7c">EU Data Zone: Coming 2026</text><rect x="60" y="180" width="520" height="60" fill="none" stroke="#ffd75e" stroke-width="1" stroke-dasharray="4,4"/><text x="80" y="205" font-family="monospace" font-size="11" fill="#ffd75e">$ az foundry deploy --model claude-opus --region eu-west-1</text><text x="80" y="225" font-family="monospace" font-size="11" fill="#ffd75e">Error: EU inference not available</text><text x="200" y="285" font-family="monospace" font-size="10" fill="#4fae7c">Generally available does not mean deployable.</text>
+'''),
+body="""
+<p><a href="https://www.infoq.com/news/2026/07/claude-foundry-ga-europe/">Anthropic and Microsoft announced general availability of Claude in Microsoft Foundry</a> on June 29, 2026. <cite index="2-10">Customers can choose between Global and US data zones for inference processing</cite>. The model catalog shows Claude Opus 4.8 and Haiku 4.5 as deployable. The authentication is Azure-native. The billing draws down existing Microsoft Azure Consumption Commitments. For a US-based customer that is a working integration. For a European customer with GDPR data-residency requirements it is a deployment option that does not meet compliance constraints yet.</p>
+
+<p>I run ten production platforms. Three call Claude through AWS Bedrock in us-east-1 because the customers are US-based and Bedrock was the fastest path to a working integration. If one of those customers were EU-based and required EU data residency I would deploy Bedrock in eu-west-1 and the data-processing addendum would specify Frankfurt. The Foundry GA announcement does not give me that option because <cite index="24-3,24-4">Claude models accessed through Azure AI Foundry are currently delivered through Anthropic-managed inference infrastructure rather than fully Azure-native regional processing, meaning even when an EU region such as Sweden Central or Germany West Central is selected, inference execution does not yet occur entirely within Azure-operated data center boundaries</cite>.</p>
+
+<h3>The partnership announced compute but the deployment is still third-party</h3>
+
+<p><cite index="42-3,42-4">Anthropic committed to purchase $30 billion of Azure compute capacity and to contract additional compute capacity up to one gigawatt</cite> when <a href="https://blogs.microsoft.com/blog/2025/11/18/microsoft-nvidia-and-anthropic-announce-strategic-partnerships/">Microsoft, NVIDIA, and Anthropic announced their partnership</a> in November 2025. <cite index="1-2">Claude in Microsoft Foundry accelerated by NVIDIA GB300 GPUs on Azure builds on the strategic partnership</cite>. The compute runs in Azure data centers on NVIDIA Blackwell systems. The inference orchestration is still Anthropic-managed.</p>
+
+<p>That distinction matters because <cite index="32-15">OpenAI models on Azure are first-party: Microsoft operates inference, data stays within the Azure trust boundary, and EU data zone deployments are available</cite>. Claude on Foundry is a third-party marketplace offering where <cite index="2-11">Anthropic operates the inference and is the data processor and SLA provider</cite>. The {link:v1-6-2-compute-is-real-estate-now|compute is real estate} and it is in Azure. The inference layer is not Azure-operated yet, which means the data-residency guarantee that applies to Bedrock and Vertex does not extend to Foundry.</p>
+
+<p>When <a href="https://estimate.pro">estimate.pro</a> calls GPT-4o through Azure OpenAI Service in Sweden Central the request stays inside Azure's EU trust boundary because Microsoft operates the entire inference stack. When a Foundry customer in Sweden Central calls Claude the <cite index="48-10,48-12">prompts and outputs are processed using Azure's global infrastructure to dynamically route traffic to the data center with best availability for each request, and data may be processed for inferencing in any Azure location</cite> even though data stored at rest remains in the designated geography.</p>
+
+<h3>The region listing says coming 2026 and it is already September</h3>
+
+<p><cite index="23-5">Anthropic's regional compliance page lists Microsoft Foundry in Europe as "Coming 2026"</cite>. <cite index="32-2">A Microsoft Q&A question asking for a more specific timeline has been open since April with zero answers</cite>. The announced deployment types for Claude on Foundry include Global Standard and US Data Zone. The EU Data Zone that would match the deployment options available on Bedrock and Vertex is not live yet and the public timeline is a year with no month attached.</p>
+
+<p>The 120-route construction ERP at <a href="https://coenconstruction.com">coenconstruction.com</a> uses Azure OpenAI Service because the Azure tenant, authentication, billing, and governance were already in place when we added LLM calls in 2024. If the customer were EU-based and we wanted to use Claude the Foundry path would not meet data-residency requirements. The workaround would be to deploy Bedrock in Frankfurt or Vertex in Belgium and integrate a second cloud provider for a single model.</p>
+
+<p>That is not a configuration change. It is a migration that touches authentication, cost allocation, network policies, and vendor onboarding. <cite index="6-2,6-3">The third-party deployment documentation scopes its data residency and compliance guidance specifically to Vertex AI and Bedrock deployments, stating "this section applies when using Vertex AI or Bedrock" and noting that "inference runs in your cloud tenant," meaning the data residency guarantees that European enterprises rely on when using Claude through AWS Bedrock or Google Vertex AI do not extend to Foundry today</cite>.</p>
+
+<blockquote>The model works. The region does not. That is not a bug—it is the deployment timeline.</blockquote>
+
+<h3>GA means the API is live not that every customer can use it</h3>
+
+<p>When a vendor announces general availability the expectation is that the service is production-ready for all customer segments. <cite index="25-1,25-3">Claude models reached GA on Microsoft Foundry with Azure-native billing and governance, but no European data zone exists</cite>. The service is production-ready for US customers and customers without strict data-residency requirements. It is not production-ready for EU customers in regulated industries where GDPR Article 44 requires that data transfers outside the EU use adequacy decisions or appropriate safeguards.</p>
+
+<p>The Foundry integration solves real procurement and billing friction for Azure customers. It does not solve the jurisdiction problem that determines whether a customer can legally route production data through the endpoint. When {link:v1-9-three-model-ids-died-today|a model ID changes} the integration stops working until the code updates. When a region is listed as "coming 2026" with no further detail the integration cannot start working until the region deploys, and September is close enough to the end of the year that "2026" is starting to mean "maybe Q1 2027."</p>
+
+<p>The model shipped. The region is in progress. The compute capacity is contracted and running. The inference orchestration is Anthropic-managed until the Azure-native path finishes rolling out. That architecture makes sense for a vendor scaling rapidly on hyperscaler infrastructure. It does not make sense for a compliance officer evaluating whether a deployment meets GDPR data-residency requirements today.
+"""),
 ]
