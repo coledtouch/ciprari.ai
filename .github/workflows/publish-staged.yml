@@ -72,6 +72,14 @@ jobs:
         run: |
           git config user.name "coleos-writer"
           git config user.email "info@coenconstruction.com"
-          git add changelog-src/posts_b.py
-          git commit -m "post: ${{ steps.apply.outputs.slugs }} (staged from the Root Console)"
+          git add changelog-src/posts_b.py writer/published_staged.json
+          if ! git diff --cached --quiet; then
+            git commit -m "post: ${{ steps.apply.outputs.slugs }} (staged from the Root Console)"
+          fi
           git push
+
+      - name: Acknowledge deployed and committed posts
+        if: ${{ steps.apply.outputs.skip != 'true' }}
+        env:
+          COLEOS_ADMIN_TOKEN: ${{ secrets.COLEOS_ADMIN_TOKEN }}
+        run: python3 writer/apply_staged.py --acknowledge
