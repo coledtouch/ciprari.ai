@@ -50,6 +50,14 @@ append to `posts_b.py`, build, deploy, commit back. Needs two more secrets:
 - on this repo: `COLEOS_ADMIN_TOKEN` (the worker's admin bearer token, so the Action can read the queue)
 - on the worker: `GH_DISPATCH_TOKEN_CHANGELOG` (fine-grained GitHub token, this repo only, Actions: Read and write)
 
+Staged posts remain queued until deployment and the source commit both succeed.
+`writer/published_staged.json` records staged IDs and slugs so a retry after an
+acknowledgement failure rebuilds the same posts instead of appending duplicates.
+The workflow then calls `apply_staged.py --acknowledge`. Keep this journal during
+normal maintenance; the temporary `writer/staged_receipt.json` is ignored by Git.
+
+Offline recovery checks: `python -m unittest discover -s writer -p test_apply_staged.py`.
+
 ## Files
 
 - `writer/writer.py` — research + writing via Claude API, validation, version bumping
