@@ -5,8 +5,8 @@ apply_staged.py — publish posts the ColeOS Adviser staged from the Root Consol
 Runs in GitHub Actions (publish-staged.yml, dispatched by the coleos-api worker's
 /post-trigger when Cole presses "Publish post" in the console). Pulls the staged
 posts from the worker, validates them with exactly the rules writer.py applies to
-its own posts, appends them to changelog-src/posts_b.py, builds, and tells the
-worker which ids went out. The workflow then deploys and commits back.
+its own posts, appends them to changelog-src/posts_b.py, builds, and writes a receipt.
+The workflow deploys and commits before --acknowledge clears the queued IDs.
 
 Env: COLEOS_ADMIN_TOKEN (the worker's admin bearer token, a repo secret).
 """
