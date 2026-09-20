@@ -3072,4 +3072,46 @@ body="""
 
 <p>The talks will continue. The waiver will not arrive. The FTC will keep watching. I will keep calling the APIs, because there is no alternative that does not also carry vendor risk, and because the systems that depend on these models are already in production. But I will not pretend the coordination is free. It is a signal that the vendors believe they need to work together to manage risk. That makes them more aligned. It also makes them more vulnerable to regulatory action, reputational pressure, and the operational chaos that follows when three competitors try to set standards without a legal safe harbor. The {link:v1-31-0-the-api-shipped-the-enterprise-server-didnt|API shipped}. The safety framework did not.</p>
 """),
+
+dict(
+slug="v1-40-0-permitsketch-the-thirteenth-platform",
+version="v1.40.0", date="2026-09-20", read="4 min",
+title="The permit set comes off a phone now, not a drafting table",
+desc="PermitSketch turns an address, site photos and tape measurements into an 8-sheet deck permit set \u2014 and stamps anything unconfirmed VERIFY IN FIELD. Platform 13.",
+keywords="permitsketch, deck permit drawings, permit drawing software, construction SaaS, residential permit set, field verified, review gate",
+related=["v1-3-the-human-review-gate", "v1-22-0-two-ships-one-release", "v1-32-0-the-agent-reads-everything-deploys-nothing"],
+svg_alt="A phone on a job site showing a deck plan sketch with a dimension line labeled 20'-0\" and a red VERIFY tag, next to a stack of 11x17 permit sheets and an amber stamp reading VERIFY IN FIELD.",
+svg_caption="The tape measure is the source of truth. The app just draws faster than you can.",
+svg=_svg('''
+<rect x="0" y="0" width="640" height="300" fill="#0a0f0c"/><rect x="40" y="40" width="160" height="220" rx="18" fill="none" stroke="#33ff66" stroke-width="2"/><rect x="55" y="65" width="130" height="170" fill="none" stroke="#2d6b4a" stroke-width="1"/><circle cx="120" cy="245" r="6" fill="none" stroke="#33ff66" stroke-width="1.5"/><line x1="65" y1="90" x2="175" y2="90" stroke="#4fae7c" stroke-width="1.5"/><line x1="65" y1="90" x2="65" y2="180" stroke="#4fae7c" stroke-width="1.5"/><line x1="175" y1="90" x2="175" y2="180" stroke="#4fae7c" stroke-width="1.5"/><line x1="65" y1="180" x2="175" y2="180" stroke="#4fae7c" stroke-width="1.5"/><line x1="65" y1="150" x2="175" y2="150" stroke="#4fae7c" stroke-width="1" stroke-dasharray="3,3"/><line x1="65" y1="200" x2="175" y2="200" stroke="#ffd75e" stroke-width="1.5"/><text x="90" y="215" font-family="monospace" font-size="11" fill="#ffd75e">20'-0" (VERIFY)</text><text x="70" y="130" font-family="monospace" font-size="9" fill="#33ff66">DECK PLAN</text><g transform="translate(340,55) rotate(-8)"><rect x="0" y="0" width="230" height="60" fill="none" stroke="#ffd75e" stroke-width="2.5"/><text x="15" y="25" font-family="monospace" font-size="15" fill="#ffd75e" font-weight="bold">VERIFY IN FIELD</text><text x="15" y="45" font-family="monospace" font-size="10" fill="#ffd75e">FOOTING DEPTH: UNKNOWN</text></g><rect x="360" y="150" width="150" height="10" fill="none" stroke="#2d6b4a"/><rect x="368" y="140" width="150" height="10" fill="none" stroke="#2d6b4a"/><rect x="376" y="130" width="150" height="10" fill="none" stroke="#2d6b4a"/><rect x="384" y="120" width="150" height="10" fill="none" stroke="#33ff66" stroke-width="1.5"/><text x="384" y="115" font-family="monospace" font-size="9" fill="#33ff66">SHEET 8 / 8 · 11x17</text><text x="384" y="180" font-family="monospace" font-size="9" fill="#4fae7c">SHEET 1 · SITE PLAN</text><text x="30" y="285" font-family="monospace" font-size="12" fill="#4fae7c">C:\PERMITSKETCH&gt; export --format=pdf --sheets=8</text>
+'''),
+body="""
+<p>Every deck permit I have ever pulled starts the same way: someone with a tape measure and a pencil, standing in a backyard, trying to turn three walls and a slope into a plan view, a framing plan, a footing layout, a section and a stair detail — eight sheets, roughly, on 11x17, before a building department will even look at the application. I have pulled a lot of these permits. I run a construction company. The graph paper never got better.</p>
+
+<p>So platform thirteen is <a href="https://permitsketch.com/">PermitSketch</a>, and the pitch is almost insultingly simple: a permit drawing set is mostly a drawing exercise, not an engineering problem, and most builders are still doing that exercise by hand on a clipboard. Give the phone the address, the site photos, and the field measurements you were going to take anyway, and let one project data model draw the whole set — plan, framing, footings, section, stairs — instead of redrawing the same deck five times across five sheets that all have to agree with each other.</p>
+
+<h3>One data model, eight sheets</h3>
+
+<p>The thing that actually took the work is not the drawing — SVG will draw a rectangle all day. The thing that took the work is making sure the rectangle on sheet 3 has the same dimension as the rectangle on sheet 6, because in a hand-drafted set that's exactly where the mismatches live and exactly what a plan reviewer flags first. Enter the deck once — footprint, ledger, joist spacing, footing count — and every sheet reads off the same object. Change a dimension and it propagates instead of requiring you to remember which of eight pages you already fixed.</p>
+
+<p>The <a href="https://permitsketch.com/deck-plans-for-permit">deck plans guide</a> walks through what a typical set needs to include, because "typical" is doing real work in that sentence — requirements vary by jurisdiction, and PermitSketch says so on that page and doesn't pretend otherwise.</p>
+
+<h3>The part I actually care about: nothing lies to you</h3>
+
+<p>Every value in a PermitSketch project carries one of three states: <strong>Unknown</strong>, <strong>Estimated</strong>, or <strong>Field verified</strong>. A footing depth you haven't measured yet doesn't get a plausible-looking number that quietly becomes gospel by sheet 8 — it gets stamped <strong>VERIFY IN FIELD</strong> and stays stamped until you actually go verify it in the field. The tool will happily draw you a complete-looking set full of estimates. It will not let that set pretend to be more certain than it is.</p>
+
+<p>This is the same instinct behind every review gate I've built, going back to {link:v1-3-the-human-review-gate|the human review gate not being optional} — a tool that drafts with confidence and hides its uncertainty is more dangerous than a tool that just doesn't work. PermitSketch draws fast and flags hard. It is a drawing tool, not an engineering service, and it says exactly that on every screen, because the failure mode I'm avoiding isn't "the app was slow" — it's "the app looked done."</p>
+
+<blockquote>The tape measure is still the source of truth. The app just draws faster than you can, and it's honest about which numbers came from the tape and which came from a guess.</blockquote>
+
+<p>That's the same discipline as {link:v1-22-0-two-ships-one-release|JetDesk refusing to be an instrument} — a planning aid that's loud about its own limits instead of quiet about them. Different industry, same refusal to let a nice-looking output stand in for a verified one.</p>
+
+<h3>Pricing, because a builder asked</h3>
+
+<p>Free tier to draw and see the set. $19 per project if you just need one permit through one building department and never plan to touch it again. $39/month if you're pulling these regularly — which, running Coen Construction's $8.5M portfolio, I am. I didn't build this speculatively and go looking for a market afterward. I built the thing that was annoying me on Tuesday and it turned out other builders have the exact same Tuesday.</p>
+
+<p>Fleet's thirteen now — {link:v1-32-0-the-agent-reads-everything-deploys-nothing|the count re-derives itself off one PRODUCTS list} instead of anyone hand-typing "13" into six different files and getting it wrong on the seventh. Small detail, but it's the same reason PermitSketch stamps a number VERIFY instead of just printing it: I've stopped trusting numbers that don't know how they got there — including my own.</p>
+
+<p>The permit still gets reviewed by a human at the building department who has never met me and doesn't care how the sheets got drawn. That part hasn't changed, and it shouldn't. PermitSketch just makes sure the eight sheets you hand them agree with each other, and tells the truth about the one dimension you still need to go measure.</p>
+"""),
 ]
