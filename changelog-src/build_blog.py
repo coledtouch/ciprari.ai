@@ -5,7 +5,7 @@ Git-commit-timeline homepage, CRT-framed art, newsletter, full SEO.
 Posts live in posts_a.py (back-catalog) and posts_b.py (recent).
 Run:  python3 build_blog.py
 """
-import os, sys, html, datetime, re
+import os, sys, html, datetime, re, hashlib, base64
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -700,8 +700,77 @@ self.addEventListener("fetch", (e) => {
                 '<rect x="54" y="46" width="5" height="6" fill="#ffd75e"/>'
                 '</svg>')
 
+    write_headers(index_body)
+
     print("posts:", len(POSTS))
     print("files:", len(os.listdir(OUT)), "top-level;", len(os.listdir(OUT + '/og')), "og images")
+
+
+# ---------- security headers ----------
+# Cloudflare reads _headers from the assets folder on every wrangler deploy. The
+# Content-Security-Policy pins this template's own inline scripts by SHA-256, so a
+# <script> that ever lands in a post body (the writer is a model that reads the web)
+# does not run. Only the template's scripts are hashed, never whatever the built
+# pages happen to contain; anything else found is reported and left blocked.
+_SCRIPT = re.compile(r"<script\b([^>]*)>([\s\S]*?)</script[\s/>]", re.I)
+
+def inline_scripts(doc):
+    """Executable inline scripts, with the text the browser hashes (newlines normalized)."""
+    out = []
+    for m in _SCRIPT.finditer(doc.replace("\r\n", "\n").replace("\r", "\n")):
+        attrs, body = m.group(1), m.group(2)
+        if re.search(r"\bsrc\s*=", attrs, re.I):
+            continue
+        t = re.search(r"""\btype\s*=\s*["']?([^"'\s>]+)""", attrs, re.I)
+        if t and t.group(1).lower() not in ("text/javascript", "application/javascript", "module"):
+            continue   # JSON-LD and other data blocks never run
+        if body.strip():
+            out.append(body)
+    return out
+
+def _hash(script):
+    return "'sha256-" + base64.b64encode(hashlib.sha256(script.encode("utf-8")).digest()).decode() + "'"
+
+def write_headers(index_body):
+    template = set()
+    for doc in (page("t", "d", "/t", "", "/og/og-home.png"), reactions({"slug": "t"}), index_body):
+        template.update(_hash(s) for s in inline_scripts(doc))
+    for name in sorted(os.listdir(OUT)):
+        if name.endswith(".html"):
+            with open(f"{OUT}/{name}", encoding="utf-8") as f:
+                extra = [s for s in inline_scripts(f.read()) if _hash(s) not in template]
+            if extra:
+                print(f"WARNING: {name} has {len(extra)} inline script(s) outside the template; "
+                      "the Content-Security-Policy will block them")
+    csp = "; ".join([
+        "default-src 'self'",
+        "script-src 'self' " + " ".join(sorted(template)),
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        f"connect-src 'self' {API}",   # 'self' too: the service worker's fetches follow this policy
+        "manifest-src 'self'",
+        "worker-src 'self'",
+        "object-src 'none'",
+        "base-uri 'none'",
+        "form-action 'self'",
+        # The ColeOS desktop shows this blog in a window, so every host that serves the
+        # desktop may frame it. No X-Frame-Options here: it cannot name another origin.
+        "frame-ancestors 'self' https://ciprari.ai https://www.ciprari.ai https://coleos.coleciprari.workers.dev",
+    ])
+    lines = ["/*",
+             "  Strict-Transport-Security: max-age=31536000; includeSubDomains",
+             "  X-Content-Type-Options: nosniff",
+             "  Referrer-Policy: strict-origin-when-cross-origin",
+             "  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=()",
+             "  Cross-Origin-Opener-Policy: same-origin-allow-popups",
+             "  Content-Security-Policy: " + csp,
+             ""]
+    too_long = [l for l in lines if len(l) > 2000]
+    if too_long:
+        raise SystemExit(f"_headers line is {len(too_long[0])} chars; Cloudflare's limit is 2000")
+    with open(f"{OUT}/_headers", "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    print("headers:", len(template), "template scripts pinned")
 
 if __name__ == "__main__":
     build()
