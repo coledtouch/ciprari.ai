@@ -753,9 +753,10 @@ def write_headers(index_body):
         "object-src 'none'",
         "base-uri 'none'",
         "form-action 'self'",
-        # The ColeOS desktop shows this blog in a window, so every host that serves the
-        # desktop may frame it. No X-Frame-Options here: it cannot name another origin.
-        "frame-ancestors 'self' https://ciprari.ai https://www.ciprari.ai https://coleos.coleciprari.workers.dev",
+        # The ColeOS desktop shows this blog in a window, so ciprari.ai may frame it (the
+        # only host that serves the desktop: www redirects, workers.dev is off). No
+        # X-Frame-Options here: it cannot name another origin.
+        "frame-ancestors 'self' https://ciprari.ai",
     ])
     lines = ["/*",
              "  Strict-Transport-Security: max-age=31536000; includeSubDomains",
