@@ -744,10 +744,12 @@ def write_headers(index_body):
                       "the Content-Security-Policy will block them")
     csp = "; ".join([
         "default-src 'self'",
-        "script-src 'self' " + " ".join(sorted(template)),
+        # Cloudflare's edge injects its Web Analytics beacon into every page; it loads
+        # from static.cloudflareinsights.com and reports to cloudflareinsights.com.
+        "script-src 'self' " + " ".join(sorted(template)) + " https://static.cloudflareinsights.com",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data:",
-        f"connect-src 'self' {API}",   # 'self' too: the service worker's fetches follow this policy
+        f"connect-src 'self' {API} https://cloudflareinsights.com",   # 'self' too: the service worker's fetches follow this policy
         "manifest-src 'self'",
         "worker-src 'self'",
         "object-src 'none'",
