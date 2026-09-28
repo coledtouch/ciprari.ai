@@ -242,9 +242,9 @@ def newsletter(compact=False):
     return f"""
 <div class="nl">
   <div class="nh">▚▞ {head}</div>
-  <div class="nd">A new release every day, plus the Sunday <b>Rollout Report</b> —
-  the week's AI and tech news, summarized by a human with production access. No spam. Unsubscribe by
-  emailing a mildly disappointed <a href="mailto:cole@ciprari.ai">cole@ciprari.ai</a>.</div>
+  <div class="nd">A new release every day, by email: posts Monday through Saturday, and on Sunday the <b>Rollout Report</b> —
+  the week's biggest AI and tech stories, with links to the sources. No spam. Unsubscribe in one click from any email,
+  or email a mildly disappointed <a href="mailto:cole@ciprari.ai">cole@ciprari.ai</a>.</div>
   <form class="nlf" novalidate>
     <label class="hp">leave this empty<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
     <input type="email" name="email" placeholder="you@example.com" required aria-label="Email address">
