@@ -525,8 +525,8 @@ vibe-code your own window. Scope responsibly.)</p>
 <h2>What's next</h2>
 <p>This changelog is where I write about the overlap I live in: AI that survives contact with real
 operations, systems thinking for businesses that run on spreadsheets and adrenaline, and the
-occasional dispatch from building software solo at production scale. New releases every Monday,
-Wednesday and Friday, plus the <strong>Rollout Report</strong> on Sundays — subscribe below or grab
+occasional dispatch from building software solo at production scale. A new post every day; on
+Sundays it's the <strong>Rollout Report</strong> — subscribe below or grab
 the <a href="/feed.xml">RSS feed</a>.</p>
 <blockquote>Most résumés describe the applicant. I decided mine should be a live demo.</blockquote>
 """),
