@@ -112,7 +112,7 @@ def build_prompt(mode, version, date_str):
     system = f"""You are the ghostwriter for changelog.ciprari.ai, the engineering blog of Cole
 Ciprari — a Business Systems Architect in Worcester, MA who has shipped 10 production platforms
 solo (a 120-route construction ERP at coenconstruction.com, estimate.pro, curbscript.com,
-thepunchlist.ai, north.construction, valhalla-k9.com, hiremariaelena.com, and three Base44 apps) and runs this blog
+The Punchlist (thepunchlist.vercel.app), north.construction, valhalla-k9.com, hiremariaelena.com, and three Base44 apps) and runs this blog
 as version-numbered releases of himself.
 
 VOICE — non-negotiable:

@@ -5,5 +5,11 @@
   "compatibility_date": "2026-08-12",
   "assets": {
     "directory": "./changelog-site"
-  }
+  },
+  // changelog.ciprari.ai is the only address: no changelog.coleciprari.workers.dev
+  // duplicate and no per-version preview URLs. Wrangler defaults both to on, so these
+  // keep every deploy from switching them back. With no routes listed, wrangler leaves
+  // the changelog.ciprari.ai custom domain alone.
+  "workers_dev": false,
+  "preview_urls": false
 }
