@@ -760,8 +760,9 @@ def write_headers(index_body):
         # X-Frame-Options here: it cannot name another origin.
         "frame-ancestors 'self' https://ciprari.ai",
     ])
+    # HSTS matches the ciprari.ai zone's edge setting (which overrides it and leaves out includeSubDomains).
     lines = ["/*",
-             "  Strict-Transport-Security: max-age=31536000; includeSubDomains",
+             "  Strict-Transport-Security: max-age=31536000",
              "  X-Content-Type-Options: nosniff",
              "  Referrer-Policy: strict-origin-when-cross-origin",
              "  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=()",
