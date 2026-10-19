@@ -4128,4 +4128,38 @@ body="""
 
 <p>The Justice Department framed the arrest as important for national security. Alfozan was arrested three days before he and family members were set to depart. They had booked a one-way flight. He appeared in federal court on October 13. The FBI investigation is ongoing. OpenAI says there is no indication Alfozan improperly accessed model weights, source code or customer data. The device was sophisticated. The sweep found it. The question is what else runs undetected.</p>
 """),
+
+dict(
+slug="v1-65-0-the-key-was-in-a-legacy-system",
+version="v1.65.0", date="2026-10-19", read="3 min",
+title="The key was in a legacy system that OpenCode was decommissioning.",
+desc="OpenCode disclosed a breach on October 17 that exposed API keys for OpenAI, Anthropic and Google. The keys sat in a legacy system being phased out.",
+keywords="OpenCode breach, API key security, legacy system vulnerabilities, distillation attack, AI provider credentials",
+related=["v1-51-0-the-model-trains-on-the-tools-the-api-does-not", "v1-61-0-the-model-logged-the-queries-that-built-the-bug", "v1-63-0-the-subpoena-wants-the-incident-log"],
+svg_alt="A CRT terminal displaying a green outline of an old server cabinet labeled 'LEGACY SYSTEM DECOMMISSIONING' with its door ajar. Inside the cabinet, amber key icons labeled 'OpenAI', 'Anthropic', and 'Google' are visible. A dim green progress bar below reads 'MIGRATION: 86% COMPLETE' with red text 'BREACH DETECTED' flashing beside it.",
+svg_caption="The keys sat in a system that was being shut down.",
+svg=_svg('''
+<rect x="120" y="60" width="400" height="180" fill="none" stroke="#33ff66" stroke-width="2"/><line x1="120" y1="150" x2="520" y2="150" stroke="#4fae7c" stroke-width="1"/><text x="140" y="85" font-family="monospace" font-size="13" fill="#33ff66">LEGACY SYSTEM</text><text x="140" y="105" font-family="monospace" font-size="13" fill="#33ff66">DECOMMISSIONING</text><rect x="180" y="120" width="60" height="15" fill="#ffd75e" opacity="0.3"/><text x="185" y="131" font-family="monospace" font-size="10" fill="#ffd75e">OpenAI</text><rect x="260" y="120" width="80" height="15" fill="#ffd75e" opacity="0.3"/><text x="265" y="131" font-family="monospace" font-size="10" fill="#ffd75e">Anthropic</text><rect x="360" y="120" width="60" height="15" fill="#ffd75e" opacity="0.3"/><text x="365" y="131" font-family="monospace" font-size="10" fill="#ffd75e">Google</text><rect x="150" y="170" width="320" height="18" fill="none" stroke="#4fae7c" stroke-width="1"/><rect x="151" y="171" width="274" height="16" fill="#4fae7c" opacity="0.4"/><text x="155" y="182" font-family="monospace" font-size="11" fill="#33ff66">MIGRATION: 86% COMPLETE</text><text x="200" y="210" font-family="monospace" font-size="12" fill="#ff4444" opacity="0.9">BREACH DETECTED</text><line x="140" y="60" x2="140" y2="240" stroke="#4fae7c" stroke-width="1" stroke-dasharray="3,3"/><text x="220" y="275" font-family="monospace" font-size="11" fill="#4fae7c">The keys sat in a system that was being shut down.</text>
+'''),
+body="""
+<p><a href="https://x.com/opencode/status/2111519637049319818">OpenCode disclosed a security breach on October 17</a>. The company said an attacker accessed a legacy system and may have exposed API keys for OpenAI, Anthropic and Google. <a href="https://www.bleepingcomputer.com/news/security/opencode-hack-exposes-api-keys-amid-ai-distillation-attacks/">The breach affected 1.4 percent of Console users</a>. <a href="https://thehackernews.com/2026/10/opencode-console-breach-may-have.html">OpenCode was decommissioning the system</a>. <a href="https://cryptobriefing.com/opencode-distillation-attack-api-key-breach/">Some users reported bills in the hundreds of dollars</a>. The attackers used the stolen keys to query frontier models at someone else's expense.</p>
+
+<p>The construction ERP calls OpenAI for invoice parsing. Atelier routes requests to seven model providers. The estimating tool calls Anthropic to score bid language. Curbscript queries Google to optimize service routes. Each call requires an API key. I store those keys in environment variables and secret managers. The legacy system that OpenCode was shutting down stored user keys for Console workspaces. An attacker reached that system before the migration completed. The keys walked out.</p>
+
+<h3>The migration was at 86 percent</h3>
+
+<p>OpenCode told affected users the breach hit a legacy system it was decommissioning. The company has not published how long the system held keys after the replacement went live. A decommissioning process runs in stages. The new system goes up. Traffic moves over. The old system stays online while the last workspaces migrate. Keys sit in both places. The intruder found the old one. <a href="https://dev.to/gabrielanhaia/opencode-told-14-of-console-users-to-revoke-their-openai-and-anthropic-keys-561">The email to users said the system was in the process of being decommissioned</a>. The process was not done.</p>
+
+<p>I ran a migration for the dog-training platform last year. User credentials moved from a Rails session store to encrypted JWTs. The session store stayed up for two months while I verified every account. API keys for Twilio and Stripe lived in both the old .env file and the new secret manager. The old file sat in the repo. Anyone with access to that branch could read the keys. The new manager went live. I deleted the .env file the same day. The keys existed in two places for six hours.</p>
+
+<h3>The key proves you paid</h3>
+
+<p><a href="https://cryptobriefing.com/opencode-distillation-attack-api-key-breach/">The breach exposed the ability to make large volumes of queries to frontier models on someone else's dime</a>. A distillation attack pulls model outputs to train a competing model. The attacker needs access at scale. A stolen key provides that access. The victim pays for the queries. <a href="https://www.bleepingcomputer.com/news/security/opencode-hack-exposes-api-keys-amid-ai-distillation-attacks/">One OpenCode user reported over 1,700 dollars in unauthorized charges overnight</a>. The key proved the attacker paid. The key did not prove the queries were authorized.</p>
+
+<p>The flight planner calls a weather API. The permit app calls a zoning-code service. The dating-profile tool runs inference on a Cloudflare Worker. Each call includes a bearer token or an API key. The token proves I have an account in good standing. It does not prove that the specific query came from me. The provider logs the request. The log shows my key. {link:v1-61-0-the-model-logged-the-queries-that-built-the-bug|The log does not show} who held the key when the call ran. If an attacker takes my key and runs 10,000 queries, the log attributes all 10,000 to me. The provider has no proof I did not make those calls.</p>
+
+<blockquote>The system was being shut down.</blockquote>
+
+<p>I keep three API keys in the ERP. One calls OpenAI for document parsing. One calls Anthropic for contract review. One calls a payment processor. Each key sits in a secret manager. The manager encrypts the key at rest. The manager requires authentication to read the key. The manager logs every access. If I decommission the manager and stand up a new one, both will hold the keys until the migration finishes. {link:v1-51-0-the-model-trains-on-the-tools-the-api-does-not|The old manager} will sit online with live credentials while I verify the new one works. The window where both exist is the window where an attacker can choose the weaker target. OpenCode was in that window. The keys sat in a legacy system that had not finished decommissioning. The attacker picked the legacy system.</p>
+"""),
 ]
