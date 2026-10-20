@@ -4162,4 +4162,38 @@ body="""
 
 <p>I keep three API keys in the ERP. One calls OpenAI for document parsing. One calls Anthropic for contract review. One calls a payment processor. Each key sits in a secret manager. The manager encrypts the key at rest. The manager requires authentication to read the key. The manager logs every access. If I decommission the manager and stand up a new one, both will hold the keys until the migration finishes. {link:v1-51-0-the-model-trains-on-the-tools-the-api-does-not|The old manager} will sit online with live credentials while I verify the new one works. The window where both exist is the window where an attacker can choose the weaker target. OpenCode was in that window. The keys sat in a legacy system that had not finished decommissioning. The attacker picked the legacy system.</p>
 """),
+
+dict(
+slug="v1-66-0-the-agent-has-an-email-address",
+version="v1.66.0", date="2026-10-20", read="3 min",
+title="The agent has an email address.",
+desc="Google gave its Gemini agent a Workspace account with its own email on October 8. The agent acts under its own name and logs every action to itself.",
+keywords="Google Gemini agent, AI email address, Workspace coworker agents, agent identity, AI audit trail",
+related=["v1-54-0-the-hearing-was-under-oath-the-api-is-not", "v1-61-0-the-model-logged-the-queries-that-built-the-bug", "v1-63-0-the-subpoena-wants-the-incident-log"],
+svg_alt="A CRT terminal showing a corporate directory listing in green text. One entry reads 'AGENT-BILLING@agents.company.com' with a status indicator showing 'ACTIVE'. Below it, amber text displays 'WORKSPACE ACCOUNT: PROVISIONED' and 'ACTIONS LOGGED: 847'. A dim green warning reads 'AGENT HAS CALENDAR ACCESS'.",
+svg_caption="The agent gets its own Workspace account and a seat in the directory.",
+svg=_svg('''
+<rect x="40" y="40" width="560" height="220" fill="none" stroke="#33ff66" stroke-width="2"/><text x="60" y="70" font-family="monospace" font-size="14" fill="#33ff66">CORPORATE DIRECTORY</text><line x1="60" y1="80" x2="580" y2="80" stroke="#4fae7c" stroke-width="1"/><text x="60" y="110" font-family="monospace" font-size="12" fill="#33ff66">USER: john.mitchell@company.com</text><text x="450" y="110" font-family="monospace" font-size="12" fill="#4fae7c">HUMAN</text><text x="60" y="130" font-family="monospace" font-size="12" fill="#33ff66">USER: sarah.chen@company.com</text><text x="450" y="130" font-family="monospace" font-size="12" fill="#4fae7c">HUMAN</text><text x="60" y="155" font-family="monospace" font-size="12" fill="#ffd75e" font-weight="bold">USER: agent-billing@agents.company.com</text><circle cx="420" cy="151" r="4" fill="#ffd75e"/><text x="430" y="155" font-family="monospace" font-size="12" fill="#ffd75e">ACTIVE</text><text x="60" y="180" font-family="monospace" font-size="11" fill="#4fae7c">WORKSPACE ACCOUNT: PROVISIONED</text><text x="60" y="195" font-family="monospace" font-size="11" fill="#4fae7c">ACTIONS LOGGED: 847</text><text x="60" y="215" font-family="monospace" font-size="11" fill="#2d6b4a">AGENT HAS CALENDAR ACCESS</text><text x="60" y="230" font-family="monospace" font-size="11" fill="#2d6b4a">AGENT HAS DRIVE ACCESS</text><text x="220" y="280" font-family="monospace" font-size="10" fill="#4fae7c">The agent gets its own Workspace account and a seat in the directory.</text>
+'''),
+body="""
+<p><a href="https://techcrunch.com/2026/10/08/google-brings-agentic-ai-to-gemini-starting-with-businesses/">Google announced its Gemini agent on October 8</a>. <a href="https://www.eesel.ai/blog/gemini-agent">The agent gets its own Workspace account</a>. It includes an email address, a calendar, Drive storage and a directory listing. <a href="https://aiweekly.co/alerts/google-clouds-gemini-agent-gets-a-mailbox-and-directory-seat">The address takes the form agent-name@agents.company.com</a>. The agent acts under its own identity. Every action it takes logs to that identity.</p>
+
+<p>The estimating tool sends bid reminders from a shared Gmail address. The dog-training platform routes booking confirmations through a transactional email service. The construction ERP notifies subs when drawings change. Each email shows a from address. That address belongs to a system account I control. If an agent sends the email, the from address still points back to my domain. The recipient has no way to tell whether a human or an agent composed the message. The log shows the send and the timestamp.</p>
+
+<h3>The agent sits in the directory</h3>
+
+<p><a href="https://www.dragapp.com/blog/gemini-agent/">Google provisions coworker agents the way it provisions employees</a>. The agent gets a Workspace account. It appears in the directory. Colleagues can tag it in chat, email it directly or add it to a group. <a href="https://aiweekly.co/alerts/google-clouds-gemini-agent-gets-a-mailbox-and-directory-seat">A coworker agent acts under its own identity rather than yours</a>. It sees only what you share with it. The scoping is explicit. The identity is persistent.</p>
+
+<p>Atelier routes inference requests to seven model providers. The flight planner calls a weather API. The permit app queries a zoning service. Each call runs under a service account or an API key. The key belongs to me. The log attributes every call to my account. I delegate a task to a model. The model makes 50 API calls to finish the work. All 50 calls bill to my account. {link:v1-61-0-the-model-logged-the-queries-that-built-the-bug|The log shows my key}. The distinction matters when someone asks who authorized the spend.</p>
+
+<h3>The log follows the agent</h3>
+
+<p>Google says the agent keeps four kinds of memory. Session memory persists across days. The agent works on a task, stops and resumes later. <a href="https://aiweekly.co/alerts/google-clouds-gemini-agent-gets-a-mailbox-and-directory-seat">Every action the agent takes logs to its own identity</a>. When the agent sends an email, the sent-mail folder belongs to the agent. When it creates a document, the document creator field shows the agent. The audit trail points to the agent account.</p>
+
+<p>The ERP logs every invoice edit. The estimating tool logs every bid submission. The flight planner logs every weather query. Each log entry includes a timestamp, an action and a user ID. The user ID is mine. I build an agent that reviews invoices and flags discrepancies. Every flag the agent raises will log under my ID unless I provision a separate account. {link:v1-54-0-the-hearing-was-under-oath-the-api-is-not|The log proves the action happened}.</p>
+
+<blockquote>The agent has a calendar and a seat in the directory.</blockquote>
+
+<p>I provision service accounts for background jobs. The payroll worker runs under a service account. The invoice parser runs under a different one. Each account has a name. Each account has permissions. The name appears in logs. If the invoice parser makes a mistake, the log shows which account made the change. The account name is explicit. The audit trail is clear. Google made the same choice for agents. The agent holds its own identity as a coworker. {link:v1-63-0-the-subpoena-wants-the-incident-log|The subpoena} will ask for the agent's log.</p>
+"""),
 ]
