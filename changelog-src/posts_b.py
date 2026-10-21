@@ -4196,4 +4196,38 @@ body="""
 
 <p>I provision service accounts for background jobs. The payroll worker runs under a service account. The invoice parser runs under a different one. Each account has a name. Each account has permissions. The name appears in logs. If the invoice parser makes a mistake, the log shows which account made the change. The account name is explicit. The audit trail is clear. Google made the same choice for agents. The agent holds its own identity as a coworker. {link:v1-63-0-the-subpoena-wants-the-incident-log|The subpoena} will ask for the agent's log.</p>
 """),
+
+dict(
+slug="v1-67-0-the-model-runs-on-three-clouds",
+version="v1.67.0", date="2026-10-21", read="3 min",
+title="The model runs on three clouds.",
+desc="OpenAI announced its models will run on Google Cloud on October 21. The same model now routes through all three hyperscalers. Atelier switches providers when one goes down.",
+keywords="OpenAI Google Cloud, multi-cloud AI, model routing, provider redundancy, Atelier AI studio",
+related=["v1-50-0-the-platform-is-enterprise-the-api-is-not", "v1-47-0-the-price-dropped-fifty-percent-the-call-did-not", "v1-45-0-the-api-shut-down-disney-learned-an-hour-before"],
+svg_alt="A CRT terminal showing three parallel network paths labeled 'AZURE', 'AWS', and 'GCP', all routing to a single endpoint labeled 'GPT-6 ASTRA'. Green status indicators show 'ACTIVE' for all three paths. At the bottom, amber text displays 'ROUTING: MULTI-CLOUD' and 'FAILOVER: ENABLED'. A small dim green caption reads 'Same model, three entry points.'",
+svg_caption="Same model, three entry points.",
+svg=_svg('''
+<rect x="80" y="40" width="480" height="200" fill="none" stroke="#33ff66" stroke-width="2"/><text x="320" y="30" font-family="monospace" font-size="14" fill="#33ff66" text-anchor="middle">CLOUD ROUTING TOPOLOGY</text><text x="120" y="80" font-family="monospace" font-size="16" fill="#33ff66">AZURE</text><line x1="180" y1="75" x2="280" y2="140" stroke="#33ff66" stroke-width="2"/><circle cx="290" cy="145" r="4" fill="#33ff66"/><text x="160" y="100" font-family="monospace" font-size="11" fill="#4fae7c">STATUS: ACTIVE</text><text x="120" y="150" font-family="monospace" font-size="16" fill="#33ff66">AWS</text><line x1="180" y1="145" x2="280" y2="145" stroke="#33ff66" stroke-width="2"/><circle cx="290" cy="145" r="4" fill="#33ff66"/><text x="160" y="170" font-family="monospace" font-size="11" fill="#4fae7c">STATUS: ACTIVE</text><text x="120" y="220" font-family="monospace" font-size="16" fill="#33ff66">GCP</text><line x1="180" y1="215" x2="280" y2="150" stroke="#33ff66" stroke-width="2"/><circle cx="290" cy="145" r="4" fill="#33ff66"/><text x="160" y="240" font-family="monospace" font-size="11" fill="#4fae7c">STATUS: ACTIVE</text><rect x="300" y="125" width="180" height="40" fill="none" stroke="#ffd75e" stroke-width="2"/><text x="390" y="150" font-family="monospace" font-size="14" fill="#ffd75e" text-anchor="middle">GPT-6 ASTRA</text><text x="100" y="275" font-family="monospace" font-size="12" fill="#ffd75e">ROUTING: MULTI-CLOUD</text><text x="360" y="275" font-family="monospace" font-size="12" fill="#4fae7c">FAILOVER: ENABLED</text><text x="320" y="295" font-family="monospace" font-size="10" fill="#2d6b4a" text-anchor="middle">Same model, three entry points.</text>
+'''),
+body="""
+<p><a href="https://www.cnbc.com/2026/10/21/openai-bring-its-ai-models-to-googles-cloud-expands-beyond-microsoft.html">OpenAI announced on October 21</a> that its models will run on Google Cloud. <a href="https://nokiapoweruser.com/openai-google-cloud-partnership-gpt-6-model-garden/">GPT-6 Astra, GPT-6.1 Sol and GPT-6 Luna will appear in Google Cloud Model Garden</a>. The rollout happens in the coming weeks. <a href="https://www.analyticsinsight.net/news/openai-on-google-cloud-gpt-6-astra-reaches-enterprise-buyers">The models already run on Microsoft Azure and AWS</a>. OpenAI now sells the same model through all three hyperscalers. The routing decision belongs to the buyer.</p>
+
+<p>Atelier routes inference requests to seven model providers. The flight planner calls a weather API. The permit app queries a zoning service. Each integration has a primary endpoint and a backup. When Azure goes down, Atelier switches to AWS. When the weather API times out, the flight planner retries with a different service. The logic is a ten-line function. The decision happens at request time.</p>
+
+<h3>The budget stays inside one cloud</h3>
+
+<p><a href="https://tech-insider.org/openai-models-google-cloud-big-3-2026/">Google Cloud customers can now use existing cloud spending commitments to buy OpenAI models</a>. <a href="https://www.pymnts.com/news/artificial-intelligence/2026/openai-brings-its-frontier-ai-models-to-google-cloud/">The models will appear in Google Antigravity and the Gemini agent</a>. A company with a Google Cloud contract can route GPT-6 calls through that contract. The procurement cycle collapses. The invoice consolidates.</p>
+
+<p>The estimating tool runs on Cloudflare Workers. The construction ERP runs on a VPS. The dating-profile teardown runs on a single Worker that stores nothing. Each system bills separately. Each system has its own API key. The flight planner uses one OpenAI key. Atelier uses a different one. The keys point to the same account. The invoice sums them. A multi-cloud routing layer would let me fail over between providers without changing keys. I have not built it yet.</p>
+
+<h3>The competitor sells your model</h3>
+
+<p><a href="https://www.cnbc.com/2026/10/21/openai-bring-its-ai-models-to-googles-cloud-expands-beyond-microsoft.html">OpenAI and Google competed for years</a>. Google builds Gemini. OpenAI builds GPT. <a href="https://nokiapoweruser.com/openai-google-cloud-partnership-gpt-6-model-garden/">Google Cloud is now the only hyperscaler offering Gemini, Claude and GPT-6 side by side</a>. A Google Cloud customer can choose OpenAI over Google. Google still collects the cloud fee. The model provider gets the inference fee. The cloud provider gets the infrastructure margin.</p>
+
+<p>Atelier offers models from OpenAI, Anthropic, Google, Mistral, Perplexity, Cohere and xAI. Each provider has a direct API. I do not resell their models. I route requests to them. The user picks the model. Atelier picks the endpoint. A marketplace tier would route requests through my own API. I would bill the user. The model provider would still get paid. I would collect a routing fee. {link:v1-47-0-the-price-dropped-fifty-percent-the-call-did-not|The margin lives in the markup}.</p>
+
+<blockquote>Google Cloud sells a model that competes with Gemini.</blockquote>
+
+<p><a href="https://www.cnbc.com/2026/10/21/openai-bring-its-ai-models-to-googles-cloud-expands-beyond-microsoft.html">Microsoft lost exclusive distribution in April</a>. <a href="https://www.cnbc.com/2026/10/21/openai-bring-its-ai-models-to-googles-cloud-expands-beyond-microsoft.html">Amazon started hosting OpenAI models the day after that exclusivity ended</a>. Google joined five months later. The distribution expanded. The model stayed the same. {link:v1-45-0-the-api-shut-down-disney-learned-an-hour-before|A single provider outage} no longer kills every integration. The buyer can switch clouds and keep the same model. The redundancy is geographic and contractual.</p>
+"""),
 ]
