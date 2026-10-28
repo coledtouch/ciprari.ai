@@ -4442,4 +4442,36 @@ body="""
 
 <p><a href="https://datanorth.ai/news/openai-gpt-6-1-terra">OpenAI released Terra with the same safeguards built for GPT-6 Astra</a>. {link:v1-49-0-the-model-deceived-the-test-the-api-does-not|The model deceived the test} in an earlier case. The API did not surface that fact. This time the safety card disclosed the bypass rate before launch. The number is in the report. It is not in the API response. I can see what the agent returned. The log does not record whether it took a forbidden shortcut. The price dropped by half.</p>
 """),
+
+dict(
+slug="v1-73-0-anthropic-filed-the-s1-compute-payment-three-bil",
+version="v1.73.0", date="2026-10-28", read="3 min",
+title="Anthropic filed the S-1. The compute payment is $3.1 billion a month.",
+desc="Anthropic disclosed $16.3 billion in first-half revenue and a $3.1 billion monthly compute bill to SpaceX. The cost line grew faster than the revenue.",
+keywords="Anthropic S-1, IPO filing, compute costs, SpaceX AI infrastructure, cloud spend, API pricing",
+related=["v1-47-0-the-price-dropped-fifty-percent-the-call-did-not", "v1-72-0-the-api-price-halved-bypass-rate-thirty-percent", "v1-48-0-the-commitment-is-non-cancelable-the-deployment"],
+svg_alt="A CRT terminal showing a scrolling ledger with revenue at $16.3B in bright green and compute cost at $3.1B/mo in amber below it. A dim green progress bar labeled MONTHLY BURN fills most of the width. At the bottom, caption text reads FILED PUBLIC COMPUTE COST LOCKED.",
+svg_caption="The S-1 is public and the compute line is $3.1 billion a month.",
+svg=_svg('''
+<rect x="40" y="30" width="560" height="220" fill="none" stroke="#33ff66" stroke-width="2"/><text x="60" y="60" font-family="monospace" font-size="14" fill="#33ff66">ANTHROPIC S-1 FILED OCT 26 2026</text><text x="60" y="90" font-family="monospace" font-size="12" fill="#33ff66">H1 2026 REVENUE:</text><text x="280" y="90" font-family="monospace" font-size="12" fill="#33ff66" text-anchor="end">$16.3B</text><rect x="290" y="80" width="20" height="12" fill="#33ff66"/><text x="60" y="120" font-family="monospace" font-size="12" fill="#ffd75e">SPACEX COMPUTE:</text><text x="280" y="120" font-family="monospace" font-size="12" fill="#ffd75e" text-anchor="end">$3.1B/MO</text><rect x="290" y="110" width="20" height="12" fill="#ffd75e"/><text x="60" y="150" font-family="monospace" font-size="11" fill="#4fae7c">MONTHLY BURN RATE</text><rect x="60" y="160" width="520" height="16" fill="none" stroke="#4fae7c" stroke-width="1"/><rect x="61" y="161" width="410" height="14" fill="#2d6b4a"/><text x="320" y="265" font-family="monospace" font-size="10" fill="#4fae7c" text-anchor="middle">THE S-1 IS PUBLIC AND THE COMPUTE LINE IS $3.1 BILLION A MONTH.</text>
+'''),
+body="""
+<p><a href="https://www.anthropic.com/news/s1-sec">Anthropic filed its S-1 on October 26</a>. <a href="https://finance.yahoo.com/technology/live/anthropic-ipo-live-updates-frontier-ai-lab-discloses-revenue-and-risks-in-highly-anticipated-s-1-filing-141702607.html">The company reported $16.3 billion in revenue for the first half of 2026</a>. <a href="https://www.cnbc.com/2026/10/26/anthropic-ipo-live-updates-ai-s-1-filing.html">Anthropic will pay SpaceX around $3.1 billion per month once all promised capacity is delivered</a>. <a href="https://teslanorth.com/2026/10/26/anthropic-s1-spacex-120b-compute/">The company agreed to spend up to $120.5 billion through 2029</a>. The revenue number made headlines. The compute line is the number that matters.</p>
+
+<p><a href="https://www.geekwire.com/2026/whos-getting-anthropics-compute-spending-ipo-filing-shows-where-the-tech-giants-really-stand/">Anthropic spent less than $2 billion a month on compute in the second quarter</a>. <a href="https://www.geekwire.com/2026/whos-getting-anthropics-compute-spending-ipo-filing-shows-where-the-tech-giants-really-stand/">The SpaceX deal alone is expected to cost $3.1 billion a month at full capacity</a>. That delivery is expected in December. The cost line grew faster than the revenue. Someone has to explain to public-market investors why the company locks in $37 billion a year in compute before knowing how many API calls will pay for it.</p>
+
+<h3>The estimating SaaS runs on a fixed Cloudflare bill</h3>
+
+<p>The estimating SaaS sends proposals to the API for parsing and line-item extraction. The permit app turns photos into dimensioned drawings. Both sit behind Cloudflare Workers. The Workers bill is predictable. The inference cost is not. I can set a rate limit and walk away. <a href="https://cryptobriefing.com/anthropic-ipo-filing-chinese-ai-revenue-gap/">Anthropic posted an $80.7 billion net loss in the first half</a>. Most of that was a non-cash charge on convertible bonds. The operating loss was smaller. The $3.1 billion monthly compute commitment is cash. {link:v1-48-0-the-commitment-is-non-cancelable-the-deployment|The commitment is non-cancelable} until early 2027. After that either side can exit with 90 days notice.</p>
+
+<p>Atelier routes prompts to seven providers. The D1 table logs the model name and token count. If a provider raises the price I can route to a cheaper one in an hour. <a href="https://www.gadgetreview.com/anthropics-ipo-filing-reveals-up-to-120-5-billion-in-compute-contracts-with-spacex">Anthropic faces roughly $417 billion in total future compute obligations across multiple infrastructure partners</a>. <a href="https://www.cnbc.com/2026/10/26/anthropic-ipo-live-updates-ai-s-1-filing.html">Anthropic said it may also use proceeds to acquire or invest in businesses or technologies</a>. The filing does not say what happens if revenue stalls and the compute bill does not.</p>
+
+<blockquote>You can cut features but the GPU lease does not care.</blockquote>
+
+<h3>The IPO pricing will test how investors value a locked cost base</h3>
+
+<p><a href="https://fortune.com/2026/10/27/anthropic-s1-ipo-filing-financials-profits/">Anthropic plans to list on Nasdaq under the symbol ANT as early as mid-November</a>. <a href="https://www.cnbc.com/2026/10/07/anthropic-will-be-most-ridiculous-ipo-of-year-analyst-says.html">Research firm New Constructs called the offering the most ridiculous IPO of 2026 and valued Anthropic at $150 billion</a>. <a href="https://www.thinkmarkets.com/en/anthropic-ipo-2026-date-valuation-and-how-to-trade/">Investors cited by the Financial Times in August said backers were targeting a valuation of $2 trillion or more</a>. {link:v1-72-0-the-api-price-halved-bypass-rate-thirty-percent|The API price halved} in the last month. The cost to serve each call did not.</p>
+
+<p>The flight-planning PWA stores sessions in IndexedDB and hits the API only for weather and route validation. The dating-profile teardown runs one prompt per upload and logs nothing. I would not sign a three-year compute contract for either of them. Anthropic did. The S-1 is 300 pages and the $3.1 billion line is on page 87. Public investors get two weeks to decide if that number makes sense.</p>
+"""),
 ]
