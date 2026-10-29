@@ -4474,4 +4474,36 @@ body="""
 
 <p>The flight-planning PWA stores sessions in IndexedDB and hits the API only for weather and route validation. The dating-profile teardown runs one prompt per upload and logs nothing. I would not sign a three-year compute contract for either of them. Anthropic did. The S-1 is 300 pages and the $3.1 billion line is on page 87. Public investors get two weeks to decide if that number makes sense.</p>
 """),
+
+dict(
+slug="v1-74-0-the-session-resumes-the-prompt-does-not-expire",
+version="v1.74.0", date="2026-10-29", read="3 min",
+title="The session resumes on your phone. The prompt does not expire.",
+desc="GitHub made Copilot sessions persistent across devices on October 28. Chat data now lives for the account lifetime instead of 28 days.",
+keywords="GitHub Copilot, cloud sessions, data retention policy, cross-device sync, GDPR compliance, AI session persistence",
+related=["v1-63-0-the-subpoena-wants-the-incident-log", "v1-66-0-the-agent-has-an-email-address", "v1-61-0-the-model-logged-the-queries-that-built-the-bug"],
+svg_alt="A CRT terminal showing a split screen with LAPTOP on the left and PHONE on the right, both displaying SESSION #4729 RESUMED in bright green. Below them a progress bar labeled DATA RETENTION fills completely in amber with text showing 28 DAYS \u2192 LIFETIME. At the bottom, caption text reads THE SESSION SYNCS THE LOG DOES NOT DELETE.",
+svg_caption="The session syncs across devices and the log does not delete.",
+svg=_svg('''
+<rect x="50" y="40" width="240" height="140" fill="none" stroke="#33ff66" stroke-width="2"/><text x="170" y="30" font-family="monospace" font-size="12" fill="#4fae7c" text-anchor="middle">LAPTOP</text><text x="80" y="70" font-family="monospace" font-size="10" fill="#33ff66">SESSION #4729</text><text x="80" y="90" font-family="monospace" font-size="10" fill="#33ff66">RESUMED</text><text x="80" y="110" font-family="monospace" font-size="9" fill="#4fae7c">10:34 AM</text><text x="80" y="130" font-family="monospace" font-size="9" fill="#4fae7c">github.com</text><rect x="350" y="40" width="240" height="140" fill="none" stroke="#33ff66" stroke-width="2"/><text x="470" y="30" font-family="monospace" font-size="12" fill="#4fae7c" text-anchor="middle">PHONE</text><text x="380" y="70" font-family="monospace" font-size="10" fill="#33ff66">SESSION #4729</text><text x="380" y="90" font-family="monospace" font-size="10" fill="#33ff66">RESUMED</text><text x="380" y="110" font-family="monospace" font-size="9" fill="#4fae7c">10:36 AM</text><text x="380" y="130" font-family="monospace" font-size="9" fill="#4fae7c">GitHub Mobile</text><text x="50" y="210" font-family="monospace" font-size="11" fill="#4fae7c">DATA RETENTION</text><rect x="50" y="220" width="540" height="20" fill="none" stroke="#4fae7c" stroke-width="1"/><rect x="51" y="221" width="538" height="18" fill="#ffd75e"/><text x="140" y="234" font-family="monospace" font-size="10" fill="#2d6b4a">28 DAYS → LIFETIME</text><text x="320" y="270" font-family="monospace" font-size="9" fill="#4fae7c" text-anchor="middle">THE SESSION SYNCS THE LOG DOES NOT DELETE.</text>
+'''),
+body="""
+<p><a href="https://github.blog/changelog/2026-10-28-work-from-anywhere-with-a-new-connected-copilot-cloud-experience/">GitHub shipped persistent Copilot sessions on October 28</a>. <a href="https://docs.github.com/en/copilot/concepts/copilot-surfaces/copilot-on-github">Sessions started on the web, mobile, CLI or IDE resume across all of them</a>. <a href="https://github.blog/changelog/2026-08-28-upcoming-changes-to-github-copilot-policies-and-billing/">Chat data now lives for the account lifetime instead of 28 days</a>. You can start a conversation on your laptop and pick it up on your phone. Every prompt you sent in that conversation is now a permanent record.</p>
+
+<p>Atelier logs each prompt to a D1 table with the timestamp and model name. I can delete rows older than 90 days with a single cron job. The table schema gives me that control. <a href="https://devops.com/github-tightens-copilots-billing-and-governance-rules-ahead-of-a-busy-fall/">GitHub moved from a 28-day rolling delete to retention for the life of the account</a>. If you paste a database schema or an API key into Copilot Chat, that data does not expire. The session does not disappear when you close the browser.</p>
+
+<h3>The retention change affects every production system that touched Copilot</h3>
+
+<p>The estimating SaaS stores proposals in D1. The permit app stores photos and drawings in R2. Neither stores API keys or credentials in a place Copilot can read. I know that because I wrote the schema and I control the access rules. <a href="https://thesyntaxdiaries.com/github-copilot-policy-changes">GitHub says chat data retained for the account lifetime matches the existing cloud-agent experience</a>. I cannot query the retention table. I cannot see what GitHub considers account lifetime. I cannot write a SQL statement that deletes sessions older than a date I pick.</p>
+
+<p>The construction ERP runs payroll for 40 people. The codebase has tax tables and direct-deposit routing numbers. I do not use Copilot in that repository. The retention policy does not care whether I opted in. {link:v1-61-0-the-model-logged-the-queries-that-built-the-bug|The model logged the queries} that built a bug in August and the team found them in October. <a href="https://yusmpgroup.com/news/github-copilot-billing-sept-2026">A 28-day rolling delete gives compliance teams a bounded window</a>. Lifetime retention means every session is discoverable until I delete the GitHub account.</p>
+
+<blockquote>You can close the session but the log does not expire.</blockquote>
+
+<h3>Cross-device sync trades off convenience against exposure</h3>
+
+<p>The flight-planning PWA runs offline and syncs when the network returns. I control the sync logic and the retention window. <a href="https://docs.github.com/en/copilot/concepts/copilot-surfaces/copilot-on-github">Copilot sessions use isolated execution environments with snapshots supporting later resumption</a>. That solves the interruption problem. You can leave your desk and resume the same conversation on another device. {link:v1-63-0-the-subpoena-wants-the-incident-log|The subpoena wants the incident log} and GitHub has every session you ever started.</p>
+
+<p>The dating-profile teardown runs one prompt per upload and logs nothing. The user pastes their profile text and gets a teardown. The round trip is stateless. I can explain what data exists because the system stores nothing. <a href="https://en.aistacknav.com/github-copilot-data-retention-unified-cloud-agent-policy-checklist/">Retained throughout the account lifecycle does not mean administrators have the ability to delete at any granularity</a>. {link:v1-66-0-the-agent-has-an-email-address|The agent has an email address} and a session history you cannot truncate on a schedule you control. The convenience of resuming a session on your phone is a features argument. The lifetime retention is a compliance fact.</p>
+"""),
 ]
