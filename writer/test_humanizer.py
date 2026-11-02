@@ -154,6 +154,17 @@ class LintTests(unittest.TestCase):
                      "The API logs every request. It keeps them for a week."):
             self.assertEqual(self.probs(f"<p>{text}</p>"), [], text)
 
+    def test_one_liners_that_turn(self):
+        for line in ("You can cut features but the GPU lease does not care.",  # v1.73.0
+                     "The log shows what came back, never which rule broke.",  # v1.72.0
+                     "The test was designed to catch escapes and four escaped anyway."):  # v1.76.1
+            found = self.probs(f"<p>Fine.</p><blockquote>{line}</blockquote>")
+            self.assertTrue(any(p.startswith("blockquote: contrast structure (X, but Y") for p in found), line)
+            found = writer.humanizer_problems(post("<p>Fine.</p>", caption=line))
+            self.assertTrue(any(p.startswith("svg_caption: contrast structure") for p in found), line)
+        self.assertEqual(self.probs("<p>Fine.</p><blockquote>The crew poured the slab, but only after lunch.</blockquote>"), [])
+        self.assertEqual(self.probs("<p>It never shipped, but nobody asked.</p>"), [])
+
     def test_title_clauses(self):
         def title_probs(title):
             return [p for p in writer.humanizer_problems(post("<p>Fine.</p>", title=title)) if p.startswith("title:")]

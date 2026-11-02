@@ -598,6 +598,9 @@ AND_CLAUSE = re.compile(
     r"[\w'.-]+ ){1,2}(?:\w+ed|is|are|was|were|has|have|had|did|does|found|saw|got|went|took|made|said|ran|left|"
     r"kept|lost|won|hit|cut|set|put|sent|built|paid|fell|rose|grew|came|became|began|broke|shut|sold|bought|"
     r"told|wrote|stole|opens|closes|ships|wins|loses|gets|goes|says|finds|takes|makes)\b", re.I)
+# A one-liner that turns on "but ... not", ", never" or a closing "anyway". Checked in the title,
+# caption and blockquote only: in body prose these words are ordinary.
+TURN = re.compile(r"\b(?:but|yet)\b[^.?!]*?(?:\b(?:not|never|no|nothing)\b|n't\b)|,\s*never\b|\banyway[.?!]?$", re.I)
 STRIP_TAGS = re.compile(r"(?i)</?(?:cite|strong|b)\b[^>]*>")  # cite renders as italics; bold is banned
 # Problems in these fields are must-fix: a revision that leaves one loses to one that doesn't.
 MUST_FIX = ("title:", "blockquote:", "svg_caption:", "svg_inner: the caption")
@@ -747,6 +750,9 @@ def humanizer_problems(post):
         q = _plain(q).strip()
         if _words(q) > MAX_WORDS or len(_sentences(q)) >= 2:
             probs.append(f'blockquote: must be one line of {MAX_WORDS} words or fewer: "{_clip(q)}"')
+    for name, line in [("title", title), ("svg_caption", cap)] + [("blockquote", _plain(q)) for q in quotes]:
+        if TURN.search(line.strip()):
+            probs.append(f'{name}: contrast structure (X, but Y does not): "{_clip(line.strip())}"')
     if re.search(r"(?i)<(?:strong|b|i|cite)\b", body):
         probs.append("body_html: bold, <i> and <cite> are not allowed; restate sources in your own words")
     for m in re.finditer(r"<(?i:em)>\s*([a-z][^<]{0,200}?)\s*</(?i:em)>", body):
