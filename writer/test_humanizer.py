@@ -1,5 +1,6 @@
 """Offline checks for the humanizer lint and its one revision pass (no API calls)."""
 import json
+import re
 import unittest
 from unittest.mock import patch
 import writer
@@ -228,7 +229,7 @@ class ClaimTests(unittest.TestCase):
 
     def test_carry_over_and_crime_attribution(self):
         found = writer.claim_problems(post("<p>Atelier picks the model. It logs every answer to a table.</p>"))
-        self.assertTrue(any("must not ship, Atelier never stores" in p for p in found), found)
+        self.assertTrue(any("must not ship, Atelier logs no prompts" in p for p in found), found)
         self.assertTrue(any("crime stated as fact" in p for p in writer.claim_problems(post("<p>Jane Roe stole the files.</p>"))))
         self.assertEqual(writer.claim_problems(post("<p>Prosecutors say Jane Roe stole the files.</p>")), [])
 
@@ -270,8 +271,10 @@ class ArtTests(unittest.TestCase):
         self.assertEqual(writer.repair_svg(art), "<line x1='10' y1='10' x2='90' y2='10' stroke='#ffd75e'/>"
                                                  "<rect fill=\"#04120a\" style='stroke: #ffd75e'/>")
         self.assertEqual(writer.repair_svg(writer.STUB["svg_inner"]), writer.STUB["svg_inner"])
-        for p in (p for p in writer.ALL if "<svg" not in p["svg"]):  # every published picture, once repaired
-            self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.repair_svg(p["svg"])), "post"), [], p["version"])
+        wrapper = re.compile(r'^<svg [^>]*><rect width="640" height="300" fill="#04120a"/>|</svg>$')
+        for p in writer.ALL:  # every published picture passes once repaired
+            inner = wrapper.sub("", p["svg"])
+            self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.repair_svg(inner)), "post"), [], p["version"])
 
     def test_art_text_must_fit_the_frame(self):
         def overflow(art):
@@ -384,8 +387,62 @@ class PromptTests(unittest.TestCase):
             self.assertIn("keepfixcut.com", system)
             self.assertIn("HUMANIZER", system)
             self.assertIn("Never paste", system)
-            self.assertIn("retired two-sentence", user)
+            self.assertNotIn("retired two-sentence", user)
+            self.assertNotIn("predate the HUMANIZER", user)
             self.assertNotIn("<cite", user)
+
+    def test_system_facts_are_closed_and_current(self):
+        system, _ = writer.build_prompt("post", "v9.9.9", "2026-11-02")
+        self.assertIn(writer.SYSTEM_FACTS, system)
+        flat = " ".join(system.split())
+        for fact in ("Nine providers: Anthropic, OpenAI, Google", "never holds prompts or answers",
+                     "Uploads and reports are not saved", "kept 30 days", "4 scans a minute",
+                     "No Cole system uses PHP, Python, a VPS or S3", "Atelier has no D1 database",
+                     "JetDesk has no NOTAMs", "CurbScript has no service routes", "what you would check",
+                     "Name at most three of Cole's systems", "charged but not convicted", "calendar dates",
+                     "quotes both", "No page counts", "Source link text is a 2–6 word noun phrase",
+                     "Link each URL once", "Every <line> has x1, y1, x2 and y2", "svg_alt describes only"):
+            self.assertIn(fact, flat, fact)
+        for stale in ("seven providers", "stores nothing", "D1 databases"):
+            self.assertNotIn(stale, flat, stale)
+
+    def test_user_prompt_carries_the_week_and_catalog_descs(self):
+        _, user = writer.build_prompt("rollout", "v9.9.9", "2026-11-01")
+        self.assertIn("dated Monday, October 26 through Sunday, November 1", user)
+        week = [p for p in writer.ALL if "2026-10-25" <= p["date"] <= "2026-11-01"]
+        for p in week:
+            self.assertIn(p["title"], user.split("Catalog of recent posts")[0])
+        last = writer.ALL[-1]
+        self.assertIn(f'{last["slug"]} | {last["version"]} | {last["date"]}', user)
+        _, user = writer.build_prompt("post", "v9.9.9", "2026-11-02")
+        self.assertNotIn("Every story's source is dated", user)
+
+    def test_catalog_marks_posts_linked_twice_this_week(self):
+        busy = dict(writer.ALL[-1], body="{link:v1-50-0-x|one} and {link:v1-50-0-x|two}")
+        target = dict(writer.ALL[-2], slug="v1-50-0-x")
+        with patch.object(writer, "ALL", writer.ALL[:-2] + [target, busy]):
+            lines = writer.recent_catalog().splitlines()
+        self.assertTrue(lines[-2].endswith("[linked 2 times this week; pick another]"), lines[-2])
+        self.assertNotIn("[linked", lines[-1])
+
+    def test_old_descs_lose_their_system_claims(self):
+        desc = "Google shipped a model. Atelier logs every prompt to D1. My ERP runs on PHP."
+        self.assertEqual(writer._no_system_lines(desc).strip(), "Google shipped a model.")
+
+    def test_style_examples_are_pinned_and_clean(self):
+        with patch.object(writer, "_recent_sentences", return_value=set()):
+            for mode, ex in writer.STYLE_EXAMPLES.items():
+                self.assertEqual(writer.humanizer_problems(ex), [], mode)
+                self.assertEqual(writer.claim_problems(ex), [], mode)
+                for slug in re.findall(r"\{link:([a-z0-9\-]+)\|", ex["body_html"]):
+                    self.assertIn(slug, writer.SLUGS, mode)
+                self.assertTrue(80 <= len(ex["desc"]) <= 200, mode)
+                self.assertEqual(json.loads(writer.style_example(mode)), ex)
+        newest = dict(writer.ALL[-1], title="Something new entirely")
+        with patch.object(writer, "ALL", writer.ALL + [newest]):
+            self.assertNotIn("Something new entirely", writer.build_prompt("post", "v9.9.9", "2026-11-02")[1]
+                             .split("Style example")[1])
+
 
 if __name__ == "__main__":
     unittest.main()

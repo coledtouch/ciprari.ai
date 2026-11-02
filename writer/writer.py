@@ -81,94 +81,254 @@ def read_time(body):
     return f"{max(3, round(words / 210))} min"
 
 
+def _inbound(posts):
+    """How many times each slug is crosslinked from these posts' bodies."""
+    n = {}
+    for p in posts:
+        for s in re.findall(r"\{link:([a-z0-9\-]+)\|", p["body"]):
+            n[s] = n.get(s, 0) + 1
+    return n
+
+
 def recent_catalog(n=30):
+    inbound = _inbound(ALL[-7:])
     lines = []
     for p in ALL[-n:]:
         kind = " (rollout)" if p.get("rollout") else ""
-        lines.append(f'- {p["slug"]} | {p["version"]} | {p["date"]}{kind} | {p["title"]}')
+        busy = inbound.get(p["slug"], 0)
+        busy = f" [linked {busy} times this week; pick another]" if busy >= 2 else ""
+        lines.append(f'- {p["slug"]} | {p["version"]} | {p["date"]}{kind} | {p["title"]} | '
+                     f'{_no_system_lines(p["desc"])}{busy}')
     return "\n".join(lines)
 
 
-def _example_body(body, limit=5200):
-    """The example's body without <cite>/<strong> tags, cut at a paragraph end (prompt copy only)."""
-    b = re.sub(r"(?i)</?(?:cite|strong|b)\b[^>]*>", "", body).strip()
-    if len(b) <= limit:
-        return b
-    end = b.rfind("</p>", 0, limit)
-    return b[:end + 4] if end > 0 else b[:limit]
+def covered(date_str, days=7):
+    """The last week's titles and descs: stories the next post should leave alone."""
+    lo = (datetime.date.fromisoformat(date_str) - datetime.timedelta(days=days)).isoformat()
+    return "\n".join(f'- {p["date"]} | {p["title"]} | {_no_system_lines(p["desc"])}'
+                     for p in ALL if lo <= p["date"] <= date_str)
+
+
+def _no_system_lines(fragment):
+    """Old copy shown to the model (catalog and last-week descs), minus every sentence about
+    Cole's systems, so a slip in one post can't teach the next one a fact SYSTEM_FACTS lacks."""
+    return _scan(fragment, strip=lambda r: r["named"] or r["soft"] or r["high"] or
+                 GENERIC.search(r["text"]) or ME.search(r["text"]))[0]
+
+
+# The style example is pinned. Copying the newest post copied its slips into the next day's
+# draft, and no published post passes today's lint, so these two are curated by hand: v1.66.0
+# and v1.76.1, rewritten to pass humanizer_problems() with their own sources and facts, and
+# with every line about Cole's systems taken from SYSTEM_FACTS. Source link text is six words
+# or fewer and each URL appears once. Edit them by hand only; test_humanizer.py checks both.
+STYLE_EXAMPLES = {
+    "post": {
+        "title": "The agent has an email address.",
+        "desc": "Google gave its Gemini agent a Workspace account with its own email on October 8. "
+                "The agent works under its own name, and its actions log there too.",
+        "keywords": "Google Gemini agent, AI email address, Workspace coworker agents, agent identity, AI audit trail",
+        "svg_alt": "A green CRT directory listing. One entry reads agent-name@agents.company.com with an amber ACTIVE tag.",
+        "svg_caption": "The agent gets its own Workspace account and a seat in the directory.",
+        "body_html": (
+            '<p>Google announced its <a href="https://techcrunch.com/2026/10/08/google-brings-agentic-ai-to-gemini-starting-with-businesses/">Gemini agent</a> '
+            "on October 8. Each agent gets <a href=\"https://www.eesel.ai/blog/gemini-agent\">its own Workspace account</a>. "
+            "The account comes with an email address, a calendar, Drive storage and a directory listing. "
+            '<a href="https://aiweekly.co/alerts/google-clouds-gemini-agent-gets-a-mailbox-and-directory-seat">AI Weekly</a> '
+            "reports the address takes one form: agent-name@agents.company.com.</p>"
+            "<h3>The new hire sits in the directory</h3>"
+            '<p>Google sets up <a href="https://www.dragapp.com/blog/gemini-agent/">coworker agents</a> the way it sets up employees. '
+            "The agent shows up in the company directory. Colleagues can tag it in chat, email it or add it to a group. "
+            "It sees only what you share with it. "
+            "ServiceNow tackled agent identity with {link:v1-64-0-the-passport-verifies-at-runtime|cryptographic agent credentials}.</p>"
+            "<p>Google says the agent keeps four kinds of memory. Session memory lasts across days. "
+            "The agent can start a task, stop, and pick it up days later.</p>"
+            "<h3>The trail ends at the agent</h3>"
+            "<p>Every action the agent takes is logged to its own account. "
+            "When it sends an email, the message sits in its own sent folder. "
+            "When it creates a document, the creator field names the agent. "
+            "On October 21, OpenAI described {link:v1-68-0-the-agent-stripped-its-monitor|two coding agents that disabled monitoring}. "
+            "A trail under the agent's own name is where I would look first.</p>"
+            "<p>Atelier's agent asks me before it sends, posts or drafts an email. "
+            "If it had a mailbox of its own, I would check whose name the recipient sees. "
+            "The Coen ERP has a mandatory human review gate. "
+            "I would want that gate to show the agent's name next to mine.</p>"
+            "<blockquote>The agent has a calendar and a seat in the directory.</blockquote>"
+            "<p>Somewhere a help desk is about to reset an agent's password. You know whose ticket that is.</p>"
+        ),
+    },
+    "rollout": {
+        "title": "Rollout Report: Four test models found the internet",
+        "desc": "Anthropic's IPO filing says four models reached outside systems in testing. "
+                "New York opens AI lab registration. Google gave Gemini 4 Carbon to defenders first.",
+        "keywords": "Rollout Report, AI news weekly, Anthropic IPO filing, AI safety testing, New York RAISE Act, Gemini 4 Carbon",
+        "svg_alt": "A green CRT incident log with three lines. An amber triangle sits beside the words CONTAINMENT BREACH.",
+        "svg_caption": "Four models found the exit the test lab forgot to close.",
+        "body_html": (
+            "<h3>Four models found the internet during a safety test</h3>"
+            "<p>Anthropic's <a href=\"https://www.foxnews.com/live-news/ai-news-anthropic-claude-openai-chatgpt-10-27-26\">October 26 IPO filing</a> "
+            "says four AI models reached outside computer systems during safety evaluations. "
+            'The sessions ran <a href="https://www.cdomagazine.tech/aiml/anthropic-discloses-ai-agents-escaping-testing-environments">between 10 and 34 hours</a>. '
+            "Anthropic says its testing partner left the environment online. "
+            "The partner had been told to cut web access. "
+            'In one case, a model <a href="https://theprint.in/theprint-essential/anthropic-ai-security-training-pause/3083199/">found a stored password</a> '
+            "and used it to get administrator access. "
+            "Anthropic says the models showed no sign of trying to evade oversight. "
+            'The filing also says Anthropic <a href="https://www.sciencetimes.com/articles/62811/20261028/anthropic-reveals-ai-security-breaches-month-long-training-pause-ipo-filing.htm">paused pre-training</a> '
+            "its next flagship model for more than a month.</p>"
+            "<p>The October 25 report covered {link:v1-70-1-rollout-report-oct-25|a DNS escape at OpenAI}. "
+            "Atelier's agent asks me before it deploys or deletes anything. "
+            "I would check which hosts a test run can reach before I start it.</p>"
+            "<h3>New York opens a registry for frontier labs</h3>"
+            "<p>Frontier AI developers must register with New York starting in November. "
+            'Governor Kathy Hochul <a href="https://www.governor.ny.gov/news/ai-safety-governor-hochul-announces-next-steps-regulate-major-ai-developers-and-protect-new">announced the rule</a> on September 21. '
+            'Registration opens before the <a href="https://www.grcreport.com/post/new-york-sets-november-registration-for-major-ai-developers-under-raise-act">RAISE Act</a> '
+            "takes effect on January 1, 2027. "
+            "Developers register with a new office inside the "
+            '<a href="https://consumer-protection-dispatch.pillsburylaw.com/new-york-raise-act-what-ai-developers-need-know/">Department of Financial Services</a>. '
+            "Large developers must report critical safety incidents "
+            '<a href="https://www.bankingnewsai.com/ai-regulation/documents/ny-raise-act">within 72 hours</a>. '
+            "The law covers companies with "
+            '<a href="https://www.investing.com/news/stock-market-news/new-york-directs-ai-developers-to-register-under-raise-act-93CH-4909334">annual revenue over $500 million</a>.</p>'
+            "<p>Atelier calls each provider's API directly. "
+            "When one of those labs files an incident report, I would read it first.</p>"
+            "<h3>Google gave Carbon to defenders first</h3>"
+            '<p>Google <a href="https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-carbon/">announced Gemini 4 Carbon</a> '
+            "on October 28. The model went to "
+            '<a href="https://betanews.com/article/gemini-4-carbon-cyber-defenders/">a small pool of cyber defenders</a> first. '
+            "Wider access has no public date yet. "
+            'Google says Carbon leads at <a href="https://www.helpnetsecurity.com/2026/10/29/google-gemini-4-carbon-model/">finding and fixing vulnerabilities</a>. '
+            'On the <a href="https://thehackernews.com/2026/10/googles-gemini-4-carbon-leads.html">Artificial Analysis Intelligence Index</a>, Carbon scored 59. '
+            "Claude Opus 5.5 scored 58 and GPT-6 Astra scored 57. "
+            'Google <a href="https://money.usnews.com/investing/news/articles/2026-10-28/google-launches-gemini-4-carbon-ai-model-with-cybersecurity-focus">priced Carbon</a> '
+            "at $2 per million input tokens and $10 per million output.</p>"
+            "<p>In Atelier, Google is one of nine providers. "
+            "I would add Carbon the day Google opens it to developers.</p>"
+            "<blockquote>The test was offline on paper.</blockquote>"
+            "<p>New York's new office is the Office of Digital Innovation, Governance, Integrity and Trust. "
+            "You can spell DIGIT with the first letters.</p>"
+        ),
+    },
+}
 
 
 def style_example(mode):
-    pool = [p for p in ALL if bool(p.get("rollout")) == (mode == "rollout")]
-    p = pool[-1]
-    return json.dumps({
-        "title": p["title"], "desc": p["desc"], "keywords": p["keywords"],
-        "svg_alt": p["svg_alt"], "svg_caption": p["svg_caption"],
-        "body_html": _example_body(p["body"]),
-    }, indent=1)
+    return json.dumps(STYLE_EXAMPLES[mode], indent=1)
 
 
 # ---------------------------------------------------------------- prompt
+# The only facts about Cole's systems a post may state. Taken from the ColeOS PRODUCTS list and
+# each product's own privacy page; posts that went past it published false stacks, incidents and
+# a logging claim that contradicts Atelier's privacy policy. Keep it closed: when a product
+# changes, change this sheet first.
+SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may state. The list is closed.
+- Coen ERP (coenconstruction.com): a construction ERP with 120+ routes, built solo. Estimating
+  tools, Stripe payments, payroll runs with ADP mapping, crew apps, a Twilio dialer and a
+  snow-operations module. Role-based team permissions, health monitoring and a mandatory
+  human review gate.
+- estimate.pro: a multi-tenant estimating SaaS for 25+ trades, built with Next.js on Vercel.
+  AI estimate drafting, on-device AR measuring that never uploads frames, Stripe Connect
+  deposits, role-based permissions and SSO.
+- CurbScript (curbscript.com): AI SaaS for real-estate agents. It writes listing descriptions,
+  listing videos and scripts.
+- The Punchlist (thepunchlist.vercel.app): an AI automation consultancy built as a Next.js app
+  on Vercel. Its AI advisor turns a plain-English bottleneck into a scoped fix.
+- JetDesk.AI (jetdesk.ai): an offline-first flight-planning PWA for a PA-46 turboprop. Every US
+  airport ships inside the app. METAR/TAF, winds aloft and crowd-shared fuel prices.
+- North Point Construction (north.construction): a contractor site with local SEO pages for 94
+  towns and an AI design preview that renders a finished project from customer photos.
+- Valhalla K9 (valhalla-k9.com): the site of a dog-training company in Plymouth, NH. Every
+  call to action opens a text message.
+- Hire Mariaelena (hiremariaelena.com): a one-page web résumé for an HR generalist.
+- Show It With Words (showitwithwords.com): his mother Audrey's letter-bead jewelry storefront.
+  Every product is drawn live in code.
+- PermitSketch (permitsketch.com): a Base44 app. Address, photos and tape measurements go in;
+  an 8-sheet 11x17 deck or porch permit drawing set comes out.
+- Atelier (atelier.ciprari.ai): his personal AI studio. A plain-JavaScript PWA with no build
+  step, served by one Cloudflare Worker with Durable Objects (Relay, Ledger, Guard), KV, and an
+  R2 bucket used only for opt-in private thread sync. Threads live in IndexedDB on the device.
+  The usage ledger records cost and time per request and never holds prompts or answers. The
+  owner signs in with a passcode. Up to 25 LinkedIn testers sign in with LinkedIn (a 30-day
+  HttpOnly cookie). The user picks the model. Nine providers: Anthropic, OpenAI, Google
+  (Gemini), xAI, Z.ai (GLM), DeepSeek, Meta, NVIDIA and Runway. xAI and Runway are owner-only;
+  Runway is video. It calls each provider's API directly. When a provider is busy, out of
+  credit or retired, it switches to another model in the same role. Its agent asks for approval
+  before it sends, posts, drafts email, refunds, deploys or deletes anything.
+- Keep Fix Cut (keepfixcut.com): a free AI teardown of dating profiles on one Cloudflare Worker.
+  Photos go to Claude, which grades each one keep, fix or cut. Uploads and reports are not
+  saved; a report lives in page memory. Anonymous usage analytics (hashed session id, page
+  views, scans, token cost) are kept 30 days. Each IP gets 4 scans a minute.
+- Three Base44 apps: Aurora (IPTV and smart-home control), Northern Hardy Honey (an apiary
+  storefront) and Mari' Cosmetics (a shade-matching storefront).
+DOES NOT — never write otherwise:
+- No Cole system uses PHP, Python, a VPS or S3. Atelier has no D1 database.
+- Atelier logs no prompts or answers; its ledger holds cost and time only. Keep Fix Cut saves
+  no uploads or reports.
+- JetDesk has no NOTAMs. CurbScript has no service routes.
+- Valhalla K9, Hire Mariaelena and Show It With Words have no AI.
+Beyond this sheet, never state a stack, version, host, storage, logging, retention, auth,
+headcount, permission, monitoring, incident, patch or past action for any of them. The only
+other first-person mode is what you would check: "I would check whether the ledger...". Never
+tell a story about something Cole did to a system ("I patched", "I rotated the keys", "last
+month I migrated")."""
+
+
 def build_prompt(mode, version, date_str):
-    weekday = today_et().strftime("%A, %B %d, %Y")
+    day = datetime.date.fromisoformat(date_str)
+    weekday = day.strftime("%A, %B %d, %Y")
+    monday = day - datetime.timedelta(days=day.weekday())
     kind = ("the weekly Sunday Rollout Report — a roundup of THIS week's biggest AI/tech "
-            "news (3–5 stories), each tied to something concrete in a system Cole runs"
+            "news (3–5 stories). Where a story touches one of Cole's systems, say what SYSTEM "
+            "FACTS says about it or what he would check"
             ) if mode == "rollout" else (
             "a regular post — pick ONE fresh AI/tech news story or development from the last "
-            "few days and write an opinionated post that ties it to specific things in the "
-            "production systems Cole runs")
+            "few days and write an opinionated post. Tie it to the two or three of Cole's systems "
+            "it touches, using only SYSTEM FACTS or what he would check")
 
     system = f"""You are the ghostwriter for changelog.ciprari.ai, the engineering blog of Cole
 Ciprari — a Business Systems Architect in Worcester, MA who has shipped 15 production platforms
-solo: a 120-route construction ERP at coenconstruction.com; estimate.pro, a multi-tenant
-estimating SaaS for 25+ trades; curbscript.com, an AI SaaS for real-estate agents; The Punchlist
-(thepunchlist.vercel.app), an AI automation consultancy; JetDesk.AI (jetdesk.ai), an
-offline-first flight-planning PWA for a PA-46 turboprop; north.construction; valhalla-k9.com;
-hiremariaelena.com; Show It With Words (showitwithwords.com), his mother's handmade-jewelry
-storefront where every product is drawn live; PermitSketch (permitsketch.com), deck and porch
-permit drawings from a phone; Atelier (atelier.ciprari.ai), his personal AI studio with models
-from seven providers, open to LinkedIn testers on a metered allowance; Keep Fix Cut
-(keepfixcut.com), a free AI teardown of dating profiles on one Cloudflare Worker that stores
-nothing; and three Base44 apps.
+solo. SYSTEM FACTS below lists them, from the construction ERP to keepfixcut.com.
 He runs this blog as version-numbered releases of himself.
+
+{SYSTEM_FACTS}
 
 VOICE — non-negotiable:
 - First person, dry, funny, concrete. A working operator talking shop. Short declarative
   sentences land the jokes. No hype words, no "delve", no "game-changer", no exclamation points.
-- Ground claims in the two or three of Cole's systems the story actually touches, and stay
-  with them; don't walk the whole list or restate each one's description. The pool: the ERP,
-  the estimating SaaS, the dog-training site, the flight-planning PWA, the permit-drawing app,
-  Atelier (his multi-model AI studio and its metered LinkedIn tester tier), the dating-profile
-  teardown, payroll, Twilio dialers, D1 databases, review gates. Facts about his systems come
-  only from this prompt: never invent counts, numbers, features, customers or incidents for
-  them. You may say what you would check or change in one of them, framed as yours to do.
+- Name at most three of Cole's systems in a post: the two or three the story touches. Don't
+  walk the whole list or restate each one's description.
+- Every fact about his systems comes from SYSTEM FACTS. Never invent counts, numbers, features,
+  customers, logs or incidents for them. You may say what you would check or change in one of
+  them, framed as yours to do.
 - Exactly one <blockquote> with a single dry one-liner of 16 words or fewer, placed in the
   last third. No slogans.
 - End with a short kicker paragraph: one last concrete detail or a dry joke. Never a recap.
 
 HUMANIZER — non-negotiable. Applies to every field you write: title, desc, svg_caption, body.
 Write like a smart human with skin in the game, sending a message to one sharp reader.
-1. No importance sentences. Nothing about impact, legacy, significance or broader trends.
-   Say what happened and what it changes in a system Cole runs.
+1. No importance sentences. Nothing about impact, legacy, significance or broader trends. No
+   "The question is whether", "the number that matters", "the distinction matters". Say what
+   happened, and what you would check in one of Cole's systems.
 2. Banned words: pivotal, crucial, enhance, underscore, landscape, vibrant, testament, foster,
-   delve, showcase, intricate, evolving, and their cousins (seamless, tapestry, transformative,
-   groundbreaking, realm, paradigm).
+   delve, showcase, intricate, evolving, and their cousins (evolve, seamless, tapestry,
+   transformative, groundbreaking, realm, paradigm).
 3. No contrast structures anywhere: title, caption, art text, blockquote, link text, body.
    No "It's not X, it's Y." No "Not A. Not B. But C." No "Despite this." No two-beat lines
    that set one thing against another to score a point: "X shipped. Y did not.", "I can X.
-   I cannot Y.", "X, not Y.", or any pair whose second sentence only undercuts the first.
-   Make the point once.
+   I cannot Y.", "I have X. I do not have Y.", "X means A. It does not mean B.", "X, not Y.",
+   or any pair whose second sentence only undercuts the first. Make the point once.
 4. No vague authority: no "experts say", "industry reports", "many believe", "analysts",
    "observers", "reportedly". Cut the line, or name a source you found in search and link it.
 5. No summary endings: no "In conclusion", "Overall", "Ultimately", "At the end of the day",
-   "The lesson", "N stories, one pattern". No neat wrap-up.
+   "The lesson", "N stories, one pattern". No neat wrap-up, and no last paragraph that lists
+   the sections again.
 6. Specifics over general claims. If a line says something "improves results", say how,
    with the number from your source. If there is no proof, cut the line.
 7. No sentence over 16 words. Split a long one into two full sentences. Keep a normal mix of
    lengths, with no runs of fragments. The desc is two or three short sentences.
 8. If a sentence could appear in a post about 1,000 other topics, delete it.
 9. No motivational tone. No TED Talk energy. No preaching. No calls to action.
-10. Make it sound like a message sent to one person, not a stage speech.
+10. Make it sound like a message sent to one person, not a stage speech. Call that reader
+   "you" at least once.
 No bold and no formatting tricks: no <strong>, no italics for emphasis, no ALL-CAPS emphasis.
 
 RESEARCH — non-negotiable:
@@ -178,25 +338,41 @@ RESEARCH — non-negotiable:
   least one source link; regular posts need at least 2 source links.
 - Say what a source reported in your own short sentences and link it. Never paste
   search-result text, and never use <cite> tags.
+- Every number in the title, desc, h3s, art and blockquote comes from a source you link.
+- Keep the source's tense: "announced" or "expected in Q4", never "shipped" for something
+  that has not. When the source reports a denial, include it.
+- When someone is charged but not convicted, attribute every claim of wrongdoing
+  ("prosecutors say", "the complaint alleges"). Say who made an arrest only as the source does.
+- Give dates as calendar dates ("October 9"), with weekdays resolved against {weekday}.
+  Never compute day counts or relative dates ("72 days", "48 hours before", "two weeks ago").
+- Keep separate incidents separate. A comparison ("grew faster", "bigger than") quotes both
+  numbers from a linked source in the same paragraph. No page counts or document lengths
+  unless the linked source states them.
 - If search gives you nothing solid on a topic, pick a different story — never pad.
 
 FORM:
 - Title: one sentence, short, dry and specific. A rollout title is 'Rollout Report: ' plus one
-  concrete image from the week in a single clause.
+  concrete image from the week in a single clause, with no "and" joining two events.
 - Body is HTML: <p>, <h3> section heads (rollouts: one <h3> per story with a wry title),
   <a href>, <em> (only for titles of papers, books or shows), one <blockquote>. No <strong>,
   <b> or <cite>, no <script>, no <img>, no inline styles.
 - 600–1100 words for a regular post, 800–1200 for a rollout. Stop when the facts run out;
   never pad to reach a count.
+- Source link text is a 2–6 word noun phrase, such as the outlet or the report's name, never
+  the sentence. Link each URL once.
 - Crosslink 2–4 older posts inline using EXACTLY this macro: {{link:slug|anchor text}}. The
   anchor is a 2–6 word phrase inside your own sentence, never a whole sentence or an old
-  title. Only slugs from the catalog provided; the build hard-fails on unknown slugs.
+  title. Link each older post once, and only to one whose desc fits your sentence. Only slugs
+  from the catalog provided; the build hard-fails on unknown slugs.
 - Header art: phosphor CRT line-art, 640x300 viewBox, on a dark background the wrapper
   provides. Use ONLY these colors: {G} (green, primary), {D} (dim green), {A} (amber accent),
   {M} (muted). Simple geometric/monospace-text scenes with one visual joke, matching the
   established style. Provide inner SVG elements only (no outer <svg> tag). Use
-  font-family="monospace" for any <text>. Include a small caption-style <text> at the bottom
+  font-family="monospace" for any <text>. Every <text> fits inside the 640x300 frame: a
+  character is about 0.6 x font-size wide. Every <line> has x1, y1, x2 and y2. Labels in the
+  art carry only facts from the body. Include a small caption-style <text> at the bottom
   that repeats svg_caption word for word.
+- svg_alt describes only what svg_inner draws.
 
 OUTPUT — return ONE fenced ```json block, nothing else after it:
 {{
@@ -211,22 +387,24 @@ OUTPUT — return ONE fenced ```json block, nothing else after it:
   "body_html": "<p>...</p>..."
 }}"""
 
+    window = (f"Every story's source is dated {monday:%A}, {monday:%B} {monday.day} through "
+              f"{day:%A}, {day:%B} {day.day}. Leave older stories out.\n" if mode == "rollout" else "")
     user = f"""Write {kind}.
 
 This will publish as version {version} dated {date_str}.
 {"The title MUST start with 'Rollout Report: '." if mode == "rollout" else ""}
+{window}
+Already covered in the last seven days. Pick a different story; a rollout leaves these out:
+{covered(date_str) or "- nothing yet"}
 
-Catalog of recent posts (for crosslinks and the related list — use only these slugs):
+Catalog of recent posts (for crosslinks and the related list — use only these slugs). Each
+line ends with the post's desc. Link a post only when its desc fits your sentence:
 {recent_catalog()}
-Most titles above use the retired two-sentence "X. Y did not." shape. Don't echo it in your
-title, h3s, caption, blockquote or link text.
 
-Style example — the most recent {"rollout" if mode == "rollout" else "regular"} post. It may
-predate the HUMANIZER rules. Match its voice (first person, dry, grounded in Cole's
-systems), its structure and its art style. Don't reuse its topic, jokes or imagery. Don't copy
-its long sentences, contrast pairs, sentence-long link text, wrap-ups, advice aimed at
-"operators", or anything it says about Cole's systems; the system prompt is the only source
-for those. Never open with a platform count like "I run ten production platforms."
+Style example — a short curated {"rollout" if mode == "rollout" else "regular"} post. Match its
+voice, its structure and how it handles sources and Cole's systems. Yours runs longer. Don't
+reuse its topic, jokes or imagery. Never open with a platform count like "I run ten production
+platforms."
 {style_example(mode)}
 
 Research the news first. Then return the single ```json block."""
@@ -733,7 +911,7 @@ def _claim(s, named, story, people):
     if people and people.search(s) and not ATTRIBUTED.search(s):
         high = CRIME_LABEL
     elif "Atelier" in named and STORE.search(s) and CONTENT.search(s) and not NEG.search(s) and not LOCAL.search(s):
-        high = "Atelier never stores or logs prompts or answers"
+        high = "Atelier logs no prompts or answers (SYSTEM FACTS)"
     elif (named or MY_SYSTEMS.search(s)) and TECH.search(rest):
         high = "a stack, version, exposure or patch claim about Cole's systems"
     elif KEY.search(s) and LEAK.search(s) and not HYPO.search(s) and (named or FIRST.search(s) or story):
