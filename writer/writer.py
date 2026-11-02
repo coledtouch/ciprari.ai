@@ -111,9 +111,10 @@ def covered(date_str, days=7):
 
 def _no_system_lines(fragment):
     """Old copy shown to the model (catalog and last-week descs), minus every sentence about
-    Cole's systems, so a slip in one post can't teach the next one a fact SYSTEM_FACTS lacks."""
+    Cole's systems or in his first person, so a slip in one post can't teach the next one a
+    fact SYSTEM_FACTS lacks."""
     return _scan(fragment, strip=lambda r: r["named"] or r["soft"] or r["high"] or
-                 GENERIC.search(r["text"]) or ME.search(r["text"]))[0]
+                 GENERIC.search(r["text"]) or ME.search(r["text"]) or FIRST.search(r["text"]))[0]
 
 
 # The style example is pinned. Copying the newest post copied its slips into the next day's
@@ -764,7 +765,7 @@ def humanizer_problems(post):
               for s in _sentences(_plain(prose)) if _words(s) >= 6 and _norm(s) in recent]
     probs += claim_problems(post)
     probs = list(dict.fromkeys(probs))
-    return sorted(probs, key=lambda p: (not p.startswith(MUST_FIX), "-word sentence" in p))
+    return sorted(probs, key=lambda p: (not _must(p), "-word sentence" in p))
 
 
 # ---------------------------------------------------------------- claims
@@ -1030,13 +1031,31 @@ HUMANIZE_ASK = (
     "A lint pass found the HUMANIZER problems listed below. Fix each one by editing only the "
     "sentence or field it names. Split a long sentence at a natural joint into two full sentences "
     "and keep every fact. Fix a contrast pair by stating the point once, in one plain sentence; "
-    "don't swap in another pair such as 'X takes a month. Y takes longer.' Web search is off for this step: add no new facts, numbers, names, quotes "
-    "or links, and where a rule wants a source you don't have, cut the line. If a flagged phrase "
-    "sits inside quotation marks, don't edit the quoted words: paraphrase without the quotes, quote "
-    "fewer words, or cut it. Keep every crosslink (shorten its anchor text if needed), every source "
-    "link, the headings, the related list and the art. If you change svg_caption, change the "
-    "caption <text> in svg_inner to the same words. If you change the title, update slug_words to "
-    "match. Return ONLY the corrected ```json block.")
+    "don't swap in another pair such as 'X takes a month. Y takes longer.' Web search is off for "
+    "this step: add no new facts, numbers, names, quotes or links. Where a rule wants a source you "
+    "don't have, cut the line only if it carries no link; otherwise rephrase it around the link. "
+    "A line about Cole's systems says only what SYSTEM FACTS says, or what he would check. If a "
+    "flagged phrase sits inside quotation marks, don't edit the quoted words: paraphrase without "
+    "the quotes, quote fewer words, or cut it. Keep every crosslink (shorten its anchor text if "
+    "needed), every source link, the headings, the related list and the art. If you change "
+    "svg_caption, change the caption <text> in svg_inner to the same words. If you change the "
+    "title, update slug_words to match. Return ONLY the corrected ```json block.")
+PASSES = 3  # revision calls at most; each one sees only the problems still left
+# A revision is merged field group by field group, so a good title survives a bad body.
+GROUPS = (("title", "slug_words"), ("desc",), ("svg_caption", "svg_inner"), ("body_html",))
+TRACE_PATH = os.environ.get("WRITER_TRACE")  # publish.yml uploads it as a run artifact
+
+
+def trace(kind, **data):
+    """Append one JSON line to WRITER_TRACE (when set): drafts, revisions and what was kept."""
+    if not TRACE_PATH:
+        return
+    row = {"at": datetime.datetime.now(ET).isoformat(timespec="seconds"), "kind": kind, **data}
+    try:
+        with open(TRACE_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError as e:
+        print(f"trace: could not write {TRACE_PATH} ({e})", flush=True)
 
 
 def _body_words(p):
@@ -1048,9 +1067,12 @@ def _sources(p):
 
 
 def _shape_loss(post, rev):
-    """Why a revision lost or invented material the draft had (None when it kept everything)."""
-    if _sources(rev) != _sources(post):
-        return "it changed the source links"
+    """Why a revision lost or invented material the draft had (None when it kept enough).
+    Search is off during a revision, so a new URL can only be made up. A dropped one is
+    allowed: validate() still holds the link minimum."""
+    added, removed = _sources(rev) - _sources(post), _sources(post) - _sources(rev)
+    if added:
+        return f"it added source links {sorted(added)} (and dropped {sorted(removed)})"
     if _body_words(rev) < 0.8 * _body_words(post):
         return f"it cut the body from {_body_words(post)} to {_body_words(rev)} words"
     for mark, what in (("{link:", "crosslinks"), ("<h3>", "headings")):
@@ -1059,54 +1081,113 @@ def _shape_loss(post, rev):
     return None
 
 
+def _must(problem):
+    return problem.startswith(MUST_FIX) or "must not ship" in problem
+
+
+def _score(post):
+    probs = humanizer_problems(post)
+    return sum(1 for p in probs if _must(p)), len(probs)
+
+
+def _merge(best, rev, draft, mode):
+    """Take each field group from the revision when it validates, keeps the draft's material
+    and scores better: fewer must-fix problems first, then fewer problems in all."""
+    taken = []
+    for group in GROUPS:
+        if all(rev.get(k) == best.get(k) for k in group):
+            continue
+        name = "+".join(group)
+        if not all(isinstance(rev.get(k), str) and rev[k].strip() for k in group):
+            print(f"humanizer: {name} in the revision is not text; keeping ours", flush=True)
+            continue
+        trial = dict(best, **{k: rev[k] for k in group})
+        errs = validate(trial, mode)
+        lost = _shape_loss(draft, trial) if "body_html" in group else None
+        if errs or lost:
+            print(f"humanizer: {name} refused ({'; '.join(errs) or lost})", flush=True)
+            continue
+        before, after = _score(best), _score(trial)
+        if after >= before:
+            print(f"humanizer: {name} not cleaner ({after[1]} problem(s), {after[0]} must-fix)", flush=True)
+            continue
+        dropped = _sources(best) - _sources(trial)
+        if dropped:
+            print(f"humanizer: {name} accepted; it dropped source links {sorted(dropped)}", flush=True)
+        best = trial
+        taken.append(name)
+    return best, taken
+
+
+def _first_sentence(post, mode):
+    """Last resort for a title or caption the revisions left as two sentences: keep the first
+    one when it has three words or more. A new title gets new slug_words (rollout slugs are
+    dated). The caption <text> in the art changes with the caption."""
+    out = dict(post)
+    title = re.sub(r"^Rollout Report:\s*", "", out["title"])
+    first = _sentences(title)[0] if len(_sentences(title)) >= 2 else ""
+    if _words(first) >= 3:
+        out["title"] = ("Rollout Report: " if mode == "rollout" else "") + first
+        if mode != "rollout":
+            out["slug_words"] = " ".join(slugify(first).split("-")[:6])
+    cap = out["svg_caption"].strip()
+    first = _sentences(cap)[0] if len(_sentences(cap)) >= 2 else ""
+    if _words(first) >= 3 and out["svg_inner"].count(cap) == 1:
+        out["svg_caption"], out["svg_inner"] = first, out["svg_inner"].replace(cap, first)
+    if out == post or validate(out, mode):
+        return post
+    print(f'humanizer: kept the first sentence: "{out["title"]}" / "{out["svg_caption"]}"', flush=True)
+    return out
+
+
 def humanize(post, mode, messages, system):
-    """One revision pass for the lint's findings. Keeps the draft unless the revision validates,
-    keeps its sources and shape, and has fewer problems; a failed revision never costs the post."""
+    """Up to PASSES revision calls for the lint's findings, merged field group by field group.
+    Keeps the draft's version of anything a revision makes worse; a failed call never costs the
+    post."""
     try:
         return _humanize(post, mode, messages, system)
-    except (Exception, SystemExit) as e:  # network, timeout, odd JSON types: keep the draft
-        print(f"humanizer: skipped ({type(e).__name__}: {str(e)[:200]}); keeping the draft")
+    except (Exception, SystemExit) as e:  # odd JSON types and the like: keep the draft
+        print(f"humanizer: skipped ({type(e).__name__}: {str(e)[:200]}); keeping the draft", flush=True)
         return post
 
 
 def _humanize(post, mode, messages, system):
+    best = post
     probs = humanizer_problems(post)
-    print(f"humanizer: {len(probs)} problem(s) in the draft")
-    if not probs:
-        return post
-    shown = probs[:40] + ([f"...and {len(probs) - 40} more like these"] if len(probs) > 40 else [])
-    msgs = messages + [
-        {"role": "assistant", "content": "```json\n" + json.dumps(post, ensure_ascii=False) + "\n```"},
-        {"role": "user", "content": HUMANIZE_ASK + "\n- " + "\n- ".join(shown)}]
-    try:
-        rev = extract_json(call_claude(msgs, system, search=False))
-    except (ValueError, json.JSONDecodeError, SystemExit) as e:
-        print(f"humanizer: revision unusable ({str(e)[:200]}); keeping the draft")
-        return post
-    if not isinstance(rev, dict):
-        print("humanizer: revision was not a JSON object; keeping the draft")
-        return post
-    rev = dict(rev, **{k: post[k] for k in ("related", "keywords", "svg_alt") if k in post})
-    if isinstance(rev.get("body_html"), str):
-        rev["body_html"] = STRIP_TAGS.sub("", rev["body_html"])
-    if not all(isinstance(rev.get(k), str) for k in ("slug_words", "title", "desc", "svg_caption",
-                                                       "svg_inner", "body_html")):
-        print("humanizer: revision has a non-text field; keeping the draft")
-        return post
-    errs = validate(rev, mode)
-    if errs:
-        print(f"humanizer: revision failed validation ({'; '.join(errs)}); keeping the draft")
-        return post
-    lost = _shape_loss(post, rev)
-    if lost:
-        print(f"humanizer: revision refused because {lost}; keeping the draft")
-        return post
-    left = humanizer_problems(rev)
-    if len(left) >= len(probs):
-        print(f"humanizer: revision not cleaner ({len(left)} problem(s)); keeping the draft")
-        return post
-    print(f"humanizer: revision accepted, {len(left)} problem(s) left")
-    return rev
+    print(f"humanizer: {len(probs)} problem(s) in the draft", flush=True)
+    trace("draft", post=post, problems=probs)
+    for n in range(1, PASSES + 1):
+        if not probs:
+            break
+        shown = probs[:40] + ([f"...and {len(probs) - 40} more like these"] if len(probs) > 40 else [])
+        msgs = messages + [
+            {"role": "assistant", "content": "```json\n" + json.dumps(best, ensure_ascii=False) + "\n```"},
+            {"role": "user", "content": HUMANIZE_ASK + "\n- " + "\n- ".join(shown)}]
+        try:
+            raw = call_claude(msgs, system, search=False)
+        except (Exception, SystemExit) as e:  # network, timeout, API error: stop asking
+            print(f"humanizer: pass {n} skipped ({type(e).__name__}: {str(e)[:200]}); keeping what we have", flush=True)
+            trace("revision", n=n, error=f"{type(e).__name__}: {str(e)[:200]}")
+            break
+        try:
+            rev = extract_json(raw)
+        except (ValueError, json.JSONDecodeError) as e:
+            print(f"humanizer: pass {n} unusable ({str(e)[:200]})", flush=True)
+            trace("revision", n=n, error=str(e)[:200], raw=raw[-4000:])
+            continue
+        if not isinstance(rev, dict):
+            print(f"humanizer: pass {n} was not a JSON object", flush=True)
+            continue
+        rev = dict(rev, **{k: post[k] for k in ("related", "keywords", "svg_alt") if k in post})
+        if isinstance(rev.get("body_html"), str):
+            rev["body_html"] = STRIP_TAGS.sub("", rev["body_html"])
+        best, taken = _merge(best, rev, post, mode)
+        probs = humanizer_problems(best)
+        print(f"humanizer: pass {n} took {', '.join(taken) or 'nothing'}; {len(probs)} problem(s) left", flush=True)
+        trace("revision", n=n, revision=rev, taken=taken, problems=probs)
+    if any(p.startswith(("title: two sentences", "svg_caption: two or more")) for p in probs):
+        best = _first_sentence(best, mode)
+    return best
 
 
 # ---------------------------------------------------------------- emit
@@ -1184,11 +1265,11 @@ def main():
     mode = pick_mode(next((a for a in args if not a.startswith("--")), "auto"))
     version = next_version(mode)
     date_str = today_et().strftime("%Y-%m-%d")
-    print(f"mode={mode} version={version} date={date_str} model={MODEL} stub={stub}")
+    print(f"mode={mode} version={version} date={date_str} model={MODEL} stub={stub}", flush=True)
 
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if not stub and already_published(date_str):
-        print(f"already published for {date_str} — nothing to do")
+        print(f"already published for {date_str} — nothing to do", flush=True)
         if gh_out:
             with open(gh_out, "a") as f:
                 f.write("skip=true\n")
@@ -1207,6 +1288,7 @@ def main():
             try:
                 post = extract_json(raw)
             except (ValueError, json.JSONDecodeError) as e:
+                trace("unparsed", attempt=attempt, error=str(e)[:200], raw=raw[-4000:])
                 messages += [{"role": "assistant", "content": raw[-4000:]},
                              {"role": "user", "content": f"Your output failed to parse: {e}. "
                               "Return ONLY the corrected ```json block."}]
@@ -1215,6 +1297,7 @@ def main():
                 post["svg_inner"] = repair_svg(post["svg_inner"])
             errs = validate(post, mode)
             if errs:
+                trace("invalid", attempt=attempt, errors=errs, post=post)
                 if attempt == 2:
                     raise SystemExit("validation failed twice: " + "; ".join(errs))
                 messages += [{"role": "assistant", "content": raw[-4000:]},
@@ -1228,6 +1311,7 @@ def main():
             post, cut = drop_high_risk(post)
             for field, text, label in cut:
                 print(f'claims: cut from {field} ({label}): "{_clip(text, 160)}"', flush=True)
+            trace("final", post=post, cut=cut, problems=humanizer_problems(post))
             errs = validate(post, mode) if cut else []
             if errs:  # exit non-zero: nothing is appended, and the next scheduled run writes again
                 raise SystemExit("claims: cutting must-not-ship sentences broke the post: " + "; ".join(errs))
@@ -1236,7 +1320,7 @@ def main():
         append_post(entry)
         ok, log = try_build()
         if ok:
-            print(f"published-ready: {slug}\n{log[-400:]}")
+            print(f"published-ready: {slug}\n{log[-400:]}", flush=True)
             gh_out = os.environ.get("GITHUB_OUTPUT")
             if gh_out:
                 with open(gh_out, "a") as f:

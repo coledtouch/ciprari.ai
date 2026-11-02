@@ -1,6 +1,10 @@
 """Offline checks for the humanizer lint and its one revision pass (no API calls)."""
+import contextlib
+import io
 import json
+import os
 import re
+import tempfile
 import unittest
 from unittest.mock import patch
 import writer
@@ -291,18 +295,25 @@ class HumanizePassTests(unittest.TestCase):
     draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>This is crucial.</p>")
     messages = [{"role": "user", "content": "write it"}]
 
-    def run_pass(self, reply=None, error=None, errs=()):
-        calls = []
+    @staticmethod
+    def js(p):
+        return "```json\n" + json.dumps(p) + "\n```"
+
+    def run_pass(self, reply=None, error=None, errs=(), draft=None, mode="post", replies=None):
+        """humanize() with call_claude stubbed. errs=None keeps the real validate()."""
+        calls, replies = [], list(replies or [])
 
         def fake_call(msgs, system, search=True):
             calls.append((msgs, search))
             if error:
                 raise error
-            return reply
+            return replies.pop(0) if replies else reply
 
-        with patch.object(writer, "call_claude", side_effect=fake_call), \
-             patch.object(writer, "validate", return_value=list(errs)):
-            out = writer.humanize(self.draft, "post", list(self.messages), "sys")
+        out_buf = io.StringIO()
+        checks = patch.object(writer, "validate", return_value=list(errs)) if errs is not None else contextlib.nullcontext()
+        with patch.object(writer, "call_claude", side_effect=fake_call), contextlib.redirect_stdout(out_buf), checks:
+            out = writer.humanize(draft or self.draft, mode, list(self.messages), "sys")
+        self.log = out_buf.getvalue()
         return out, calls
 
     def test_no_problems_means_no_call(self):
@@ -312,46 +323,121 @@ class HumanizePassTests(unittest.TestCase):
 
     def test_cleaner_revision_is_used_without_search(self):
         fixed = dict(writer.STUB)
-        out, calls = self.run_pass(reply="```json\n" + json.dumps(fixed) + "\n```")
+        out, calls = self.run_pass(reply=self.js(fixed))
         self.assertEqual(out, fixed)
+        self.assertEqual(len(calls), 1)
         msgs, search = calls[0]
         self.assertFalse(search)
         self.assertEqual([m["role"] for m in msgs], ["user", "assistant", "user"])
         self.assertIn("crucial", msgs[-1]["content"])
 
     def test_draft_kept_when_revision_fails(self):
-        self.assertIs(self.run_pass(error=SystemExit("Claude API error 529"))[0], self.draft)
-        self.assertIs(self.run_pass(reply="no json here")[0], self.draft)
-        fixed = "```json\n" + json.dumps(writer.STUB) + "\n```"
-        self.assertIs(self.run_pass(reply=fixed, errs=["not enough outbound source links"])[0], self.draft)
+        out, calls = self.run_pass(error=SystemExit("Claude API error 529"))
+        self.assertIs(out, self.draft)
+        self.assertEqual(len(calls), 1)
+        out, calls = self.run_pass(reply="no json here")
+        self.assertIs(out, self.draft)
+        self.assertEqual(len(calls), writer.PASSES)
+        self.assertIs(self.run_pass(reply=self.js(writer.STUB), errs=["not enough outbound source links"])[0], self.draft)
         worse = dict(self.draft, body_html=self.draft["body_html"] + "<p>Crucial and pivotal!</p>")
-        self.assertIs(self.run_pass(reply="```json\n" + json.dumps(worse) + "\n```")[0], self.draft)
-
+        self.assertIs(self.run_pass(reply=self.js(worse))[0], self.draft)
 
     def test_transport_errors_and_odd_types_keep_draft(self):
         import urllib.error
         for err in (urllib.error.URLError("down"), TimeoutError("slow"), ConnectionResetError("reset")):
             self.assertIs(self.run_pass(error=err)[0], self.draft)
         odd = dict(writer.STUB, body_html=["not", "a", "string"])
-        self.assertIs(self.run_pass(reply="```json\n" + json.dumps(odd) + "\n```")[0], self.draft)
+        self.assertIs(self.run_pass(reply=self.js(odd))[0], self.draft)
 
-    def test_revision_that_loses_or_invents_material_is_refused(self):
+    def test_invented_link_or_shrunk_body_is_refused(self):
         body = writer.STUB["body_html"]
         cut = dict(writer.STUB, body_html=body.replace("This sentence pads the stub to a plausible length. " * 30, "", 1))
-        dropped = dict(writer.STUB, body_html=body.replace('<a href="https://ciprari.ai/status">three</a>', "three"))
-        invented = dict(writer.STUB, body_html=body.replace("<p>End.</p>", '<p>See <a href="https://invented.example/x">this</a>.</p>'))
-        for rev in (cut, dropped, invented):
-            self.assertIs(self.run_pass(reply="```json\n" + json.dumps(rev) + "\n```")[0], self.draft)
+        invented = dict(writer.STUB, body_html=body.replace(
+            '<a href="https://ciprari.ai/status">three</a>', '<a href="https://invented.example/x">three</a>'))
+        self.assertIs(self.run_pass(reply=self.js(cut))[0], self.draft)
+        self.assertIn("it cut the body", self.log)
+        self.assertIs(self.run_pass(reply=self.js(invented))[0], self.draft)
+        self.assertIn("it added source links ['https://invented.example/x'] "
+                      "(and dropped ['https://ciprari.ai/status'])", self.log)
 
-    def test_non_text_slug_keeps_draft(self):
+    def test_dropped_link_is_fine_while_validate_passes(self):
+        body = writer.STUB["body_html"]
+        one = dict(writer.STUB, body_html=body.replace('<a href="https://ciprari.ai/status">three</a>', "three"))
+        out, _ = self.run_pass(reply=self.js(one), errs=None)
+        self.assertEqual(out["body_html"], one["body_html"])
+        self.assertIn("dropped source links ['https://ciprari.ai/status']", self.log)
+        two = dict(one, body_html=one["body_html"].replace('<a href="https://ciprari.ai/">two</a>', "two"))
+        self.assertIs(self.run_pass(reply=self.js(two), errs=None)[0], self.draft)
+        self.assertIn("not enough outbound source links", self.log)
+
+    def test_good_title_survives_a_bad_body(self):
+        draft = dict(self.draft, title="The model shipped. The weights did not.", slug_words="the model shipped")
+        rev = dict(draft, title="The model shipped on Tuesday", slug_words="the model shipped on tuesday",
+                   body_html=draft["body_html"] + "<p>Pivotal and seamless.</p>")
+        out, _ = self.run_pass(reply=self.js(rev), errs=None, draft=draft)
+        self.assertEqual(out["title"], "The model shipped on Tuesday")
+        self.assertEqual(out["slug_words"], "the model shipped on tuesday")
+        self.assertEqual(out["body_html"], draft["body_html"])
+
+    def test_non_text_slug_keeps_our_title_and_takes_the_body(self):
         for bad in (["policy", "ships"], 42):
-            rev = dict(writer.STUB, slug_words=bad)
-            self.assertIs(self.run_pass(reply="```json\n" + json.dumps(rev) + "\n```")[0], self.draft)
+            out, _ = self.run_pass(reply=self.js(dict(writer.STUB, slug_words=bad)))
+            self.assertEqual(out["slug_words"], self.draft["slug_words"])
+            self.assertEqual(out["body_html"], writer.STUB["body_html"])
+
+    def test_must_fix_beats_a_new_long_sentence(self):
+        draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>Atelier runs on Python.</p>")
+        rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>" + " ".join(["word"] * 17) + ".</p>")
+        out, _ = self.run_pass(reply=self.js(rev), errs=None, draft=draft)
+        self.assertEqual(out["body_html"], rev["body_html"])
+
+    def test_later_passes_ask_only_for_what_is_left(self):
+        draft = dict(self.draft, title="The model shipped. The weights did not.")
+        first = dict(writer.STUB, title=draft["title"])
+        second = dict(writer.STUB, title="The model shipped on Tuesday")
+        out, calls = self.run_pass(errs=None, draft=draft, replies=[self.js(first), self.js(second)])
+        self.assertEqual(len(calls), 2)
+        self.assertIn("crucial", calls[0][0][-1]["content"])
+        self.assertNotIn("crucial", calls[1][0][-1]["content"])
+        self.assertIn("title: two sentences", calls[1][0][-1]["content"])
+        self.assertIn('"The model shipped. The weights did not."', calls[1][0][-2]["content"])
+        self.assertEqual((out["title"], out["body_html"]), (second["title"], writer.STUB["body_html"]))
+
+    def test_last_resort_keeps_the_first_sentence(self):
+        art = writer.STUB["svg_inner"].replace("This is only a test.", "The tap ran dry at noon. The crew kept pouring.")
+        draft = dict(writer.STUB, title="The promise said independence. The contract said approval.",
+                     svg_caption="The tap ran dry at noon. The crew kept pouring.", svg_inner=art)
+        out, calls = self.run_pass(reply="no json here", errs=None, draft=draft)
+        self.assertEqual(len(calls), writer.PASSES)
+        self.assertEqual(out["title"], "The promise said independence.")
+        self.assertEqual(out["slug_words"], "the promise said independence")
+        self.assertEqual(out["svg_caption"], "The tap ran dry at noon.")
+        self.assertIn(">The tap ran dry at noon.</text>", out["svg_inner"])
+        self.assertEqual(writer.humanizer_problems(out), [])
+        rollout = dict(writer.STUB, title="Rollout Report: The model failed the bar. The accord has no teeth.")
+        out, _ = self.run_pass(reply="no json here", errs=None, draft=rollout, mode="rollout")
+        self.assertEqual(out["title"], "Rollout Report: The model failed the bar.")
+        self.assertEqual(out["slug_words"], rollout["slug_words"])
+        short = dict(writer.STUB, title="Shipped. The weights did not.")
+        self.assertIs(self.run_pass(reply="no json here", errs=None, draft=short)[0], short)
+
+    def test_trace_records_the_draft_and_each_pass(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "trace.jsonl")
+            with patch.object(writer, "TRACE_PATH", path):
+                self.run_pass(reply=self.js(writer.STUB))
+            with open(path, encoding="utf-8") as f:
+                rows = [json.loads(line) for line in f]
+        self.assertEqual([r["kind"] for r in rows], ["draft", "revision"])
+        self.assertTrue(any("crucial" in p for p in rows[0]["problems"]))
+        self.assertEqual((rows[1]["n"], rows[1]["taken"], rows[1]["problems"]), (1, ["body_html"], []))
+        with patch.object(writer, "TRACE_PATH", None):
+            writer.trace("draft", post={})  # no path: nothing written, nothing raised
 
     def test_revision_keeps_related_and_strips_cite(self):
         fixed = dict(writer.STUB, related=["something-else"],
                      body_html=writer.STUB["body_html"].replace("<p>End.</p>", "<p><cite index='1'>End.</cite></p>"))
-        out, _ = self.run_pass(reply="```json\n" + json.dumps(fixed) + "\n```")
+        out, _ = self.run_pass(reply=self.js(fixed))
         self.assertEqual(out["related"], self.draft["related"])
         self.assertNotIn("<cite", out["body_html"])
 

@@ -38,6 +38,11 @@ No desktop app, no laptop. The machine can be off.
   hard-fails on broken crosslinks. If validation fails twice, the run fails loudly and
   nothing is published.
 - Cost: roughly a few cents per post (Claude Sonnet + a handful of web searches).
+- Facts about Cole's systems come only from `SYSTEM_FACTS` in `writer/writer.py`. When a
+  product changes, change that sheet first.
+- Every run uploads a `writer-trace` artifact: the draft, each humanizer pass and the final
+  post. GitHub keeps it 14 days. Offline writer checks:
+  `python -m unittest discover -s writer -p test_humanizer.py`.
 
 ## Posts staged from the ColeOS Root Console
 
