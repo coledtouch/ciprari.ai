@@ -197,6 +197,29 @@ class HumanizePassTests(unittest.TestCase):
         self.assertNotIn("<cite", out["body_html"])
 
 
+class EmitTests(unittest.TestCase):
+    def load(self, entry):
+        """Evaluate a compose_entry() dict the way posts_b.py loads it."""
+        return eval(compile(entry.strip().rstrip(","), "posts_b.py", "eval"), {"_svg": lambda s: s})
+
+    def test_backslashes_survive_the_python_literal(self):
+        text = r"<p>Open C:\Users\cole, run echo \N and \x41, then C:\new\temp.</p>"
+        art = r'<text x="1" y="1">C:\PERMITSKETCH&gt; curl -X GET \</text>'
+        post = dict(writer.STUB, body_html=text + writer.STUB["body_html"], svg_inner=art)
+        loaded = self.load(writer.compose_entry(post, "post", "v9.9.0", "2026-11-02")[1])
+        self.assertEqual(loaded["body"].strip(), post["body_html"])
+        self.assertEqual(loaded["svg"].strip(), art)
+
+    def test_slug_is_cut_at_a_word(self):
+        cases = {"anthropic filed the s1 compute payment three billion": "anthropic-filed-the-s1-compute-payment-three",
+                 "the promise said independence the contract said approval": "the-promise-said-independence-the-contract-said",
+                 "the model shipped": "the-model-shipped"}
+        for words, want in cases.items():
+            slug = writer.compose_entry(dict(writer.STUB, slug_words=words), "post", "v9.9.0", "2026-11-02")[0]
+            self.assertEqual(slug, "v9-9-0-" + want, words)
+            self.assertLessEqual(len(slug) - len("v9-9-0-"), 48)
+
+
 class PromptTests(unittest.TestCase):
     def test_prompt_knows_fifteen_platforms_and_the_rules(self):
         for mode in ("post", "rollout"):

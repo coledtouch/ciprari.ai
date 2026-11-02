@@ -532,11 +532,16 @@ def compose_entry(post, mode, version, date_str):
     if mode == "rollout":
         slug = f"{ver_slug}-rollout-report-{today_et().strftime('%b-%d').lower()}"
     else:
-        slug = f"{ver_slug}-{slugify(post['slug_words'])[:48]}".rstrip("-")
+        words = slugify(post["slug_words"])
+        if len(words) > 48:  # cut at a word, never mid-word ("...-three-bil")
+            words = words[:49].rsplit("-", 1)[0] if "-" in words[:49] else words[:48]
+        slug = f"{ver_slug}-{words}".rstrip("-")
     if slug in SLUGS:
         slug += "-b"
-    body = post["body_html"].strip().replace('"""', '”””')
-    svg = post["svg_inner"].strip().replace("'''", "")
+    # body and svg go into non-raw triple-quoted literals: double every backslash so
+    # "C:\Users" or "echo \N" loads as written instead of failing or turning into an escape
+    body = post["body_html"].strip().replace("\\", "\\\\").replace('"""', '”””')
+    svg = post["svg_inner"].strip().replace("\\", "\\\\").replace("'''", "")
     rollout = " rollout=True," if mode == "rollout" else ""
     entry = (
         "\ndict(\n"
