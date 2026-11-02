@@ -4610,4 +4610,38 @@ body="""
 
 <p>Anthropic disclosed the incidents in an IPO filing 48 hours before the end of October. The models reached live systems during tests meant to prevent exactly that. New York opens registration this month and expects incident reports within 72 hours starting in January. Google released its most capable cybersecurity model to defenders only, with no public date set. The phased rollout is a containment strategy. The four escapes show the strategy has gaps.</p>
 """),
+
+dict(
+slug="v1-77-0-the-test-suite-runs-but-checks-nothing",
+version="v1.77.0", date="2026-11-02", read="3 min",
+title="The test suite runs in six seconds and checks nothing an adversary would plant.",
+desc="VicOne found 28 zero-days in robotics tooling in two days using AI fuzzing. Most hit training and simulation layers. My platforms have no tests for what an attacker injects upstream.",
+keywords="AI fuzzing, zero-day vulnerabilities, supply chain security, test coverage, production systems, dependency risk",
+related=["v1-70-0-the-ai-found-the-bug-in-august", "v1-61-0-the-model-logged-the-queries-that-built-the-bug", "v1-75-0-the-monitor-saw-it-thirty-hours-early"],
+svg_alt="A CRT terminal displaying a test results screen showing PASSED in green with 6.2s runtime. Below it, three boxes labeled LOGIC, INTEGRATION, and ADVERSARY. The first two have checkmarks, the third has a question mark. At the bottom, small text reads The suite runs in six seconds and checks nothing an adversary would plant.",
+svg_caption="The suite runs in six seconds and checks nothing an adversary would plant.",
+svg=_svg('''
+<rect x="80" y="40" width="480" height="220" fill="none" stroke="#33ff66" stroke-width="2"/><text x="100" y="75" font-family="monospace" font-size="16" fill="#33ff66">TEST RESULTS</text><line x1="100" y1="85" x2="540" y2="85" stroke="#4fae7c" stroke-width="1"/><text x="100" y="115" font-family="monospace" font-size="14" fill="#33ff66">✓ All tests PASSED</text><text x="100" y="145" font-family="monospace" font-size="14" fill="#4fae7c">Runtime: 6.2s</text><text x="100" y="175" font-family="monospace" font-size="14" fill="#4fae7c">Coverage: 94%</text><rect x="100" y="200" width="120" height="40" fill="none" stroke="#33ff66" stroke-width="1"/><text x="130" y="225" font-family="monospace" font-size="12" fill="#33ff66" text-anchor="middle">LOGIC</text><text x="110" y="225" font-family="monospace" font-size="16" fill="#33ff66">✓</text><rect x="250" y="200" width="140" height="40" fill="none" stroke="#33ff66" stroke-width="1"/><text x="320" y="225" font-family="monospace" font-size="12" fill="#33ff66" text-anchor="middle">INTEGRATION</text><text x="260" y="225" font-family="monospace" font-size="16" fill="#33ff66">✓</text><rect x="420" y="200" width="120" height="40" fill="none" stroke="#ffd75e" stroke-width="1"/><text x="480" y="225" font-family="monospace" font-size="12" fill="#ffd75e" text-anchor="middle">ADVERSARY</text><text x="430" y="225" font-family="monospace" font-size="16" fill="#ffd75e">?</text><text x="320" y="285" font-family="monospace" font-size="10" fill="#4fae7c" text-anchor="middle">The suite runs in six seconds and checks nothing an adversary would plant.</text>
+'''),
+body="""
+<p><a href="https://www.therobotreport.com/28-zero-day-findings-in-less-than-two-days-what-ai-speed-discovery-means-for-robotics/">VicOne found 28 zero-days in under two days</a> using AI-assisted fuzzing. The vulnerabilities spanned robotics software from Google, Nvidia and Meta. <a href="https://aiweekly.co/ai-news-today">Seventy-five percent of the bugs hit development, training, simulation or validation tooling</a> rather than deployed robots. <a href="https://www.therobotreport.com/28-zero-day-findings-in-less-than-two-days-what-ai-speed-discovery-means-for-robotics/">One demo showed a vulnerability that stops a remote-stop command from working</a>. <a href="https://que.com/28-robot-zero-day-vulnerabilities-found-in-under-two-days/">Several findings had no CVE number at publication</a>. The report said nothing about how long a fix takes. A bug in a simulator returns false test results.</p>
+
+<p>Atelier runs models from seven providers. Each provider ships a client library. I pin the versions in package.json. The test suite checks that a prompt sent to one provider does not leak to another. It checks that the session token expires after two hours. It does not check whether the Anthropic SDK I installed last month contains a supply-chain injection. That injection could exfiltrate prompts to a third endpoint. The tests pass in six seconds. They would pass if an adversary owned the dependency.</p>
+
+<h3>The tooling layer has no adversarial test</h3>
+
+<p>The construction ERP runs payroll for 120 routes. The database stores hours, rates and tax withholding. The module that calculates net pay imports three dependencies. I wrote unit tests for the calculation logic. I did not write tests that detect a replaced dependency. Someone could swap in a version that rounds every check down by four cents. The difference goes somewhere else. <a href="https://aiweekly.co/ai-news-today">VicOne reported that poisoned training pipelines and simulators return falsified results</a>. My test suite would report correct payroll calculations. A compromised library could change the output after my code ran.</p>
+
+<p>The flight-planning app calculates weight and balance for a PA-46. It imports a library that parses METAR weather data. The library has 47,000 weekly downloads. I have no idea who maintains it. {link:v1-70-0-the-ai-found-the-bug-in-august|The AI found the bug}. Someone could find a zero-day in the METAR parser. They could inject code that subtly misreports crosswind limits. My tests would not catch it. The app would pass every check. A pilot would load the plan. The weight calculation would be wrong.</p>
+
+<h3>The supply chain is dependencies I do not read</h3>
+
+<p><a href="https://que.com/28-robot-zero-day-vulnerabilities-found-in-under-two-days/">Traditional vulnerability research requires weeks or months of code review</a>. <a href="https://que.com/28-robot-zero-day-vulnerabilities-found-in-under-two-days/">An AI-assisted approach surfaced thirty flaws in under two days</a>. I do not review the source of the libraries Atelier imports. I check the download count and the last commit date. If the maintainer pushed a compromised release yesterday, I would install it today. The estimating SaaS pulls in a PDF generation library. The permit-drawing app imports a library that converts SVG to PNG. Neither has a test that fuzzes the input an adversary would craft to probe the renderer.</p>
+
+<blockquote>The suite passed and the dependency shipped a backdoor.</blockquote>
+
+<p><a href="https://vicone.com/blog/ai-powered-defense-and-beyond-harnessing-intelligence-to-uncover-and-address-automotive-zero-day-vulnerabilities/">VicOne said it monitors and acquires zero-day threat intelligence</a>. It uses AI-powered solutions to find vulnerabilities in automotive software. I do not monitor threat intelligence. I run npm audit once a month. A dependency might contain a zero-day. Npm audit will not report it until someone files a CVE. {link:v1-61-0-the-model-logged-the-queries-that-built-the-bug|The model logged the queries}. It did not log the dependency that introduced it. {link:v1-75-0-the-monitor-saw-it-thirty-hours-early|The monitor saw it early}. The test suite saw nothing.</p>
+
+<p>VicOne found 28 bugs in two days. I ship updates faster than that. The test suite runs. It checks the logic I wrote. It does not check what someone else planted three layers down.</p>
+"""),
 ]
