@@ -12,6 +12,13 @@ def post(body, title="The estimator learned a new trick", desc="Short line one. 
     return {"title": title, "desc": desc, "svg_caption": caption, "body_html": body}
 
 
+def stored(version):
+    """A published post as a draft. Old posts never change, so their sentences make stable cases."""
+    p = next(p for p in writer.ALL if p["version"] == version)
+    return {"title": p["title"], "desc": p["desc"], "svg_caption": p["svg_caption"],
+            "svg_inner": p["svg"], "body_html": p["body"]}
+
+
 class LintTests(unittest.TestCase):
     def probs(self, body, **kw):
         return writer.humanizer_problems(post(body, **kw))
@@ -87,7 +94,7 @@ class LintTests(unittest.TestCase):
         found = writer.humanizer_problems(post("<p>Fine.</p>", caption="The org chart says one thing. The endpoint says another."))
         self.assertTrue(any(p.startswith("svg_caption: two or more") for p in found), found)
         found = self.probs("<blockquote>The model failed the bar. The labs signed a promise.</blockquote>")
-        self.assertTrue(any("blockquote must be one line" in p for p in found), found)
+        self.assertTrue(any(p.startswith("blockquote: must be one line") for p in found), found)
 
     def test_formatting_recap_authority_and_cousins(self):
         cases = {"<p><cite index='1-2'>Pasted.</cite></p>": "cite", "<p>It was <em>not</em> fine.</p>": "<em> used",
@@ -126,6 +133,155 @@ class LintTests(unittest.TestCase):
 
     def test_stub_is_clean(self):
         self.assertEqual(writer.humanizer_problems(writer.STUB), [])
+
+    def test_importance_lines_and_paired_contrasts(self):
+        cases = {"The question is whether anyone checks.": "importance sentence (the question is)",
+                 "The number that matters is forty.": "importance sentence",
+                 "A promise means nothing if no one audits it.": "importance sentence",
+                 "I have the invoice. I do not have the contract.": "I have X. I do not have Y.",
+                 "The badge means access. It does not mean trust.": "It does not mean B.",
+                 "The key is in the vault. It is not in the repo.": "It is not in B.",
+                 "The API logs every request. It does not log the answer.": "X does. It does not.",
+                 "The Foster report evolved.": 'banned word "evolved"'}
+        for text, label in cases.items():
+            self.assertTrue(any(label in p for p in self.probs(f"<p>{text}</p>")), text)
+        for text in ("The Foster report came out Monday.", "Landscape contractors bid it.",
+                     "The API logs every request. It keeps them for a week."):
+            self.assertEqual(self.probs(f"<p>{text}</p>"), [], text)
+
+    def test_title_clauses(self):
+        def title_probs(title):
+            return [p for p in writer.humanizer_problems(post("<p>Fine.</p>", title=title)) if p.startswith("title:")]
+        self.assertTrue(title_probs("The model shipped on time, the weights did not"))
+        self.assertTrue(any('joined by "and"' in p for p in
+                            title_probs("Rollout Report: Google ships an agent and OpenAI raised prices")))
+        self.assertEqual(title_probs("Rollout Report: Agents that pay and bills that grow"), [])
+        self.assertEqual(title_probs("The estimator learned a new trick"), [])
+
+    def test_crosslinks_and_source_links(self):
+        slug = writer.ALL[-1]["slug"]
+        old = next(p["title"] for p in writer.ALL if not p["title"].startswith("Rollout") and len(p["title"].split()) > 5)
+        cases = {f"<p>See {{link:{slug}|the old post}} and {{link:{slug}|that one again}} today.</p>": f"link {slug} once",
+                 f"<p>Fine. {{link:{slug}|The API logs the request}}. More.</p>": "anchor is a whole sentence",
+                 f"<p>Read {{link:{slug}|{' '.join(old.split()[:4])}}} today.</p>": "repeats an old title",
+                 '<p>I read <a href="https://e.com/x">the company said it would ship next year</a> twice.</p>':
+                     "source link text",
+                 '<p>Fine. <a href="https://e.com/y">The FTC sent letters</a>. More.</p>': "source link text",
+                 '<p>I read <a href="https://e.com/z">the filing</a> and <a href="https://e.com/z">the memo</a>.</p>':
+                     "linked 2 times: https://e.com/z"}
+        for body, label in cases.items():
+            self.assertTrue(any(label in p for p in self.probs(body)), body)
+        self.assertEqual(self.probs(f'<p>I read <a href="https://e.com/x">the filing</a> and {{link:{slug}|the old post}}.</p>'), [])
+
+    def test_reader_recap_and_repeats(self):
+        dull = "<p>" + "The crew poured the slab on time. " * 50 + "</p>"
+        self.assertTrue(any("talks to its reader" in p for p in self.probs(dull)))
+        self.assertFalse(any("talks to its reader" in p for p in self.probs(dull.replace("</p>", " You can check it.</p>"))))
+        recap = ("<h3>Payroll moved</h3><p>Fine.</p><h3>Dispatch broke</h3><p>Fine.</p><h3>Invoices doubled</h3>"
+                 "<p>Fine.</p><p>Payroll, dispatch and invoices all changed.</p>")
+        self.assertTrue(any("recaps 3 sections" in p for p in self.probs(recap)))
+        self.assertFalse(any("recaps" in p for p in self.probs(recap.replace("Payroll, dispatch and invoices all changed.",
+                                                                             "The truck came back at nine."))))
+        old = next(s for s in writer._sentences(writer._plain(writer.ALL[-1]["body"])) if 6 <= writer._words(s) <= 16)
+        self.assertTrue(any("repeats a sentence" in p for p in self.probs(f"<p>{old}</p>")), old)
+
+
+class ClaimTests(unittest.TestCase):
+    # sentences that shipped and are false (SYSTEM FACTS) or state a crime as fact
+    MUST_NOT_SHIP = {
+        "v1.70.0": ["The construction ERP runs on PHP.", "Atelier runs on Python.",
+                    "I patched all three to the fixed builds on October 21.", "The others sat exposed for 72 days."],
+        "v1.71.0": ["The estimating SaaS runs on a VPS in a data center in New Jersey."],
+        "v1.72.0": ["Atelier routes user prompts to seven providers and logs the full exchange.",
+                    "The D1 table stores what the user asked and what the model returned."],
+        "v1.74.0": ["Atelier logs each prompt to a D1 table with the timestamp and model name."],
+        "v1.65.0": ["API keys for Twilio and Stripe lived in both the old .env file and the new secret manager.",
+                    "Anyone with access to that branch could read the keys."],
+        "v1.61.0": ["Abdulrahman Alfozan planted a recording device in an executive conference room."],
+    }
+
+    def test_shipped_false_claims_are_must_not_ship(self):
+        for version, sentences in self.MUST_NOT_SHIP.items():
+            found = writer.claim_problems(stored(version))
+            for s in sentences:
+                self.assertTrue(any("must not ship" in p and s[:60] in p for p in found), (version, s))
+
+    def test_drop_high_risk_cuts_them_and_keeps_the_rest(self):
+        for version, sentences in self.MUST_NOT_SHIP.items():
+            draft = stored(version)
+            out, cut = writer.drop_high_risk(draft)
+            plain = writer._plain(out["body_html"])
+            for s in sentences:
+                self.assertNotIn(s[:60], plain, (version, s))
+            self.assertFalse(any("must not ship" in p for p in writer.claim_problems(out)), version)
+            self.assertGreater(writer._body_words(out), 0.8 * writer._body_words(draft), version)
+            self.assertEqual(out["body_html"].count("<blockquote>"), 1, version)
+
+    def test_cut_tidies_the_tags_it_empties(self):
+        body = ('<p>I read <a href="https://example.com/a">the filing</a> today. '
+                'Atelier logs every prompt to <a href="https://example.com/b">a D1 table</a>.</p>'
+                '<p>Atelier runs on Python.</p><p>You can check it.</p>')
+        out, cut = writer.drop_high_risk(post(body))
+        self.assertEqual(out["body_html"], '<p>I read <a href="https://example.com/a">the filing</a> today.</p>'
+                                           '<p>You can check it.</p>')
+        self.assertEqual([c[0] for c in cut], ["body_html", "body_html"])
+
+    def test_carry_over_and_crime_attribution(self):
+        found = writer.claim_problems(post("<p>Atelier picks the model. It logs every answer to a table.</p>"))
+        self.assertTrue(any("must not ship, Atelier never stores" in p for p in found), found)
+        self.assertTrue(any("crime stated as fact" in p for p in writer.claim_problems(post("<p>Jane Roe stole the files.</p>"))))
+        self.assertEqual(writer.claim_problems(post("<p>Prosecutors say Jane Roe stole the files.</p>")), [])
+
+    def test_soft_claims_go_back_to_the_model(self):
+        cases = {"Atelier routes each request through Mistral.": "a provider Atelier does not use",
+                 "Atelier expires each session after an hour.": "an Atelier detail",
+                 "Valhalla K9 uses a small model to write SMS reminders.": "says it does not do",
+                 "JetDesk shows NOTAMs on the route.": "says it does not do",
+                 "I rotated the keys on the ERP last week.": "a first-person story",
+                 "The construction ERP stores every timesheet in a database.": "outside SYSTEM FACTS",
+                 "Atelier, JetDesk, PermitSketch and CurbScript all shipped.": "names 4 of Cole's systems"}
+        for text, label in cases.items():
+            found = writer.claim_problems(post(f"<p>{text}</p>"))
+            self.assertTrue(any(label in p for p in found), (text, found))
+            self.assertFalse(any("must not ship" in p for p in found), text)
+
+    def test_true_facts_and_what_ifs_stay_clean(self):
+        for s in ("Atelier keeps threads in IndexedDB on your device.", "Keep Fix Cut runs on one Cloudflare Worker.",
+                  "Keep Fix Cut does not save uploads or reports.", "PermitSketch is a Base44 app.",
+                  "The dating-profile tool runs on one Cloudflare Worker with no PHP anywhere in the stack.",
+                  "I would check which keys that branch could read.",
+                  "If it leaked, anyone with access to the repo could read the key."):
+            self.assertEqual(writer.claim_problems(post(f"<p>{s}</p>")), [], s)
+
+
+class ArtTests(unittest.TestCase):
+    def test_validate_refuses_broken_lines_and_off_palette_ink(self):
+        self.assertEqual(writer.validate(writer.STUB, "post"), [])
+        art = writer.STUB["svg_inner"]
+        errs = writer.validate(dict(writer.STUB, svg_inner=art + "<line x='10' y='10' x2='90' y2='10' stroke='#33ff66'/>"), "post")
+        self.assertIn("svg_inner: every <line> needs x1, y1, x2 and y2", errs)
+        errs = writer.validate(dict(writer.STUB, svg_inner=art.replace(writer.G, "#ff4444")), "post")
+        self.assertTrue(any(e.endswith("not ['#ff4444']") for e in errs), errs)
+        errs = writer.validate(dict(writer.STUB, svg_inner=art + "<rect style='fill:#1a1a1a'/>"), "post")
+        self.assertTrue(any(e.endswith("not ['#1a1a1a']") for e in errs), errs)
+
+    def test_repair_fixes_what_validate_refuses(self):
+        art = "<line x='10' y='10' x2='90' y2='10' stroke='#ff4444'/><rect fill=\"#1a1a1a\" style='stroke: #fff'/>"
+        self.assertEqual(writer.repair_svg(art), "<line x1='10' y1='10' x2='90' y2='10' stroke='#ffd75e'/>"
+                                                 "<rect fill=\"#04120a\" style='stroke: #ffd75e'/>")
+        self.assertEqual(writer.repair_svg(writer.STUB["svg_inner"]), writer.STUB["svg_inner"])
+        for p in (p for p in writer.ALL if "<svg" not in p["svg"]):  # every published picture, once repaired
+            self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.repair_svg(p["svg"])), "post"), [], p["version"])
+
+    def test_art_text_must_fit_the_frame(self):
+        def overflow(art):
+            draft = dict(post("<p>Fine.</p>"), svg_inner=art + "<text x='1' y='290'>One dry line.</text>")
+            return [p for p in writer.humanizer_problems(draft) if "runs past" in p]
+        self.assertTrue(overflow("<text x='600' y='50' font-size='14'>FAR TOO WIDE</text>"))
+        self.assertTrue(overflow('<text x="320" y="20" font-size="42" text-anchor="middle">TALL</text>'))
+        self.assertEqual(overflow("<text x='630' y='100' font-size='20' text-anchor='end'>RIGHT EDGE</text>"), [])
+        self.assertEqual(overflow("<text x='320' y='165' style='font-size:42px;text-anchor:middle'>STUB</text>"), [])
+        self.assertEqual(overflow("<g transform='translate(0,-90)'><text x='600' y='50'>MOVED</text></g>"), [])
 
 
 class HumanizePassTests(unittest.TestCase):
