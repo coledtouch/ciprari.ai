@@ -901,6 +901,28 @@ class HumanizePassTests(unittest.TestCase):
         self.assertIs(self.run_pass(reply=self.js(rev), errs=None, draft=draft)[0], draft)
         self.assertIn("body_html refused (it adds 1 claim(s) about Cole's systems)", self.log)
 
+    def test_coles_corrections_are_taken(self):
+        """37f0c70 replayed: the body Cole approved, as the revision of the post as it shipped, is
+        taken, though it drops false paragraphs with their words and crosslinks and keeps soft
+        lines the draft had. (v1.74.0's corrected body is under 450 words, so validate refuses it.)"""
+        wrap = re.compile(r'^<svg [^>]*><rect width="640" height="300" fill="#04120a"/>|</svg>$')
+
+        def draft(p):
+            return dict(p, svg_inner=writer.repair_svg(wrap.sub("", p["svg_inner"])), slug_words="a post",
+                        svg_alt="A CRT terminal drawing in green.", keywords="a post", related=[writer.ALL[0]["slug"]])
+        for version in ("v1.61.0", "v1.65.0", "v1.70.0", "v1.71.0", "v1.72.0", "v1.75.0", "v1.76.0"):
+            old = draft(shipped(version))
+            self.assertEqual(writer.validate(old, "post"), [], version)
+            with contextlib.redirect_stdout(io.StringIO()) as log:
+                _, taken = writer._merge(old, dict(old, body_html=stored(version)["body_html"]), old, "post")
+            self.assertIn("body_html", taken, (version, log.getvalue()))
+        # a line Cole kept in the paragraph he rewrote holds after "None of my systems run PHP"
+        line, text = "Those systems were never vulnerable.", writer._plain(stored("v1.70.0")["body_html"])
+        self.assertLess(text.index("None of my systems run PHP."), text.index(line))
+        self.assertNotIn(line, [t for _, t, _ in writer.drop_high_risk(stored("v1.70.0"))[1]])
+        for body in (f"<p>{line}</p>", f"<p>The permit app runs PHP. {line}</p>", f"<p>My systems run PHP. {line}</p>"):
+            self.assertTrue(any("must not ship" in p for p in writer.claim_problems(post(body))), body)
+
     def test_the_fixed_line_keeps_its_source_link_end_to_end(self):
         """rev2: the draft's 'seven providers' line holds one of its two source links. The model's
         revision says 'nine'; it wins, the link survives and the post publishes."""

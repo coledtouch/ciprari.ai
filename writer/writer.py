@@ -1053,6 +1053,10 @@ FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a singl
                      r"\bIndexedDB\b|\bin (?:the|your) browser\b|\bon (?:the|your) device\b|"
                      r"\busage (?:ledger|analytics)\b|\bhashed session id\b|\bpage memory\b|"
                      r"\b(?:no|not|never|none)\b[^.?!]{0,30}?(?-i:\bPHP\b|\bPython\b|\bVPS\b|\bS3\b)", re.I)
+# "None of my systems run PHP. ... Those systems were never vulnerable.": after a denial of
+# PHP, Python, a VPS or S3 that the sheet holds, a denial of exposure in that paragraph holds too
+STACK_DENIED = re.compile(r"\b(?:no|not|never|none)\b[^.?!]{0,30}?(?-i:\bPHP\b|\bPython\b|\bVPS\b|\bS3\b)", re.I)
+UNEXPOSED = re.compile(r"(?:\b(?:never|not)|n't)\s+(?:been\s+)?(?:vulnerable|exposed)\b", re.I)
 CLAIM = re.compile(
     r"(?-i:\bPHP\b|\bPython\b|\bNode(?:\.js)?\b|\bRails\b|\bVPS\b|\bD1\b|\bS3\b|\bR2\b)|\bruns? on\b|"
     r"\b(?:hosted|deployed) on\b|\bsits? (?:on|behind)\b|\bv?\d+\.\d+\.\d+\b|\bversion \d|\bpatch(?:ed|es|ing)?\b|"
@@ -1615,13 +1619,14 @@ def _unsupported(c, here):
     return list(dict.fromkeys(why))
 
 
-def _claim(s, named, story, people, loose=frozenset(), context=frozenset(), keeping=False):
+def _claim(s, named, story, people, loose=frozenset(), context=frozenset(), keeping=False, denied=False):
     """(soft label, must-not-ship label, story, why) for one sentence. named: the Cole systems
     it is about; loose: ones it may be about (soft labels only); story: an earlier sentence in
     this paragraph told a first-person story about them; context: systems the paragraph named
     before it; keeping: an earlier sentence there was a first-person keeping claim about them
-    (_general); why: the sheet terms it states without support. Each clause answers for itself:
-    only a clause that says "I would" is let off."""
+    (_general); denied: the paragraph has denied PHP, Python, a VPS or S3 (STACK_DENIED); why:
+    the sheet terms it states without support. Each clause answers for itself: only a clause
+    that says "I would" is let off."""
     if s.endswith("?"):
         return None, None, story, []
     high = soft = None
@@ -1632,7 +1637,7 @@ def _claim(s, named, story, people, loose=frozenset(), context=frozenset(), keep
         c = parts[i]
         prev = _here(c, parts[i - 1] if i else "", i == 0, own, named, prev, loose)
         if c.strip() and not WOULD.search(c):
-            h, so, t, w = _clause(c, named, story or told, people, loose, context, prev, keeping)
+            h, so, t, w = _clause(c, named, story or told, people, loose, context, prev, keeping, denied)
             why = why if high else w
             high, soft, told = high or h, soft or so, told or t
     return soft, high, story or told, why
@@ -1655,10 +1660,12 @@ def _general(c, keeping=False):
     return None
 
 
-def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=False):
+def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=False, denied=False):
     high = soft = None
     why = []
     rest = FACT_OK.sub(" ", c)
+    if denied:  # "None of my systems run PHP. ... Those systems were never vulnerable."
+        rest = UNEXPOSED.sub(" ", rest)
     if _crime(c, people) and not ATTRIBUTED.search(c):
         high = CRIME_LABEL
     elif "Atelier" in named and _keeps_content(c) and not (LOCAL.search(c) and not SERVER.search(c)):
@@ -1756,11 +1763,13 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False):
             out.append(piece)
             continue
         prev, prev_loose, story, context, tale, keeping = set(), set(), False, set(), False, False
+        denied = False
         for sent in _split(piece):
             text = " ".join("".join(p for _, p in sent).split())
             if not text:
                 out.append("".join(t for t, _ in sent))
                 continue
+            denied = denied or bool(STACK_DENIED.search(text))
             named = _systems(text)
             loose, last = _theirs(text, last), text
             named, loose = (named - loose, loose) if named else (
@@ -1770,7 +1779,7 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False):
                     named = named | {"Coen ERP"}
                 else:
                     loose = loose | {"Coen ERP"}
-            soft, high, story, why = _claim(text, named, story, people, loose, context, keeping)
+            soft, high, story, why = _claim(text, named, story, people, loose, context, keeping, denied)
             keeping = keeping or bool(high in (SHEET_LABEL, GENERAL_LABEL) and I_KEEP.search(text))
             linked = any(re.match(r"(?i)<a\s", t) for t, _ in sent)
             if tale and not high and not linked and not WOULD.search(text) and (
@@ -2047,15 +2056,19 @@ def _shape_loss(post, rev):
     """Why a revision lost or invented material the draft had (None when it kept enough).
     Search is off during a revision, so a new URL can only be made up. A dropped one is
     allowed: validate() still holds the link minimum. A post linked twice may lose its second
-    link (the lint asks for that); a post the draft linked may not disappear."""
+    link (the lint asks for that); a post the draft linked may not disappear. The body keeps
+    four fifths of the draft's words. What is measured is the draft less its must-not-ship
+    lines (drop_high_risk), so a revision that drops a false paragraph, with the words,
+    crosslinks or heading in it, has lost nothing the cut would keep."""
     added, removed = _sources(rev) - _sources(post), _sources(post) - _sources(rev)
     if added:
         return f"it added source links {sorted(added)} (and dropped {sorted(removed)})"
-    if _body_words(rev) < 0.8 * _body_words(post):
+    kept = drop_high_risk(post)[0]
+    if _body_words(rev) < 0.8 * _body_words(kept):
         return f"it cut the body from {_body_words(post)} to {_body_words(rev)} words"
-    if not _crosslinked(post) <= _crosslinked(rev):
-        return f"it dropped crosslinks {sorted(_crosslinked(post) - _crosslinked(rev))}"
-    if rev["body_html"].count("<h3>") < post["body_html"].count("<h3>"):
+    if not _crosslinked(kept) <= _crosslinked(rev):
+        return f"it dropped crosslinks {sorted(_crosslinked(kept) - _crosslinked(rev))}"
+    if rev["body_html"].count("<h3>") < (kept.get("body_html") or "").count("<h3>"):
         return "it dropped headings"
     return None
 
@@ -2077,7 +2090,7 @@ def _pair(why):
     """A sheet term from _unsupported() as (system, term): "Atelier: keeps no feedback" ->
     ("Atelier", "feedback"), so a denial and a claim of the same thing are one pair."""
     name, _, term = why.partition(": ")
-    term = re.sub(r"^(?:keeps )?(?:no )?|(?: only on the device| kept [^:]*)$", "", term)
+    term = re.sub(r"^(?:keeps |sign-in with )?(?:no )?|(?: only on the device| kept [^:]*| for testers)$", "", term)
     return name, term
 
 
@@ -2086,20 +2099,22 @@ def _claims(post):
     same claim: (must, soft, mentioned). must counts each must-not-ship row's (label, systems,
     term) for every sheet term it states without support, or once with no term. soft lists
     (systems, pairs) for each soft row whose sheet terms SYSTEM_FACTS does not all hold; a
-    pair is (system, term), or (system, label) for a row that states no sheet term. mentioned
-    holds every (system, term) and (system, label) pair any sentence of the post states."""
+    pair is (system, term), or (system, label) for a row that states no sheet term; a row that
+    names no system is "all of them", as _unsupported() reads it. mentioned holds every
+    (system, term) and (system, label) pair any sentence of the post states."""
     must, soft, mentioned = Counter(), [], set()
     for _, r in _claim_rows(post):
         systems = tuple(sorted(r["named"] | r["loose"]))
+        who = systems or ("all of them",)
         m = _mask(r["text"])
         terms = {k.lstrip("@") for k, _, _, _ in _terms(m)} | {k for k, _ in _nouns(m)}
-        mentioned |= {(s, t) for s in systems or ("",) for t in terms | {r["high"], r["soft"]} if t}
+        mentioned |= {(s, t) for s in who for t in terms | {r["high"], r["soft"]} if t}
         if r["high"]:
             must.update((r["high"], systems, w) for w in r["why"] or [None])
         elif r["soft"]:
             why = _unsupported(r["text"], set(systems)) if _terms(m) else []
             if why or not _terms(m):  # a soft line whose every sheet term the sheet holds is no new claim
-                soft.append((systems, {_pair(w) for w in why} or {(s, r["soft"]) for s in systems or ("",)}))
+                soft.append((systems, {_pair(w) for w in why} or {(s, r["soft"]) for s in who}))
     return must, soft, mentioned
 
 
