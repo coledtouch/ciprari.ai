@@ -474,9 +474,9 @@ def validate(post, mode):
     if any(not all(re.search(rf"(?i)\s{a}\s*=", t) for a in ("x1", "y1", "x2", "y2"))
            for t in re.findall(r"(?i)<line\b[^>]*>", post["svg_inner"])):
         errs.append("svg_inner: every <line> needs x1, y1, x2 and y2")
-    off = sorted({c for c in _colors(post["svg_inner"]) if c not in PALETTE})
+    off = sorted({c for c in _colors(post["svg_inner"]) if c not in PALETTE and not c.startswith("url(#")})
     if off:
-        errs.append(f"svg_inner: fill and stroke must come from {sorted(PALETTE)}, not {off}")
+        errs.append(f"svg_inner: fill, stroke and stop-color must come from {sorted(PALETTE)}, not {off}")
     if mode == "rollout" and not post["title"].startswith("Rollout Report:"):
         errs.append("rollout title must start with 'Rollout Report: '")
     if not (80 <= len(post["desc"]) <= 200):
@@ -487,10 +487,14 @@ def validate(post, mode):
     return errs
 
 
+INK = r"(?<![\w-])(?:fill|stroke|stop-color)"
+
+
 def _colors(svg):
-    """Every fill and stroke value in the art, attribute or inline style, lowercased."""
-    return [(a or b).strip().lower() for _, a, b in
-            re.findall(r"""(?i)\b(?:fill|stroke)(?:\s*=\s*(["'])(.*?)\1|\s*:\s*([^;"']+))""", svg or "")]
+    """Every fill, stroke and stop-color value in the art's tags, attribute or inline style,
+    lowercased. Text between tags ("DISK FILL: 92%") is not ink."""
+    return [(a or b).strip().lower() for tag in re.findall(r"<[^>]+>", svg or "") for _, a, b in
+            re.findall(rf"""(?i){INK}(?:\s*=\s*(["'])(.*?)\1|\s*:\s*([^;"']+))""", tag)]
 
 
 def _nearest_ink(hexcolor):
@@ -499,20 +503,31 @@ def _nearest_ink(hexcolor):
     return min((G, D, A, M, "#04120a"), key=lambda ink: sum((x - y) ** 2 for x, y in zip(rgb(h), rgb(ink))))
 
 
+NAMED_INK = {"white": "#ffffff", "red": "#ff0000", "green": "#008000", "lime": "#00ff00", "yellow": "#ffff00",
+             "orange": "#ffa500", "gold": "#ffd700", "gray": "#808080", "grey": "#808080", "silver": "#c0c0c0"}
+
+
 def repair_svg(svg):
-    """Mechanical art fixes on the writer's own draft, before validate(): a <line> drawn with
-    x/y gets x1/y1, and an off-palette hex ink moves to the nearest palette ink."""
+    """Mechanical art fixes before validate(), on the writer's drafts and revisions and on
+    staged posts: a <line> drawn with x/y gets x1/y1, and an off-palette ink (hex, rgb() or a
+    common name) moves to the nearest palette ink. Only tags change, never the text."""
     def line(m):
         t = m.group(0)
         return t if re.search(r"(?i)\sx1\s*=", t) else re.sub(r"(?i)\s(x|y)(\s*=)", r" \g<1>1\2", t)
 
     def ink(m):
-        c = m.group(2).lower()
-        if c in PALETTE or not re.fullmatch(r"#(?:[0-9a-f]{3}){1,2}", c):
+        c = m.group(2).lower().replace(" ", "")
+        rgb = re.fullmatch(r"rgba?\((\d{1,3}),(\d{1,3}),(\d{1,3})(?:,[\d.]+%?)?\)", c)
+        if c in PALETTE or c.startswith("url(#"):
             return m.group(0)
-        return m.group(1) + _nearest_ink(c)
+        new = ("none" if c == "transparent" else "#000" if c == "black" else
+               _nearest_ink(NAMED_INK[c]) if c in NAMED_INK else
+               _nearest_ink("#%02x%02x%02x" % tuple(min(255, int(v)) for v in rgb.groups())) if rgb else
+               _nearest_ink(c) if re.fullmatch(r"#(?:[0-9a-f]{3}){1,2}", c) else None)
+        return m.group(0) if new is None else m.group(1) + new
     svg = re.sub(r"(?i)<line\b[^>]*>", line, svg)
-    return re.sub(r"""(?i)(\b(?:fill|stroke)\s*(?:=\s*["']|:\s*))([^;"'\s>]*)""", ink, svg)
+    return re.sub(r"<[^>]+>", lambda t: re.sub(
+        rf"""(?i)({INK}\s*(?:=\s*["']|:\s*))(rgba?\([^)]*\)|[^;"'\s>]*)""", ink, t.group(0)), svg)
 
 
 # ---------------------------------------------------------------- humanizer
@@ -1102,10 +1117,10 @@ HUMANIZE_ASK = (
     "don't have, cut the line only if it carries no link; otherwise rephrase it around the link. "
     "A line about Cole's systems says only what SYSTEM FACTS says, or what he would check. If a "
     "flagged phrase sits inside quotation marks, don't edit the quoted words: paraphrase without "
-    "the quotes, quote fewer words, or cut it. Keep every crosslink (shorten its anchor text if "
-    "needed), every source link, the headings, the related list and the art. If you change "
-    "svg_caption, change the caption <text> in svg_inner to the same words. If you change the "
-    "title, update slug_words to match. Return ONLY the corrected ```json block.")
+    "the quotes, quote fewer words, or cut it. Keep every crosslinked post, linked once (shorten "
+    "its anchor text if needed), every source link, the headings, the related list and the art. "
+    "If you change svg_caption, change the caption <text> in svg_inner to the same words. If you "
+    "change the title, update slug_words to match. Return ONLY the corrected ```json block.")
 PASSES = 3  # revision calls at most; each one sees only the problems still left
 # A revision is merged field group by field group, so a good title survives a bad body.
 GROUPS = (("title", "slug_words"), ("desc",), ("svg_caption", "svg_inner"), ("body_html",))
@@ -1132,18 +1147,24 @@ def _sources(p):
     return set(re.findall(r'href="(https://[^"]+)"', p.get("body_html") or ""))
 
 
+def _crosslinked(p):
+    return set(re.findall(r"\{link:([a-z0-9\-]+)\|", p.get("body_html") or ""))
+
+
 def _shape_loss(post, rev):
     """Why a revision lost or invented material the draft had (None when it kept enough).
     Search is off during a revision, so a new URL can only be made up. A dropped one is
-    allowed: validate() still holds the link minimum."""
+    allowed: validate() still holds the link minimum. A post linked twice may lose its second
+    link (the lint asks for that); a post the draft linked may not disappear."""
     added, removed = _sources(rev) - _sources(post), _sources(post) - _sources(rev)
     if added:
         return f"it added source links {sorted(added)} (and dropped {sorted(removed)})"
     if _body_words(rev) < 0.8 * _body_words(post):
         return f"it cut the body from {_body_words(post)} to {_body_words(rev)} words"
-    for mark, what in (("{link:", "crosslinks"), ("<h3>", "headings")):
-        if rev["body_html"].count(mark) < post["body_html"].count(mark):
-            return f"it dropped {what}"
+    if not _crosslinked(post) <= _crosslinked(rev):
+        return f"it dropped crosslinks {sorted(_crosslinked(post) - _crosslinked(rev))}"
+    if rev["body_html"].count("<h3>") < post["body_html"].count("<h3>"):
+        return "it dropped headings"
     return None
 
 
@@ -1247,6 +1268,8 @@ def _humanize(post, mode, messages, system):
         rev = dict(rev, **{k: post[k] for k in ("related", "keywords", "svg_alt") if k in post})
         if isinstance(rev.get("body_html"), str):
             rev["body_html"] = STRIP_TAGS.sub("", rev["body_html"])
+        if isinstance(rev.get("svg_inner"), str):
+            rev["svg_inner"] = repair_svg(rev["svg_inner"])
         best, taken = _merge(best, rev, post, mode)
         probs = humanizer_problems(best)
         print(f"humanizer: pass {n} took {', '.join(taken) or 'nothing'}; {len(probs)} problem(s) left", flush=True)

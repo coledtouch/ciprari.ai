@@ -340,6 +340,21 @@ class ArtTests(unittest.TestCase):
             inner = wrapper.sub("", p["svg"])
             self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.repair_svg(inner)), "post"), [], p["version"])
 
+    def test_art_checks_read_tags_not_text(self):
+        art = writer.STUB["svg_inner"] + "<text x='10' y='20' fill='#33ff66'>DISK FILL: 92%</text>"
+        self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=art), "post"), [])
+        self.assertEqual(writer.repair_svg(art), art)
+        grad = "<defs><linearGradient id='g'><stop offset='0' stop-color='#33ff66'/></linearGradient></defs><rect fill='url(#g)'/>"
+        self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.STUB["svg_inner"] + grad), "post"), [])
+        errs = writer.validate(dict(writer.STUB, svg_inner=writer.STUB["svg_inner"] + grad.replace("#33ff66", "#ff0000")), "post")
+        self.assertTrue(any(e.endswith("not ['#ff0000']") for e in errs), errs)
+
+    def test_repair_maps_names_rgb_and_stops(self):
+        art = ("<rect fill='white' stroke='black'/><circle style='fill: rgb(255, 0, 0); stroke: transparent'/>"
+               "<stop stop-color='#ff0000'/><text fill='#33ff66'>FILL: red</text>")
+        self.assertEqual(writer.repair_svg(art), "<rect fill='#ffd75e' stroke='#000'/><circle style='fill: #ffd75e; "
+                                                 "stroke: none'/><stop stop-color='#ffd75e'/><text fill='#33ff66'>FILL: red</text>")
+
     def test_art_text_must_fit_the_frame(self):
         def overflow(art):
             draft = dict(post("<p>Fine.</p>"), svg_inner=art + "<text x='1' y='290'>One dry line.</text>")
@@ -429,6 +444,28 @@ class HumanizePassTests(unittest.TestCase):
         two = dict(one, body_html=one["body_html"].replace('<a href="https://ciprari.ai/">two</a>', "two"))
         self.assertIs(self.run_pass(reply=self.js(two), errs=None)[0], self.draft)
         self.assertIn("not enough outbound source links", self.log)
+
+    def test_unlinking_a_second_crosslink_is_fine_dropping_a_post_is_not(self):
+        slug = writer.ALL[-1]["slug"]
+        twice = f"<p>See {{link:{slug}|the old post}} and {{link:{slug}|that one again}} today.</p>"
+        draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + twice)
+        self.assertIn(f"body_html: link {slug} once, not 2 times", writer.humanizer_problems(draft))
+        once = dict(draft, body_html=draft["body_html"].replace(f"{{link:{slug}|that one again}}", "that one again"))
+        self.assertEqual(writer.humanizer_problems(once), [])
+        out, _ = self.run_pass(reply=self.js(once), errs=None, draft=draft)
+        self.assertEqual(out["body_html"], once["body_html"])
+        self.assertNotIn("dropped crosslinks", self.log)
+        gone = dict(draft, body_html=writer.STUB["body_html"] + "<p>See the old post and that one again today.</p>")
+        self.assertIs(self.run_pass(reply=self.js(gone), errs=None, draft=draft)[0], draft)
+        self.assertIn(f"it dropped crosslinks ['{slug}']", self.log)
+
+    def test_revision_art_is_repaired_before_the_merge(self):
+        two = "The tap ran dry. The crew kept pouring."
+        draft = dict(writer.STUB, svg_caption=two, svg_inner=writer.STUB["svg_inner"].replace("This is only a test.", two))
+        rev = dict(writer.STUB, svg_inner=writer.STUB["svg_inner"].replace(writer.G, "#ff4444"))
+        out, _ = self.run_pass(reply=self.js(rev), errs=None, draft=draft)
+        self.assertEqual((out["svg_caption"], out["svg_inner"]), (rev["svg_caption"], writer.repair_svg(rev["svg_inner"])))
+        self.assertNotIn("#ff4444", out["svg_inner"])
 
     def test_good_title_survives_a_bad_body(self):
         draft = dict(self.draft, title="The model shipped. The weights did not.", slug_words="the model shipped")

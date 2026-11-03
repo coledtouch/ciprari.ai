@@ -63,6 +63,10 @@ def main():
         mode = "rollout" if p.get("rollout") else "post"
         post = {k: p.get(k) for k in writer.REQUIRED}
         post["related"] = p.get("related") or []
+        # the same mechanical art fixes the writer makes to its own drafts: off-palette ink or a
+        # <line> drawn with x/y should not hold up this post and every one queued behind it
+        if isinstance(post["svg_inner"], str):
+            post["svg_inner"] = writer.repair_svg(post["svg_inner"])
         errs = writer.validate(post, mode)
         if errs:
             Path(writer.POSTS_B_PATH).write_text(backup, encoding="utf-8")
