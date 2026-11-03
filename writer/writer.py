@@ -1010,7 +1010,7 @@ CARRY = re.compile(r"^(?:It|Its|They|Their|This|That|These|Those|Both|All three|
 # paragraph named, even with other sentences between (_scan reads it against the paragraph's).
 # "One calls OpenAI" is one of them; "One vendor controls that data center" is not.
 REF = re.compile(r"^(?:The (?:system|manager|secret manager|proposals?|drawings?|keys?|transcripts?|records?|rows?|"
-                 r"data|bucket|backend|service|integration|sync|schema|cron(?: job)?|logger|logging)|"
+                 r"data|bucket|backend|service|integration|sync|schema|cron(?: job)?|logger|logging|test suite|tests)|"
                  r"One(?= [a-z]+s\b)|Each (?:key|one)|Neither (?:system|one|app)|Every (?:key|row|request|prompt))\b")
 # "The vendor in the breach ran its backend on a VPS.", "A rival teardown app launched this week.",
 # "In the incident, the startup kept prompts in a D1 table.": a line about another party, so "The
@@ -1042,6 +1042,9 @@ STORE = re.compile(r"\b(?:log(?:s|ged|ging)?|stor(?:e|es|ed|ing)|retain(?:s|ed|i
 CONTENT = re.compile(r"\b(?:prompts?|answers?|responses?|conversations?|exchanges?|chats?|messages?|transcripts?|"
                      r"what (?:the |a |each )?(?:users?|testers?|person) (?:asked|typed|sent|wrote)|"
                      r"what the model (?:returned|said|answered|wrote))\b", re.I)
+# a prompt or answer that sits in a log: "every prompt in the logs", "lands in a log I can search"
+IN_LOG = re.compile(CONTENT.pattern + r"[^.;:]{0,40}?\b(?:in|into|to|inside)\s+(?:the|a|an|my|our|its|one)\s+"
+                    r"(?:[\w-]+\s+)?log(?:s|\s+files?)?\b", re.I)
 LOCAL = re.compile(r"\b(?:browser|IndexedDB|on (?:the|your|my) (?:device|phone|laptop)|locally|local-first|"
                    r"opt-in|sync)\b", re.I)
 SERVER = re.compile(r"(?-i:\bD1\b)|\b(?:tables?|databases?|servers?)\b", re.I)
@@ -1470,10 +1473,14 @@ def _crime(c, people):
 def _keeps_content(c):
     """True when a prompt or answer is what a keeping verb in clause c keeps: its object with no
     negation between ("logs every prompt"), or the subject of a passive one ("prompts are
-    logged"). "Nothing in the ledger holds a prompt" and "records the cost, never the prompt"
-    keep none."""
+    logged"), or one that sits in a log ("I see every prompt in the logs", "Every prompt lands in
+    a log I can search"). "Nothing in the ledger holds a prompt" and "records the cost, never the
+    prompt" keep none."""
     if CLAUSE_NEG.match(c):
         return False
+    for x in IN_LOG.finditer(c):
+        if not re.search(r"\b(?:not|never|no|none|nothing|neither|without)\b|n't\b", c[:x.end()], re.I):
+            return True
     for v in STORE.finditer(c):
         if _negated(c, v.start(), v.end()):
             continue

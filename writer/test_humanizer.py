@@ -527,6 +527,8 @@ class ClaimTests(unittest.TestCase):
                      "<p>Atelier calls nine providers. In the incident, the startup kept prompts in a D1 table. "
                      "The table held every prompt for a year.</p>",
                      "<p>Keep Fix Cut grades photos. A rival teardown app launched this week. It stores every upload for 90 days.</p>",
+                     "<p>Atelier calls nine providers. No prompt ever lands in a log.</p>",
+                     "<p>Atelier calls nine providers. Prompts never go into the logs.</p>",
                      # a paragraph that speaks of Cole by name has another narrator, whose "I" is not his
                      "<p>The root console on the résumé site used to be a place Cole looked things up. Now the delegate is me. "
                      "I can query the live D1 database for traffic and messages.</p>",
@@ -543,6 +545,11 @@ class ClaimTests(unittest.TestCase):
                      "<p>Atelier calls nine providers. GitHub moved. I keep every prompt in a D1 table.</p>",
                      "<p>Atelier calls nine providers. The attackers used a stolen key. I log every prompt. "
                      "The logs keep each prompt for a year.</p>",
+                     # a prompt that sits in a log is a logged prompt; the test suite points back like "The system"
+                     "<p>Atelier calls nine providers. I see every prompt in the logs.</p>",
+                     "<p>Atelier calls nine providers. Every prompt lands in a log I can search.</p>",
+                     "<p>Atelier runs models from nine providers. The test suite checks that the session token "
+                     "expires after two hours.</p>",
                      "<p>My backend is Python.</p>", "<p>I host the ERP on a VPS.</p>", "<p>I keep the backups in S3.</p>",
                      "<p>I deploy everything to a VPS.</p>", "<p>My apps are written in PHP.</p>",
                      "<p>Atelier is plain JavaScript. I host it on a VPS.</p>"):
