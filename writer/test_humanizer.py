@@ -774,12 +774,18 @@ class HumanizePassTests(unittest.TestCase):
 
     def test_no_step_logs_or_traces_a_must_not_ship_sentence(self):
         # the last resort keeps a first sentence that is must-not-ship; the cut empties the title and the run exits
-        title = dict(writer.STUB, title="Atelier logs every prompt to a D1 table. The ledger said so.")
+        title = dict(writer.STUB, title="Atelier logs every prompt to a D1 table. The ledger said so.",
+                     slug_words="atelier logs every prompt to a d1 table", keywords="atelier prompt logging, d1 table")
         printed, logged, rows, stop = self.run_main([self.js(title)] * 4)
         self.assertIn("humanizer: kept the first sentence of the title (8 words)", printed)
         self.assertTrue(stop and stop.startswith("claims: cutting must-not-ship sentences broke the post"), stop)
         for text in (printed, logged, stop):
-            self.assertNotIn("every prompt to a D1", text)
+            self.assertNotIn("every prompt to a d1", text.lower())  # the title, and slug_words that echo it
+            self.assertNotIn("prompt logging", text)
+        self.assertEqual({r["post"]["keywords"] for r in rows if "post" in r}, {"[kept out of the trace]"})
+        # a title that loses one sentence of two publishes with slug words from what is left
+        out, cut = writer.drop_high_risk(dict(title, title="The agent has an email. Atelier logs every prompt to a D1 table."))
+        self.assertEqual((out["title"], out["slug_words"], len(cut)), ("The agent has an email.", "the agent has an email", 1))
         # a revision makes the draft's next line the rest of a story: refused, and the line leaves every row
         tail = "<p>It was quiet that week. You can check it.</p>"
         draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>This is crucial.</p>" + tail)

@@ -1516,6 +1516,7 @@ def _context(text):
 
 
 _CUT = set()  # every sentence a must-not-ship rule matched this run, at any step; never logged
+_ECHO = set()  # slug_words and keywords that came with a title that lost a sentence; they echo it
 
 
 def _scan(fragment, people=None, strip=None, erp=False):
@@ -1605,7 +1606,8 @@ def drop_high_risk(post):
     """Cut every must-not-ship sentence still in the title, desc, caption or body, every art
     label that holds one, and an alt text that holds one (it becomes a plain description of the
     caption). A cut can hand "It" a new system, so a field is read again until nothing is left
-    to cut. Runs after the revisions; returns (post, [(field, sentence, label)])."""
+    to cut. A cut title gets new slug_words, so the URL never carries the cut words. Runs after
+    the revisions; returns (post, [(field, sentence, label)])."""
     fields = ("title", "desc", "svg_caption", "body_html")
     people, erp = _claim_context(post)
     out, cut = dict(post), []
@@ -1616,6 +1618,10 @@ def drop_high_risk(post):
             if not bad:
                 break
             cut += bad
+            if k != "body_html":  # one-line fields: no space left where a sentence was
+                out[k] = " ".join(out[k].split())
+    if any(f == "title" for f, _, _ in cut) and isinstance(out.get("slug_words"), str):
+        out["slug_words"] = " ".join(slugify(re.sub(r"^Rollout Report:\s*", "", out["title"])).split("-")[:6])
     if isinstance(out.get("svg_inner"), str):
         for element, para in _labels(out["svg_inner"]):
             bad = [r for r in _scan(para, people, erp=erp)[1] if r["high"]]
@@ -1661,8 +1667,9 @@ def trace(kind, **data):
     rows = _TRACE.setdefault(TRACE_PATH, [])
     rows.append({"at": datetime.datetime.now(ET).isoformat(timespec="seconds"), "kind": kind,
                  **json.loads(json.dumps(data, ensure_ascii=False, default=str))})
-    for k, v in rows[-1].items():  # its scan adds the sentences it cuts to _CUT
-        _public(k, v)
+    for row in [rows[-1]] + rows[:-1]:  # the new row's scan adds to _CUT; then every row's echoes go in _ECHO
+        for k, v in row.items():
+            _public(k, v)
     try:
         with open(TRACE_PATH, "w", encoding="utf-8") as f:
             f.writelines(json.dumps({k: _public(k, v) for k, v in row.items()}, ensure_ascii=False) + "\n"
@@ -1691,12 +1698,18 @@ def _public(key, value):
 
 
 def _public_post(post):
-    """A post without any sentence, art label or alt text in _CUT."""
+    """A post without any sentence, art label or alt text in _CUT. When the title lost a
+    sentence, its slug_words and keywords go too, in this row and every other: they echo it."""
     out = drop_high_risk(post)[0]
     people, erp = _claim_context(out)
     for k in ("title", "desc", "svg_caption", "body_html"):
         if isinstance(out.get(k), str):
             out[k] = _scan(out[k], people, strip=lambda r: r["text"] in _CUT, erp=erp)[0]
+    echoes = [post.get(k) for k in ("slug_words", "keywords") if isinstance(post.get(k), str) and post[k].strip()]
+    if isinstance(post.get("title"), str) and out.get("title") != post["title"]:
+        _ECHO.update(echoes)
+    out.update({k: "[kept out of the trace]" for k in ("slug_words", "keywords")
+                if isinstance(out.get(k), str) and out[k] in _ECHO})
     if isinstance(out.get("svg_inner"), str):
         for element, para in _labels(out["svg_inner"]):
             if any(r["text"] in _CUT for r in _scan(para, people, erp=erp)[1]):
@@ -1939,6 +1952,7 @@ STUB = {
 # ---------------------------------------------------------------- main
 def main():
     _CUT.clear()
+    _ECHO.clear()
     _TRACE.clear()
     args = sys.argv[1:]
     stub = "--stub" in args

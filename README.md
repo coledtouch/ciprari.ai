@@ -42,7 +42,8 @@ No desktop app, no laptop. The machine can be off.
   product changes, change that sheet first.
 - Every run uploads a `writer-trace` artifact: the draft, each humanizer pass and the final
   post. GitHub keeps it 14 days. The repo is public, so the artifact and the run log are too.
-  Neither holds the words of a sentence a must-not-ship rule matched at any step. The
+  Neither holds the words of a sentence a must-not-ship rule matched at any step. When the
+  title loses a sentence, its slug words and keywords stay out too. The
   trace keeps its label, length and a short hash. Each write rewrites the whole trace, so a
   line flagged late leaves the earlier rows too. Offline writer checks:
   `python -m unittest discover -s writer -p "test_*.py"`.
