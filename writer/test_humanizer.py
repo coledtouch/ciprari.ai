@@ -173,6 +173,12 @@ class LintTests(unittest.TestCase):
                             title_probs("Rollout Report: Google ships an agent and OpenAI raised prices")))
         self.assertEqual(title_probs("Rollout Report: Agents that pay and bills that grow"), [])
         self.assertEqual(title_probs("The estimator learned a new trick"), [])
+        for one in ("Robots and humans signed a pact", "a billion users and one shared key",  # v1.7.1
+                    "Google, OpenAI and Anthropic signed a pact"):
+            self.assertEqual(title_probs("Rollout Report: " + one), [], one)
+        for two in ("Claude filed a murder tip in July and Anthropic found it in September",  # v1.58.1
+                    "The model escaped through DNS and auditors found a tenth of Codex traffic unmonitored"):  # v1.70.1
+            self.assertTrue(any('joined by "and"' in p for p in title_probs("Rollout Report: " + two)), two)
 
     def test_crosslinks_and_source_links(self):
         slug = writer.ALL[-1]["slug"]
@@ -609,7 +615,8 @@ class PromptTests(unittest.TestCase):
                      "quotes both", "No page counts", "Source link text is a 2–6 word noun phrase",
                      "Link each URL once", "Every <line> has x1, y1, x2 and y2", "svg_alt describes only"):
             self.assertIn(fact, flat, fact)
-        for stale in ("seven providers", "stores nothing", "D1 databases"):
+        self.assertIn("Atelier logs no prompts or answers. Its usage ledger records what each request cost and when.", flat)
+        for stale in ("seven providers", "stores nothing", "D1 databases", "cost and time only"):
             self.assertNotIn(stale, flat, stale)
 
     def test_user_prompt_carries_the_week_and_catalog_descs(self):

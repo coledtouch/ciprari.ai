@@ -262,8 +262,8 @@ SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may s
   storefront) and Mari' Cosmetics (a shade-matching storefront).
 DOES NOT — never write otherwise:
 - No Cole system uses PHP, Python, a VPS or S3. Atelier has no D1 database.
-- Atelier logs no prompts or answers; its ledger holds cost and time only. Keep Fix Cut saves
-  no uploads or reports.
+- Atelier logs no prompts or answers. Its usage ledger records what each request cost and
+  when. Keep Fix Cut saves no uploads or reports.
 - JetDesk has no NOTAMs. CurbScript has no service routes.
 - Valhalla K9, Hire Mariaelena and Show It With Words have no AI.
 Beyond this sheet, never state a stack, version, host, storage, logging, retention, auth,
@@ -607,12 +607,16 @@ ELLIPTICAL = re.compile(
 NEG = re.compile(r"(?i)\b(?:not|never|no|cannot)\b|n't\b")
 # A short follow-up that only takes back what the sentence before it said ("It does not mean...").
 UNDERCUT = re.compile(r"^(?:It|They|That|This|The \w+) (?:does|do|did|is|are|was|were|has|have|had)(?: not|n't)\b")
-# A rollout title that runs two clauses together: "... through DNS and auditors found ...".
+# A rollout title that runs two clauses together: "... through DNS and auditors found ...". The
+# words before "and" need a verb of their own, so a compound subject ("Robots and humans signed
+# a pact", "a billion users and one shared key") is one clause.
+_VERB = (r"(?:\w+ed|is|are|was|were|has|have|had|did|does|found|saw|got|went|took|made|said|ran|left|kept|lost|"
+         r"won|hit|cut|set|put|sent|built|paid|fell|rose|grew|came|became|began|broke|shut|sold|bought|told|"
+         r"wrote|stole|opens|closes|ships|wins|loses|gets|goes|says|finds|takes|makes)")
 AND_CLAUSE = re.compile(
     r"\band (?:(?:the|a|an|its|their|his|her|one|two|three|four|five|six|\d+) )?(?:(?!that\b|which\b|who\b)"
-    r"[\w'.-]+ ){1,2}(?:\w+ed|is|are|was|were|has|have|had|did|does|found|saw|got|went|took|made|said|ran|left|"
-    r"kept|lost|won|hit|cut|set|put|sent|built|paid|fell|rose|grew|came|became|began|broke|shut|sold|bought|"
-    r"told|wrote|stole|opens|closes|ships|wins|loses|gets|goes|says|finds|takes|makes)\b", re.I)
+    rf"[\w'.-]+ ){{1,2}}{_VERB}\b", re.I)
+HAS_VERB = re.compile(rf"\b{_VERB}\b", re.I)
 # A one-liner that turns on "but ... not", ", never" or a closing "anyway". Checked in the title,
 # caption and blockquote only: in body prose these words are ordinary.
 TURN = re.compile(r"\b(?:but|yet)\b[^.?!]*?(?:\b(?:not|never|no|nothing)\b|n't\b)|,\s*never\b|\banyway[.?!]?$", re.I)
@@ -729,7 +733,9 @@ def humanizer_problems(post):
     if (len(_sentences(title)) >= 2 or re.search(r"(?i),\s*not\b", title)
             or any(c and _words(c) <= 12 and ELLIPTICAL.search(c.rstrip(".?!") + ".") for c in clauses)):
         probs.append(f'title: two sentences or a contrast, make it one plain sentence: "{title}"')
-    if full_title.startswith("Rollout Report:") and AND_CLAUSE.search(title):
+    joined = AND_CLAUSE.search(title)
+    if (full_title.startswith("Rollout Report:") and joined
+            and HAS_VERB.search(re.split(r"[,;]", title[:joined.start()])[-1])):
         probs.append(f'title: two clauses joined by "and"; keep the one image: "{title}"')
     cap = _plain(post.get("svg_caption"))
     if len(_sentences(cap)) >= 2:
