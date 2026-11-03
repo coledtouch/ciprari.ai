@@ -1081,6 +1081,8 @@ GAP_STOP = re.compile(r"\bthat\b|,\s*(?:and|but)\b|\b(?:found|finds|said|says|sh
                       r"revealed|reveals|argued|argues|added|adds|explained|described|tested|tests|asked|asks|"
                       r"claimed|alleged|is|was|are|were|has|had|have|does|did|will|would|can|could|may|might)\b", re.I)
 # soft: back to the model
+# a denial of PHP, Python, a VPS or S3: "None of my systems run PHP", "Atelier doesn't run PHP"
+_NO_STACK = r"(?:\b(?:no|not|never|none)\b|n't\b)[^.?!]{0,30}?(?-i:\bPHP\b|\bPython\b|\bVPS\b|\bS3\b)"
 FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a single) Cloudflare Worker\b|"
                      r"\b(?:runs? on |on )?Cloudflare Pages(?: Functions)?\b|\b(?:runs? on |on |built on |is a )?(?:Base44|Vercel)\b|"
                      r"\b(?:in )?local[ -]?storage\b|"
@@ -1091,10 +1093,10 @@ FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a singl
                      r"(?-i:\bR2\b)(?=[^.?!]{0,40}\bopt(?:s|ed)?[- ]in\b)|"
                      r"\bIndexedDB\b|\bin (?:the|your) browser\b|\bon (?:the|your) device\b|"
                      r"\busage (?:ledger|analytics)\b|\bhashed session id\b|\bpage memory\b|"
-                     r"\b(?:no|not|never|none)\b[^.?!]{0,30}?(?-i:\bPHP\b|\bPython\b|\bVPS\b|\bS3\b)", re.I)
+                     + _NO_STACK, re.I)
 # "None of my systems run PHP. ... Those systems were never vulnerable.": after a denial of
 # PHP, Python, a VPS or S3 that the sheet holds, a denial of exposure in that paragraph holds too
-STACK_DENIED = re.compile(r"\b(?:no|not|never|none)\b[^.?!]{0,30}?(?-i:\bPHP\b|\bPython\b|\bVPS\b|\bS3\b)", re.I)
+STACK_DENIED = re.compile(_NO_STACK, re.I)
 UNEXPOSED = re.compile(r"(?:\b(?:never|not)|n't)\s+(?:been\s+)?(?:vulnerable|exposed)\b", re.I)
 CLAIM = re.compile(
     r"(?-i:\bPHP\b|\bPython\b|\bNode(?:\.js)?\b|\bRails\b|\bVPS\b|\bD1\b|\bS3\b|\bR2\b)|\bruns? on\b|"

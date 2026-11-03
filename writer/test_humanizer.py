@@ -582,7 +582,10 @@ class ClaimTests(unittest.TestCase):
                   "Atelier doesn't use Mistral or Cohere.", "Atelier does not call Mistral, Cohere or Perplexity.",
                   "The owner signs in to Atelier with a passcode.", "Atelier testers sign in with LinkedIn, not Google.",
                   "Atelier calls Google's Gemini API directly.",
-                  "Cloudflare Pages had an outage on Tuesday, and Atelier stayed up."):
+                  "Cloudflare Pages had an outage on Tuesday, and Atelier stayed up.",
+                  # a stack denial with "n't" holds like one with "not"
+                  "My systems don't run PHP.", "Atelier doesn't run PHP.", "The construction ERP doesn't use PHP.",
+                  "None of my systems run PHP. Those systems weren't exposed."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
         # lines from Cole's correction (37f0c70) that are true by ColeOS PRODUCTS and Atelier's privacy page
@@ -967,7 +970,11 @@ class HumanizePassTests(unittest.TestCase):
                              ("JetDesk checks NOTAMs before every leg.", "JetDesk has no NOTAMs, so check them elsewhere."),
                              ("Keep Fix Cut stores nothing.", "Keep Fix Cut keeps anonymous usage analytics for 30 days."),
                              ("Atelier logs every prompt to a D1 table.", "Atelier syncs threads to R2 only when you opt in."),
-                             ("Atelier runs on Python.", "Atelier keeps threads in IndexedDB on the device.")):
+                             ("Atelier runs on Python.", "Atelier keeps threads in IndexedDB on the device."),
+                             ("The construction ERP runs on PHP.", "The construction ERP doesn't run PHP."),
+                             ("Atelier runs on Python.", "Atelier doesn't run Python."),
+                             ("The construction ERP runs on PHP. The permit app runs on PHP.",
+                              "My systems don't run PHP.")):
             draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{wrong}</p>")
             rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{right}</p>")
             out, _ = self.run_pass(reply=self.js(rev), errs=None, draft=draft)
