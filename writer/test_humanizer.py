@@ -673,7 +673,8 @@ class ClaimTests(unittest.TestCase):
                 (stack("Atelier logs", "every prompt."), ["every prompt."], []),
                 (stack("KEEP FIX CUT KEEPS", "ANALYTICS FOR A YEAR"), ["FOR A YEAR"], []),
                 (stack("ATELIER", "Every prompt is logged."), ["Every prompt is logged."], [">ATELIER<"]),
-                (stack("JETDESK", "NOTAMS: LIVE", "TRIPS: LOCAL"), ["NOTAMS: LIVE"], [">JETDESK<"])):
+                (stack("JETDESK", "NOTAMS: LIVE", "TRIPS: LOCAL"), ["NOTAMS: LIVE"], [">JETDESK<"]),
+                (stack("KEEP FIX CUT: NO ANALYTICS"), ["NO ANALYTICS"], [])):
             draft = dict(writer.STUB, svg_inner=labels + writer.STUB["svg_inner"])
             self.assertTrue(any(p.startswith("svg_inner: must not ship") for p in writer.claim_problems(draft)), labels)
             out, cut = writer.drop_high_risk(draft)

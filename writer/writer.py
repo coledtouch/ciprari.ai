@@ -1734,7 +1734,9 @@ def _claim(s, named, story, people, loose=frozenset(), context=frozenset(), keep
     that says "I would" is let off."""
     if s.endswith("?"):
         return None, None, story, []
-    s = NONE_LABEL.sub(r"no \1", s)  # "NOTAMS: NONE" says there are no NOTAMs
+    # "NOTAMS: NONE" says there are no NOTAMs; "KEEP FIX CUT: NO ANALYTICS" that it has none
+    ends = {x.end() for _, rx in SYSTEMS for x in rx.finditer(s)}
+    s = NONE_LABEL.sub(lambda x: f"{x.group(1)} has no" if x.end(1) in ends else f"no {x.group(1)}", s)
     high = soft = None
     told = False
     why = []
