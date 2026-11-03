@@ -386,6 +386,22 @@ class ClaimTests(unittest.TestCase):
         "JetDesk syncs your trips to the cloud.": "JetDesk: keeps trip",
         "JetDesk logs your location.": "JetDesk: keeps location",
         "JetDesk runs on Vercel.": "JetDesk: vercel",
+        # "keeps nothing" and its cousins: both apps keep the data their privacy pages list
+        "Atelier keeps nothing.": "Atelier: keeps no data",
+        "Atelier keeps nothing about you.": "Atelier: keeps no data",
+        "Keep Fix Cut keeps nothing at all.": "Keep Fix Cut: keeps no data",
+        "Atelier doesn't keep anything.": "Atelier: keeps no data",
+        "Atelier doesn't save anything on a server.": "Atelier: keeps no data",
+        "Keep Fix Cut doesn't keep analytics.": "Keep Fix Cut: keeps no analytics",
+        "Atelier doesn't keep a profile.": "Atelier: keeps no profile",
+        "Keep Fix Cut has no analytics.": "Keep Fix Cut: keeps no analytics",
+        "Atelier has no usage ledger.": "Atelier: keeps no analytics",
+        "My apps keep nothing.": "all of them: no store",
+        "Atelier keeps your threads only on your device.": "Atelier: keeps thread only on the device",
+        "Your conversations never leave your device in Atelier.": "Atelier: keeps thread only on the device",
+        "Atelier never stores your conversations on a server.": "Atelier: keeps no thread",
+        "Atelier doesn't store feedback.": "Atelier: keeps no feedback",
+        "Keep Fix Cut doesn't store anything.": "Keep Fix Cut: keeps no data",
     }
 
     def test_unsupported_system_lines_are_must_not_ship(self):
@@ -412,7 +428,12 @@ class ClaimTests(unittest.TestCase):
                   # JetDesk, from ColeOS PRODUCTS: Pages, Pages Functions, PIN-synced prices, local trips
                   "JetDesk runs on Cloudflare Pages.", "JetDesk runs on Cloudflare Pages Functions.",
                   "JetDesk syncs fuel prices to every phone behind a sync PIN.",
-                  "JetDesk keeps your trips in local storage.", "JetDesk calls a weather API."):
+                  "JetDesk keeps your trips in local storage.", "JetDesk calls a weather API.",
+                  # what each app does keep, and what it truly keeps none of
+                  "Atelier syncs your conversations to R2 when you opt in.", "Keep Fix Cut keeps nothing you upload.",
+                  "Keep Fix Cut does not keep your photos after the scan.", "Atelier doesn't log your chats.",
+                  "Atelier's ledger records what each tester spent. It does not log the conversation.",
+                  "Nothing in Atelier's ledger holds a prompt.", "Atelier keeps working offline."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
         # two lines from Cole's correction (37f0c70) that are true by ColeOS PRODUCTS

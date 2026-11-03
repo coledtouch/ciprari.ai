@@ -957,7 +957,9 @@ ME = re.compile(r"(?-i:\bI) (?:log|store|keep|retain|monitor|run|host|patch|trac
                 r"tables?|users|testers|customers|clients|crews?|integrations?|test suite|tests)\b", re.I)
 FIRST = re.compile(r"(?-i:\bI\b)|\b(?:my|me|our)\b", re.I)
 # must not ship
-STORE = re.compile(r"\b(?:log(?:s|ged|ging)?|stor(?:e|es|ed|ing)|retain(?:s|ed|ing)?|(?:keep(?:s|ing)?|kept)(?!\s+\w+ing\b)|"
+# "keeps writing" is not keeping anything; "keeps nothing" and "keep anything" are
+_GOING = r"(?!\s+(?!(?:no|any|some|every)thing\b)\w+ing\b)"
+STORE = re.compile(r"\b(?:log(?:s|ged|ging)?|stor(?:e|es|ed|ing)|retain(?:s|ed|ing)?|(?:keep(?:s|ing)?|kept)" + _GOING + r"|"
                    r"sav(?:e|es|ed|ing)|record(?:s|ed|ing)?|hold(?:s|ing)?|held|writes?|wrote|tables?|database)\b|"
                    r"(?-i:\bD1\b)", re.I)
 CONTENT = re.compile(r"\b(?:prompts?|answers?|responses?|conversations?|exchanges?|chats?|messages?|transcripts?|"
@@ -1023,6 +1025,7 @@ FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a singl
                      r"(?:\b(?:logs?|stores?|keeps?|saves?|holds?|records?)\s+)?(?:\b(?:never|not|no)\b|n't\b)"
                      r"[^.?!]{0,30}?\b(?:prompts?|answers?|uploads?|reports?|frames?)\b|"
                      r"\b(?:opt-in|private) (?:thread )?sync\b|\b(?:expires? (?:after|in) )?(?:30|thirty)[- ]days?\b|"
+                     r"(?-i:\bR2\b)(?=[^.?!]{0,40}\bopt(?:s|ed)?[- ]in\b)|"
                      r"\bIndexedDB\b|\bin (?:the|your) browser\b|\bon (?:the|your) device\b|"
                      r"\busage (?:ledger|analytics)\b|\bhashed session id\b|\bpage memory\b|"
                      r"\b(?:no|not|never|none)\b[^.?!]{0,30}?(?-i:\bPHP\b|\bPython\b|\bVPS\b|\bS3\b)", re.I)
@@ -1140,15 +1143,16 @@ STRONG = re.compile(r"\blog(?:s|ged|ging)?\b(?! ?(?:in|into|on|out)\b)|\bstor(?:
                     r"you|a trip)\b)|\bretain(?:s|ed|ing)?\b|\bretention\b|\bpersist(?:s|ed|ing|ence)?\b|"
                     r"\bcach(?:es|ed|ing)\b|\bback(?:s|ed)? up\b|\bbackups?\b|\barchiv(?:e|es|ed|ing)\b|"
                     r"\bsync(?:s|ed|ing)?\b", re.I)
-WEAK = re.compile(r"\b(?:keep|keeps|keeping|kept)\b(?!\s+\w+ing\b)|"
+WEAK = re.compile(r"\b(?:keep|keeps|keeping|kept)\b" + _GOING + r"|"
                   r"\b(?:hold|holds|holding|held|record|records|recorded|recording)\b|"
                   r"\b(?:writes?|wrote|written)\b(?=(?:\s+\S+){0,4}?\s+(?:to|into)\s+(?:the\s+|a\s+|an\s+|its\s+)?"
                   r"(?:D1|R2|KV|S3|disk|databases?|tables?|buckets?|servers?|logs?|ledger|IndexedDB)\b)", re.I)
 DATA = [(key, re.compile(rx, re.I)) for key, rx in (
     ("prompt", r"\bprompts?\b|\bwhat (?:the |a |each )?(?:users?|testers?|person|owner|you) (?:asked|typed|sent|wrote)\b|"
-               r"\b(?:conversations?|chats?|messages?|exchanges?|transcripts?|chat history)\b"),
+               r"\b(?:exchanges?|transcripts?)\b"),
     ("answer", r"\b(?:answers?|responses?|replies|outputs?|completions?)\b|\bwhat the model (?:returned|said|answered|wrote)\b"),
-    ("thread", r"\bthreads?\b"),
+    # Atelier's privacy page calls a saved conversation a thread: synced ones are stored in R2
+    ("thread", r"\bthreads?\b|\bchat history\b|\b(?:conversations?|chats?|messages?)\b"),
     ("photo link", r"\b(?:profile )?photo links?\b"), ("member id", r"\b(?:member|LinkedIn) IDs?\b"),
     ("session id", r"\b(?:hashed )?session ids?\b"), ("page view", r"\bpage views?\b"),
     ("token cost", r"\btoken (?:costs?|counts?|usage)\b|\btokens?\b"), ("upload", r"\buploads?\b"),
@@ -1169,6 +1173,11 @@ GENERIC_DATA = {"data"}
 LOCAL_HERE = re.compile(r"\bIndexedDB\b|\blocal[ -]?storage\b|\bin (?:the|your|a|each|their) browser\b|"
                         r"\bon (?:the|your|my|each|a|their) (?:device|phone|laptop|iPad|tablet)\b|\bpage memory\b|"
                         r"\blocally\b|\bon-device\b|\bCache Storage\b", re.I)
+# "has no analytics", "doesn't have a profile": keeps none of it
+HAS_NO = re.compile(r"\b(?:has|have|had)\s+no\b|\b(?:does|do|did)(?:\s+not|n't)\s+have\b(?:\s+(?:an?|any)\b)?", re.I)
+# "keeps threads only on your device", "never leave your browser": kept nowhere else
+LOCAL_ONLY = re.compile(rf"\bonly\b[^.;:]{{0,30}}?(?:{LOCAL_HERE.pattern})|(?:\bnever|\bnot|n't)\s+leaves?\s+"
+                        r"(?:the|your|a|each|their)\s+(?:device|phone|laptop|iPad|tablet|browser)\b", re.I)
 # data the sheet keeps on the device only ("Trips are saved in local storage") leaves it here
 OFF_DEVICE = re.compile(r"\bsync(?:s|ed|ing)?\b|\bcloud\b|\bupload(?:s|ed|ing)?\b|\b(?:servers?|buckets?|databases?|"
                         r"tables?)\b|(?-i:\bR2\b|\bD1\b|\bKV\b|\bS3\b)", re.I)
@@ -1177,13 +1186,13 @@ CLAUSE_NEG = re.compile(r"\s*[\"'“‘(]?\s*(?:None|No|Not|Nothing|Neither|Neve
 LEADS = re.compile(r"(?:^\s*[\"'“‘(]?\s*|\b(?:When|If|As|After|Before|Since|While|Once|Until|Because|Though|"
                    r"Although|Unless|Whether)\s+)(?:the\s+)?$", re.I)
 PASSIVE = re.compile(r"\b(?:is|are|was|were|be|been|being|gets?|got)\s+(?:(?:not|never|also|only|still|all|"
-                     r"then|now)\s+)?$|n't\s+(?:been\s+)?$", re.I)
+                     r"then|now)\s+)?$|\b(?:is|are|was|were|has|have|had)n't\s+(?:been\s+)?$", re.I)  # "doesn't keep" is active
 # "my apps", "every one of those systems", "I monitor": a claim about all of them
 GENERAL = re.compile(rf"{GENERIC.pattern}|\bmy (?:own )?(?:systems?|platforms?|apps?|sites?|stack|servers?)\b|"
                      r"(?-i:\bI) (?:run|host|operate|ship|built|build|maintain) (?:[\w-]+ ){0,3}?(?:systems|platforms|"
                      r"apps|sites|servers|integrations|products)\b|\b(?:systems?|platforms?|apps?|sites?) I "
                      r"(?:run|host|operate|ship|built|maintain)\b|(?-i:\bI) (?:(?:do not|don't|never|also|only) )?"
-                     r"(?:log|store|keep(?!\s+\w+ing\b)|retain|monitor|track|record|save|back up|encrypt|host|patch|"
+                     rf"(?:log|store|keep{_GOING}|retain|monitor|track|record|save|back up|encrypt|host|patch|"
                      r"rotate|scope|audit)\b", re.I)
 DETERMINERS = set("""the a an my our your his her their i we you he she some any no every each all either neither
 nothing none someone everyone anyone nobody there here what which who when where while if as so then but and or
@@ -1322,7 +1331,8 @@ def _terms(m):
 def _data(m, sheet=False):
     """(kind, negated, position of the keeping word) for the data masked clause m keeps or
     denies keeping: the object of an active keeping verb (a negation between them denies it)
-    or the subject of a passive one. On the sheet, every kind its storage clause names."""
+    or the subject of a passive one. On the sheet, every kind its storage clause names. In
+    "keeps nothing you upload" the kind is the upload, not data at large."""
     stores = _stores(m)
     if sheet:
         return [(key, any(neg for _, _, neg, _ in stores), 0) for key, _ in _nouns(m)] if stores else []
@@ -1332,10 +1342,14 @@ def _data(m, sheet=False):
         hi = stores[i + 1][0] if i + 1 < len(stores) else len(m)
         if passive:
             out += [(key, neg, a) for key, _ in _nouns(m[lo:a])]
-        else:
-            span = m[b:min(hi, b + 80)]
+        else:  # the object ends where a time or condition starts: "keep photos after the scan"
+            span = re.split(r"(?i)\b(?:after|before|during|until|once|when|whenever|while|since|unless|if|because)\b",
+                            m[b:min(hi, b + 80)])[0]
+            nouns = _nouns(span)
             out += [(key, neg or bool(re.search(r"\b(?:no|not|never|none|nothing|neither|without)\b|n't\b",
-                                                span[:s0], re.I)), a) for key, s0 in _nouns(span)]
+                                                span[:s0], re.I)), a) for j, (key, s0) in enumerate(nouns)
+                    if not (key in GENERIC_DATA and j + 1 < len(nouns)
+                            and re.fullmatch(r"[^,;:.]{0,20}", span[s0:nouns[j + 1][1]]))]
     return out
 
 
@@ -1422,11 +1436,22 @@ def _unsupported(c, here):
             for key, neg, pos in _data(m):
                 if name not in _owners(m, pos, here):
                     continue
-                if neg and (key in sup["posdata"] or (key in GENERIC_DATA and sup["posdata"])):
+                # a log of the conversation holds its prompts and answers: "logs no prompts or answers" denies it
+                logged = key == "thread" and re.match(r"log", m[pos:], re.I) and {"prompt", "answer"} <= sup["negdata"]
+                if neg and not logged and (key in sup["posdata"] or (key in GENERIC_DATA and sup["posdata"])):
                     why.append(f"{name}: keeps no {key}")
                 elif not neg and (key in sup["negdata"] or (sup["posdata"] and key not in sup["posdata"] and not (
                         key in sup["localdata"] and not OFF_DEVICE.search(c)))):
                     why.append(f"{name}: keeps {key}")
+        if sup:
+            for h in HAS_NO.finditer(m):
+                for key, _ in _nouns(m[h.end():h.end() + 40])[:1]:
+                    if name in _owners(m, h.start(), here) and (key in sup["posdata"] or (
+                            key in GENERIC_DATA and sup["posdata"])):
+                        why.append(f"{name}: keeps no {key}")
+            if LOCAL_ONLY.search(m):
+                why += [f"{name}: keeps {key} only on the device" for key, at in _nouns(m)
+                        if key in sup["posdata"] and name in _owners(m, at, here)]
     return list(dict.fromkeys(why))
 
 
