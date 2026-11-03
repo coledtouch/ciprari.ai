@@ -500,9 +500,12 @@ def _colors(svg):
             re.findall(rf"""(?i){INK}(?:\s*=\s*(["'])(.*?)\1|\s*:\s*([^;"']+))""", tag)]
 
 
-def _nearest_ink(rgb):
+def _nearest_ink(rgb, visible=False):
+    """The palette ink nearest rgb. A stroke or a <text> fill is visible: it never gets the
+    background #04120a, or a dark green label would vanish."""
     hexrgb = lambda h: [int(h[i:i + 2], 16) for i in (1, 3, 5)]
-    return min((G, D, A, M, "#04120a"), key=lambda ink: sum((x - y) ** 2 for x, y in zip(rgb, hexrgb(ink))))
+    inks = (G, D, A, M) if visible else (G, D, A, M, "#04120a")
+    return min(inks, key=lambda ink: sum((x - y) ** 2 for x, y in zip(rgb, hexrgb(ink))))
 
 
 # the CSS named colors; repair_svg() maps each to its nearest palette ink
@@ -557,17 +560,18 @@ def _rgb(color):
     return tuple(round(x * 255) for x in colorsys.hls_to_rgb(num[0] % 360 / 360, l, s))
 
 
-def _ink(value):
+def _ink(value, visible=False):
     """The palette value for one fill, stroke or stop-color: kept when it is one, else the
     nearest ink. none for transparent or empty, #000 for black, a bare url(#id) for a
-    gradient, and the main ink G for currentColor, inherit or anything unknown."""
+    gradient, and the main ink G for currentColor, inherit or anything unknown. A visible
+    value (a stroke or a <text> fill) never becomes #000 or #04120a."""
     v = re.sub(r"(?i)\s*!\s*important\s*$", "", value).strip()
     c = v.lower()
     url = re.fullmatch(r"""(?i)url\(\s*(["']?)\s*(#[^"'()\s]+)\s*\1\s*\)""", v)
     rgb = _rgb(c)
     new = (f"url({url.group(2)})" if url else v if c in PALETTE else
-           "none" if c in ("", "transparent") else "#000" if rgb == (0, 0, 0) else
-           _nearest_ink(rgb) if rgb else G)
+           "none" if c in ("", "transparent") else "#000" if rgb == (0, 0, 0) and not visible else
+           _nearest_ink(rgb, visible) if rgb else G)
     return value if new == value.strip() else new + value[len(value.rstrip()):]
 
 
@@ -575,8 +579,9 @@ def repair_svg(svg):
     """Mechanical art fixes before validate(), on the writer's drafts and revisions and on
     staged posts, so validate() never refuses art this could fix. A <line> drawn with x/y gets
     x1/y1, and a missing end defaults to 0 as SVG draws it. Every fill, stroke and stop-color
-    (attribute or inline style, with or without !important) gets a palette value from _ink().
-    Only tags change, never the text."""
+    (attribute or inline style, with or without !important) gets a palette value from _ink();
+    a stroke or a <text> fill gets one that shows on the background. Only tags change, never
+    the text."""
     def line(m):
         t = m.group(0)
         for a in ("x", "y"):
@@ -586,13 +591,19 @@ def repair_svg(svg):
         missing = [a for a in ("x1", "y1", "x2", "y2") if not re.search(rf"(?i)\s{a}\s*=", t)]
         return t[:5] + "".join(f" {a}={q}0{q}" for a in missing) + t[5:]
 
-    def ink(m):
+    def ink(m, element):
+        attr = re.match(r"[\w-]+", m.group(1) or m.group(4)).group(0).lower()
+        visible = attr == "stroke" or (attr == "fill" and element in ("text", "tspan", "textpath"))
         if m.group(1):
-            return m.group(1) + m.group(2) + _ink(m.group(3)) + m.group(2)
-        return m.group(4) + _ink(m.group(5))
+            return m.group(1) + m.group(2) + _ink(m.group(3), visible) + m.group(2)
+        return m.group(4) + _ink(m.group(5), visible)
+
+    def tag(t):
+        element = (re.match(r"<\s*([\w:-]+)", t.group(0)) or [None, ""])[1].lower()
+        return re.sub(rf"""(?i)({INK}\s*=\s*)(["'])(.*?)\2|({INK}\s*:\s*)((?:url\([^)]*\)|[^;"'])+)""",
+                      lambda m: ink(m, element), t.group(0))
     svg = re.sub(r"(?i)<line\b[^>]*>", line, svg)
-    return re.sub(r"<[^>]+>", lambda t: re.sub(
-        rf"""(?i)({INK}\s*=\s*)(["'])(.*?)\2|({INK}\s*:\s*)((?:url\([^)]*\)|[^;"'])+)""", ink, t.group(0)), svg)
+    return re.sub(r"<[^>]+>", tag, svg)
 
 
 # ---------------------------------------------------------------- humanizer

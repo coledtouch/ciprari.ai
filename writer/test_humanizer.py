@@ -492,8 +492,9 @@ class ArtTests(unittest.TestCase):
     def test_repair_maps_names_rgb_and_stops(self):
         art = ("<rect fill='white' stroke='black'/><circle style='fill: rgb(255, 0, 0); stroke: transparent'/>"
                "<stop stop-color='#ff0000'/><text fill='#33ff66'>FILL: red</text>")
-        self.assertEqual(writer.repair_svg(art), "<rect fill='#ffd75e' stroke='#000'/><circle style='fill: #ffd75e; "
+        self.assertEqual(writer.repair_svg(art), "<rect fill='#ffd75e' stroke='#2d6b4a'/><circle style='fill: #ffd75e; "
                                                  "stroke: none'/><stop stop-color='#ffd75e'/><text fill='#33ff66'>FILL: red</text>")
+        self.assertEqual(writer.repair_svg("<rect fill='black'/>"), "<rect fill='#000'/>")  # a shape may be background
 
     def test_repair_is_total(self):
         """Every value validate() refuses, repair_svg() turns into one it takes (rev2 probes)."""
@@ -519,6 +520,20 @@ class ArtTests(unittest.TestCase):
                 self.assertEqual(writer.repair_svg(art), fixed)
                 self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.STUB["svg_inner"] + fixed), "post"), [])
         self.assertEqual(writer.repair_svg("<rect fill='#33FF66' stroke='NONE'/>"), "<rect fill='#33FF66' stroke='NONE'/>")
+
+    def test_repaired_strokes_and_labels_stay_visible(self):
+        """A dark ink on a stroke or a <text> fill never becomes the background (#04120a or #000)."""
+        for art, fixed in (
+                ("<text x='9' y='9' fill='darkgreen'>LOG</text>", "<text x='9' y='9' fill='#2d6b4a'>LOG</text>"),
+                ("<text style='fill: rgb(1,2,3)'>A</text>", "<text style='fill: #2d6b4a'>A</text>"),
+                ("<text><tspan fill='navy'>A</tspan></text>", "<text><tspan fill='#2d6b4a'>A</tspan></text>"),
+                ('<line x1="0" y1="0" x2="9" y2="9" stroke="navy"/>', '<line x1="0" y1="0" x2="9" y2="9" stroke="#2d6b4a"/>'),
+                ("<rect style='stroke: black; fill: darkgreen'/>", "<rect style='stroke: #2d6b4a; fill: #04120a'/>")):
+            with self.subTest(art=art):
+                self.assertEqual(writer.repair_svg(art), fixed)
+                self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.STUB["svg_inner"] + fixed), "post"), [])
+        self.assertEqual(writer.repair_svg("<text fill='#04120a' stroke='#000'>A</text>"),
+                         "<text fill='#04120a' stroke='#000'>A</text>")  # palette values are kept as drawn
 
     def test_art_text_must_fit_the_frame(self):
         def overflow(art):
