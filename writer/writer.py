@@ -247,7 +247,9 @@ SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may s
 - Atelier (atelier.ciprari.ai): his personal AI studio. A plain-JavaScript PWA with no build
   step, served by one Cloudflare Worker with Durable Objects (Relay, Ledger, Guard), KV, and an
   R2 bucket used only for opt-in private thread sync. Threads live in IndexedDB on the device.
-  The usage ledger records cost and time per request and never holds prompts or answers. The
+  Its server keeps an optional profile and memory, voluntary feedback and a Look up cache. For
+  a LinkedIn tester it keeps the member ID, name, email and photo link. The usage ledger
+  records cost and time per request. Prompts and answers are never logged. The
   owner signs in with a passcode. Up to 25 LinkedIn testers sign in with LinkedIn (a 30-day
   HttpOnly cookie). The user picks the model. Nine providers: Anthropic, OpenAI, Google
   (Gemini), xAI, Z.ai (GLM), DeepSeek, Meta, NVIDIA and Runway. xAI and Runway are owner-only;
@@ -264,6 +266,7 @@ DOES NOT — never write otherwise:
 - No Cole system uses PHP, Python, a VPS or S3. Atelier has no D1 database.
 - Atelier logs no prompts or answers. Its usage ledger records what each request cost and
   when. Keep Fix Cut saves no uploads or reports.
+- Atelier and Keep Fix Cut each keep the data listed above. Never write that either keeps nothing.
 - JetDesk has no NOTAMs. CurbScript has no service routes.
 - Valhalla K9, Hire Mariaelena and Show It With Words have no AI.
 Beyond this sheet, never state a stack, version, host, storage, logging, retention, auth,

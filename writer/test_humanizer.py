@@ -633,7 +633,9 @@ class PromptTests(unittest.TestCase):
         system, _ = writer.build_prompt("post", "v9.9.9", "2026-11-02")
         self.assertIn(writer.SYSTEM_FACTS, system)
         flat = " ".join(system.split())
-        for fact in ("Nine providers: Anthropic, OpenAI, Google", "never holds prompts or answers",
+        for fact in ("Nine providers: Anthropic, OpenAI, Google", "Prompts and answers are never logged",
+                     "Its server keeps an optional profile and memory, voluntary feedback and a Look up cache",
+                     "member ID, name, email and photo link", "Never write that either keeps nothing",
                      "Uploads and reports are not saved", "kept 30 days", "4 scans a minute",
                      "No Cole system uses PHP, Python, a VPS or S3", "Atelier has no D1 database",
                      "JetDesk has no NOTAMs", "CurbScript has no service routes", "what you would check",
@@ -642,7 +644,8 @@ class PromptTests(unittest.TestCase):
                      "Link each URL once", "Every <line> has x1, y1, x2 and y2", "svg_alt describes only"):
             self.assertIn(fact, flat, fact)
         self.assertIn("Atelier logs no prompts or answers. Its usage ledger records what each request cost and when.", flat)
-        for stale in ("seven providers", "stores nothing", "D1 databases", "cost and time only"):
+        for stale in ("seven providers", "stores nothing", "D1 databases", "cost and time only",
+                      "never holds prompts or answers"):
             self.assertNotIn(stale, flat, stale)
 
     def test_user_prompt_carries_the_week_and_catalog_descs(self):
