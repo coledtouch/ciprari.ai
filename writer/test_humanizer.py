@@ -24,6 +24,24 @@ def stored(version):
             "svg_inner": p["svg"], "body_html": p["body"]}
 
 
+# The lines Cole had corrected on 2026-11-02, as they shipped (line number -> text, per field).
+# posts_b.py now holds the true lines, so the claim tests rebuild the shipped posts from these.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "corrected_lines.json"), encoding="utf-8") as _f:
+    CORRECTED = json.load(_f)
+
+
+def shipped(version):
+    """A post as it went live, before the correction: the writer's real output."""
+    p = dict(next(p for p in writer.ALL if p["version"] == version))
+    for field, lines in CORRECTED.get(version, {}).items():
+        rows = p[field].split("\n")
+        for i, line in lines.items():
+            rows[int(i)] = line
+        p[field] = "\n".join(rows)
+    return {"title": p["title"], "desc": p["desc"], "svg_caption": p["svg_caption"], "svg_alt": p["svg_alt"],
+            "svg_inner": p["svg"], "body_html": p["body"]}
+
+
 class LintTests(unittest.TestCase):
     def probs(self, body, **kw):
         return writer.humanizer_problems(post(body, **kw))
@@ -231,15 +249,23 @@ class ClaimTests(unittest.TestCase):
         "v1.61.0": ["Abdulrahman Alfozan planted a recording device in an executive conference room."],
     }
 
+    def test_shipped_lines_rebuild_from_the_fixture(self):
+        self.assertEqual(sorted(CORRECTED), ["v1.61.0", "v1.65.0", "v1.70.0", "v1.71.0", "v1.72.0", "v1.74.0",
+                                             "v1.75.0", "v1.76.0"])
+        for version, sentences in self.MUST_NOT_SHIP.items():
+            self.assertNotEqual(shipped(version)["body_html"], stored(version)["body_html"], version)
+            for s in sentences:
+                self.assertIn(s, writer._plain(shipped(version)["body_html"]), (version, s))
+
     def test_shipped_false_claims_are_must_not_ship(self):
         for version, sentences in self.MUST_NOT_SHIP.items():
-            found = writer.claim_problems(stored(version))
+            found = writer.claim_problems(shipped(version))
             for s in sentences:
                 self.assertTrue(any("must not ship" in p and s[:60] in p for p in found), (version, s))
 
     def test_drop_high_risk_cuts_them_and_keeps_the_rest(self):
         for version, sentences in self.MUST_NOT_SHIP.items():
-            draft = stored(version)
+            draft = shipped(version)
             out, cut = writer.drop_high_risk(draft)
             plain = writer._plain(out["body_html"])
             for s in sentences:
