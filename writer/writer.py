@@ -920,20 +920,43 @@ def humanizer_problems(post):
 # Each system by brand or domain, then by the plain name a post gives it ("the flight planner").
 # A plain name is his: across the posts it almost always is. It is someone else's product only
 # when the post says so: "the flight planner in ForeFlight", "the Twilio dialer in most CRMs",
-# or a company's product news in that sentence or the one before it (NEWS). Then it is loose
-# and gets soft labels only.
+# "In ForeFlight, the flight planner", "Procore said the estimating tool", or a company's
+# product news in that sentence or the one before it (NEWS). Then it is loose and gets soft
+# labels only.
 _THEIRS = (r"(?!\s+(?:in|at|from|by|inside|of)\s+(?:(?-i:(?!(?:January|February|March|April|May|June|July|August|"
            r"September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b)[A-Z])|"
            r"(?:most|many|other|every|their|its|some)\b))")
-# "Hinge launched a photo coach.", "Procore shipped an estimating assistant": a named company's
-# product news, so "the dating-profile tool" right after it is that product
+# a capitalized name that can be a company: not a sentence opener, a month or day, or a plural
+# of people ("Pilots testing the flight planner")
+_COMPANY = (r"(?!(?:I|A|An|The|This|That|These|Those|It|Its|We|Our|My|On|In|At|By|For|Last|Next|Every|Each|When|"
+            r"After|Before|If|Then|Now|Today|And|But|So|Cole|January|February|March|April|May|June|July|August|"
+            r"September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Users|"
+            r"Pilots|Testers|Customers|Clients|Workers|Crews|Contractors|Developers|Engineers|Researchers|Teams|"
+            r"Owners|Members|People|Agents|Analysts|Officials|Regulators|Lawyers|Prosecutors)\b)"
+            r"[A-Z][\w.&-]*(?:\s+[A-Z0-9][\w.&-]*){0,3}")
+# "Hinge launched a photo coach.", "Procore shipped an estimating assistant", "Hinge is testing
+# a photo coach": a named company's product news, so "the dating-profile tool" right after it
+# is that product
 NEWS = re.compile(
-    r"(?-i:(?<![\w'’-])((?!(?:I|A|An|The|This|That|These|Those|It|Its|We|Our|My|On|In|At|By|For|Last|Next|Every|Each|"
-    r"When|After|Before|If|Then|Now|Today|And|But|So|Cole)\b)[A-Z][\w.&-]*(?:\s+[A-Z0-9][\w.&-]*){0,3}))"
-    r"\s+(?:(?:has|have|had|just|now|also|quietly|finally)\s+)*"
-    r"(?:launch(?:ed|es)|ship(?:ped|s)|releas(?:ed|es)|announc(?:ed|es)|unveil(?:ed|s)|introduc(?:ed|es)|"
-    r"roll(?:ed|s) out|debut(?:ed|s)|add(?:ed|s)|buil(?:t|ds)|open(?:ed|s)|acquir(?:ed|es)|bought|buys|"
-    r"updat(?:ed|es)|upgrad(?:ed|es)|demo(?:ed|s)|preview(?:ed|s)|offers|puts? out)\b", re.I)
+    rf"(?-i:(?<![\w'’-])({_COMPANY}))"
+    r"\s+(?:(?:has|have|had|is|are|was|were|just|now|also|quietly|finally)\s+)*"
+    r"(?:launch(?:ed|es|ing)|ship(?:ped|s|ping)|releas(?:ed|es|ing)|announc(?:ed|es)|unveil(?:ed|s)|introduc(?:ed|es)|"
+    r"roll(?:ed|s|ing) out|debut(?:ed|s)|add(?:ed|s)|buil(?:t|ds)|open(?:ed|s)|acquir(?:ed|es)|bought|buys|"
+    r"updat(?:ed|es)|upgrad(?:ed|es)|demo(?:ed|s)|preview(?:ed|s)|offers|puts? out|test(?:s|ed|ing)|"
+    r"pilot(?:s|ed|ing))\b", re.I)
+# "In ForeFlight, the flight planner...", "According to Procore, the estimating tool...",
+# "Procore said the estimating tool...": the plain name right after is that company's
+ATTRIB = re.compile(rf"(?-i:(?:\b[Ii]n|\b[Aa]ccording to)\s+({_COMPANY})\s*,\s*|(?<![\w'’-])({_COMPANY})\s+"
+                    r"(?:said|says|reported|reports|wrote|writes|noted|notes|claims|claimed)(?:\s+that)?\s+)$")
+# The AI labs, clouds and payment vendors whose news opens most tie-in paragraphs. None of them
+# makes "the permit app", so their news makes a plain name theirs only when it shares the
+# name's field (DOMAIN): "Google launched a flight planner".
+VENDOR_NAMES = re.compile(r"\b(?:GitHub|Apple|Salesforce)\b")
+DOMAIN = {"Coen ERP": r"dialers?|snow|crews?", "estimate.pro": r"estimat\w*|bids?|takeoffs?",
+          "JetDesk": r"flights?|NOTAMs?|EFBs?|pilots?|aviation", "North Point": r"contractors?",
+          "Valhalla K9": r"dogs?|K9|training", "Hire Mariaelena": r"freelanc\w*|r[ée]sum[ée]s?|portfolios?",
+          "Show It With Words": r"jewelry|beads?", "PermitSketch": r"permits?",
+          "Keep Fix Cut": r"dating|profiles?|photos?", "Base44 apps": r"smart-home|IPTV|honey|cosmetics"}
 _NAMES = (
     ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\bthe construction ERP\b|\b(?:my|our|his) (?:construction )?ERP\b",
                  r"\bthe Twilio dialer\b|\bthe snow(?:[- ]operations)? module\b|\bthe crew apps?\b"),
@@ -1284,17 +1307,57 @@ def _brands(text):
     return {name for name, rx in BRANDS if rx.search(text or "")}
 
 
+def _vendor(name):
+    """True for a company the lint knows as an AI lab, a host or a payment or SaaS vendor."""
+    return bool(VENDOR_NAMES.search(name) or any(rx.search(name) for _, rx in PROVIDERS)
+                or any(rx.search(name) for key, rx in TERMS if key in VENDORS))
+
+
+def _owns(company, news, name):
+    """True when company, whose news or word is the text news, owns the system called name by
+    its plain name: not one of Cole's, and not a lab or vendor unless the news is in that
+    system's field ("Google launched a flight planner")."""
+    if _systems(company):
+        return False
+    first = re.split(r"(?<=[.?!])\s+", news.strip(), maxsplit=1)[0]
+    return not _vendor(company) or bool(re.search(rf"\b(?:{DOMAIN.get(name, '(?!)')})\b", first, re.I))
+
+
 def _theirs(text, before=""):
     """The systems text names only by a plain name that are another company's product: a
-    named company's product news (NEWS) comes earlier in the sentence or in the one before it.
-    "Procore shipped an estimating assistant. The estimating tool calls OpenAI." is Procore's."""
+    named company's product news (NEWS) comes earlier in the sentence or in the one before it,
+    or the company is named right before it ("In ForeFlight,", "Procore said"). "Procore
+    shipped an estimating assistant. The estimating tool calls OpenAI." is Procore's.
+    "Anthropic released Claude Opus 5. The permit app calls it." is his."""
     brands, out = _brands(text), set()
     for name, rx in SYSTEMS:
         m = rx.search(text or "")
-        if m and name not in brands and any(not _systems(n.group(1))
-                                            for n in NEWS.finditer(f"{before} {text[:m.start()]}")):
+        if not m or name in brands:
+            continue
+        lead = f"{before} {text[:m.start()]}"
+        said = ATTRIB.search(text[:m.start()])
+        if any(_owns(n.group(1), lead[n.start():], name) for n in NEWS.finditer(lead)) or (
+                said and _owns(said.group(1) or said.group(2), said.group(0), name)):
             out.add(name)
     return out
+
+
+# "Anthropic released Claude Opus 5. The permit app calls it for every drawing.": "it" is the
+# lab or vendor whose news came just before, so the line says the permit app calls Anthropic
+IT = re.compile(r"\b(?:call(?:s|ed|ing)?|us(?:e|es|ed|ing)|through|via|with|on|to|into|behind|add(?:s|ed)|"
+                r"adopt(?:s|ed))\s+(it|them)\b", re.I)
+
+
+def _it(text, before=""):
+    """text with each "it" that a system calls, uses or runs on read as the lab or vendor
+    whose product news (NEWS) comes before it in this sentence or the one before. A denied
+    one ("doesn't use it") stays: the product may be new where the vendor is not."""
+    for g in reversed(list(IT.finditer(text))):
+        lead = f"{before} {text[:g.start()]}"
+        who = [n.group(1) for n in NEWS.finditer(lead) if _vendor(n.group(1)) and not _systems(n.group(1))]
+        if who and not _negated(text, g.start(1), g.end(1)):
+            text = text[:g.start(1)] + who[-1] + text[g.end(1):]
+    return text
 
 
 def _people(text):
@@ -1770,8 +1833,8 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False):
                 out.append("".join(t for t, _ in sent))
                 continue
             denied = denied or bool(STACK_DENIED.search(text))
-            named = _systems(text)
-            loose, last = _theirs(text, last), text
+            named, before = _systems(text), last
+            loose, last = _theirs(text, before), text
             named, loose = (named - loose, loose) if named else (
                 (set(prev), set(prev_loose)) if carry or CARRY.match(text) else (set(), set()))
             if "Coen ERP" not in named and BARE_ERP.search(text) and not ERP_VENDOR.search(text):
@@ -1779,7 +1842,7 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False):
                     named = named | {"Coen ERP"}
                 else:
                     loose = loose | {"Coen ERP"}
-            soft, high, story, why = _claim(text, named, story, people, loose, context, keeping, denied)
+            soft, high, story, why = _claim(_it(text, before), named, story, people, loose, context, keeping, denied)
             keeping = keeping or bool(high in (SHEET_LABEL, GENERAL_LABEL) and I_KEEP.search(text))
             linked = any(re.match(r"(?i)<a\s", t) for t, _ in sent)
             if tale and not high and not linked and not WOULD.search(text) and (

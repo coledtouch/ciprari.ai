@@ -486,7 +486,14 @@ class ClaimTests(unittest.TestCase):
                   "ForeFlight added NOTAM filters on Monday. The flight planner now checks NOTAMs before every leg.",
                   "The Twilio dialer in most CRMs logs every call.",
                   "Workers at the contractor site found asbestos.",
-                  "Pilots using JetDesk still need another source for NOTAMs."):
+                  "Pilots using JetDesk still need another source for NOTAMs.",
+                  # the company named right before the plain name, and news it is still testing
+                  "In ForeFlight, the flight planner checks NOTAMs before every leg.",
+                  "According to Procore, the estimating tool calls OpenAI for every takeoff.",
+                  "Procore said the estimating tool calls OpenAI for every takeoff.",
+                  "Hinge is testing a photo coach. The dating-profile tool stores photos for 90 days.",
+                  # an AI lab's news in the plain name's own field
+                  "Google launched a flight planner in Maps. The flight planner checks NOTAMs before every leg."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
             self.assertEqual(len(writer.drop_high_risk(post(f"<p>{s}</p>"))[1]), 0, s)
@@ -494,6 +501,37 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(writer.drop_high_risk(heading)[1], [])  # a heading shares a block with its paragraph
         apart = post("<p>Procore shipped an estimating assistant.</p><p>The estimating tool calls OpenAI.</p>")
         self.assertEqual(len(writer.drop_high_risk(apart)[1]), 1)  # the next paragraph is his again
+
+    # an AI lab's, cloud's or payment vendor's news, then a plain name: the vendor never makes
+    # "the permit app", so the line is his, and "it" is what the vendor shipped
+    AFTER_NEWS = (("Anthropic released Claude Opus 5 on Tuesday.", "The permit app now calls it for every drawing.",
+                   "PermitSketch: anthropic"),
+                  ("OpenAI updated its retention policy.", "The dating-profile tool keeps photos for a year.",
+                   "Keep Fix Cut: keeps photo"),
+                  ("Google shipped Gemini 3 Flash.", "The estimating tool calls it to score bids.", "estimate.pro: google"),
+                  ("Cloudflare launched Workers VPC on Monday.", "The permit app runs on Cloudflare Workers.",
+                   "PermitSketch: cloudflare"),
+                  ("OpenAI launched a new Realtime API this week.", "The flight planner checks NOTAMs through it.",
+                   "JetDesk: notam"),
+                  ("Cloudflare announced a D1 price cut.", "The permit app writes drawings to R2 and logs sessions to D1.",
+                   "PermitSketch: r2"),
+                  ("AWS launched a new region.", "The flight planner runs on a VPS.", "a stack, version"))
+
+    def test_an_ai_labs_news_leaves_the_plain_name_his(self):
+        for news, line, why in self.AFTER_NEWS:
+            found = writer.claim_problems(post(f"<p>{news} {line}</p>"))
+            self.assertTrue(any("must not ship" in p and why in p for p in found), (line, found))
+            out, cut = writer.drop_high_risk(post(f"<p>{news} {line}</p>"))
+            self.assertEqual((out["body_html"], [c[1] for c in cut]), (f"<p>{news}</p>", [line]))
+        same = "Anthropic released Claude Opus 5 on Tuesday, and the permit app now calls it for every drawing."
+        found = writer.claim_problems(post(f"<p>{same}</p>"))
+        self.assertTrue(any("must not ship" in p and "PermitSketch: anthropic" in p for p in found), found)
+        # what the sheet holds, a denial of the new product, and a news line about the vendor alone
+        for s in ("Anthropic released Claude Opus 5 on Tuesday. Atelier added it the same day.",
+                  "Cloudflare launched Workers VPC on Monday. Atelier doesn't use it yet.",
+                  "Cloudflare launched Workers VPC on Monday. JetDesk runs on Cloudflare Pages.",
+                  "Google shipped Gemini 3 Flash. Developers can call it through the Gemini API."):
+            self.assertFalse(any("must not ship" in p for p in writer.claim_problems(post(f"<p>{s}</p>"))), s)
 
     def test_lines_the_sheet_holds_stay(self):
         for s in ("Keep Fix Cut runs on one Cloudflare Worker.", "Atelier keeps threads in IndexedDB on the device.",
