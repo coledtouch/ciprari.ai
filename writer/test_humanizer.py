@@ -129,6 +129,16 @@ class LintTests(unittest.TestCase):
                      "<p>When it's time to file, one tap hands the route over.</p>", "<p>I read <em>The Information</em> daily.</p>"):
             self.assertEqual(self.probs(body), [], body)
 
+    def test_abbreviations_do_not_end_a_sentence(self):
+        for one in ("Fleet operators in the U.S. face a new toll rule", "The FTC fined Wheels Inc. for toll markups",
+                    "Dr. Lee met J. Smith of Acme Corp. at the St. Louis office", "Ford vs. GM, e.g. on price"):
+            self.assertEqual(writer._sentences(one), [one])
+            self.assertEqual([p for p in writer.humanizer_problems(post("<p>Fine.</p>", title=one)) if p.startswith("title:")], [], one)
+        self.assertEqual(writer._sentences("Read No. 5 first. No. That was wrong."), ["Read No. 5 first.", "No.", "That was wrong."])
+        self.assertEqual(writer._sentences("It ran at 2 A.M. on Monday. Then it stopped."), ["It ran at 2 A.M. on Monday.", "Then it stopped."])
+        piece = "Acme Inc. lost the U.S. bid. It filed again."
+        self.assertEqual(["".join(p for _, p in s).strip() for s in writer._split(piece)], ["Acme Inc. lost the U.S. bid.", "It filed again."])
+
     def test_hard_wrapped_sentence_still_counts(self):
         long = " ".join(["word"] * 10) + "\n" + " ".join(["word"] * 10) + "."
         self.assertTrue(any("20-word sentence" in p for p in self.probs(f"<p>{long}</p>")))
@@ -575,6 +585,10 @@ class HumanizePassTests(unittest.TestCase):
         self.assertEqual(out["slug_words"], rollout["slug_words"])
         short = dict(writer.STUB, title="Shipped. The weights did not.")
         self.assertIs(self.run_pass(reply="no json here", errs=None, draft=short)[0], short)
+        for title in ("Fleet operators in the U.S. face a new toll rule", "The FTC fined Wheels Inc. for toll markups"):
+            one = dict(writer.STUB, title=title, body_html=writer.STUB["body_html"] + "<p>This is crucial.</p>")
+            out, _ = self.run_pass(reply="no json here", errs=None, draft=one)
+            self.assertEqual((out["title"], out["slug_words"]), (title, one["slug_words"]))
 
     def test_trace_records_the_draft_and_each_pass(self):
         with tempfile.TemporaryDirectory() as d:

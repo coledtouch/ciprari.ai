@@ -702,10 +702,24 @@ def _plain(fragment):
     return t.replace("’", "'").replace("‘", "'")
 
 
+_BREAK = re.compile(r"(?:(?<=[.?!])|(?<=[.?!][\"'”)]))\s+")
+_ABBREV = re.compile(r"(?:\b(?:[A-Z]\.){2,}|\b(?:Inc|Corp|Co|Ltd|St|vs|Mr|Mrs|Ms|Dr|Jr|Sr)\.|\b(?:e\.g|i\.e)\.|"
+                     r"(?<![\w.°])[A-Z]\.)$")
+
+
+def _breaks(text):
+    """The sentence breaks in a run of text: space after . ? or ! (and a closing quote or
+    bracket). Never after an abbreviation (U.S., Inc., vs., e.g., Dr., a single initial), or
+    after "No." when a number follows."""
+    return [m for m in _BREAK.finditer(text) if not _ABBREV.search(text, max(0, m.start() - 20), m.start())
+            and not (text.endswith("No.", 0, m.start()) and re.match(r"\d", text[m.end():m.end() + 1]))]
+
+
 def _sentences(text):
     out = []
     for block in text.split("\n"):
-        for s in re.split(r"(?:(?<=[.?!])|(?<=[.?!][\"'”)]))\s+", block):
+        cuts = [0] + [x for m in _breaks(block) for x in (m.start(), m.end())] + [len(block)]
+        for s in (block[a:b] for a, b in zip(cuts[::2], cuts[1::2])):
             s = " ".join(s.split())
             if s:
                 out.append(s)
@@ -1077,7 +1091,7 @@ def _split(piece):
             html.unescape(t) if t[0] == "&" and len(t) > 1 else t
         toks.append((t, re.sub(r"\s", " ", p).replace("’", "'").replace("‘", "'")))
     plain = "".join(p for _, p in toks)
-    starts = [0] + [m.end() for m in re.finditer(r"(?:(?<=[.?!])|(?<=[.?!][\"'”)]))\s+", plain)]
+    starts = [0] + [m.end() for m in _breaks(plain)]
     sents, pos, k = [[] for _ in starts], 0, 0
     for t, p in toks:
         while k + 1 < len(starts) and pos >= starts[k + 1]:
