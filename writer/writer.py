@@ -730,6 +730,16 @@ def _words(s):
     return sum(1 for w in s.split() if re.search(r"\w", w))
 
 
+SMALL = set("a an and as at but by for from in into is nor of on or per the to via vs with".split())
+
+
+def _title_case(s):
+    """True for a Title-Case heading or label: no closing period, most content words capitalized."""
+    content = [w for w in re.findall(r"[A-Za-z][\w'-]*", s) if w.lower() not in SMALL]
+    return (not s.rstrip("\"')”’").endswith(".") and len(content) >= 2
+            and sum(w[0].isupper() for w in content) >= max(2, 0.75 * len(content)))
+
+
 def _clip(s, n=110):
     return s if len(s) <= n else s[:n - 1] + "…"
 
@@ -788,8 +798,10 @@ def humanizer_problems(post):
         sents = _sentences(text)
         for s in sents:
             for m in BANNED.finditer(s):
-                if m.group(0)[0].isupper() and s[:m.start()].strip(" \"'“‘(["):
-                    continue  # a name mid-sentence: "the Foster report", "Crucial SSDs"
+                word = m.group(0)
+                if (name != "svg_inner" and word[0].isupper() and word[1:].islower() and not _title_case(s)
+                        and s[:m.start()].strip(" \"'“‘([")):
+                    continue  # a name mid-sentence: "the Foster report", "buys Crucial SSDs"
                 probs.append(f'{name}: banned word "{m.group(0)}"')
         for rx, label in LINT:
             probs += [f'{name}: {label}: "{_clip(" ".join(m.group(0).split()))}"' for m in rx.finditer(text)]

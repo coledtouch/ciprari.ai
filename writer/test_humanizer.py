@@ -128,6 +128,13 @@ class LintTests(unittest.TestCase):
         for body in ("<p>Rotate the tablet to landscape mode.</p>", "<p>Overall latency dropped 40 ms.</p>",
                      "<p>When it's time to file, one tap hands the route over.</p>", "<p>I read <em>The Information</em> daily.</p>"):
             self.assertEqual(self.probs(body), [], body)
+        # a capital passes only for a name mid-sentence, never in art labels or a Title-Case heading
+        art = writer.STUB["svg_inner"] + "<text x='10' y='40'>A PIVOTAL MOMENT</text>"
+        self.assertIn('svg_inner: banned word "PIVOTAL"', writer.humanizer_problems(dict(writer.STUB, svg_inner=art)))
+        self.assertIn('body_html: banned word "Seamless"', self.probs("<h3>A Seamless Handoff</h3><p>Fine.</p>"))
+        self.assertIn('body_html: banned word "seamless"', self.probs("<p>A seamless handoff.</p>"))
+        self.assertIn('body_html: banned word "CRUCIAL"', self.probs("<p>That is CRUCIAL now.</p>"))
+        self.assertEqual(self.probs("<p>Micron still sells Crucial SSDs.</p>"), [])
 
     def test_abbreviations_do_not_end_a_sentence(self):
         for one in ("Fleet operators in the U.S. face a new toll rule", "The FTC fined Wheels Inc. for toll markups",
