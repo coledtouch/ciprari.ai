@@ -1175,14 +1175,18 @@ class HumanizePassTests(unittest.TestCase):
         self.assertTrue(any(p.endswith("[8 words, kept out of the trace]") for p in rows[0]["problems"]), rows[0]["problems"])
         self.assertEqual([(c["field"], c["words"]) for c in rows[-1]["cut"]], [("body_html", 8)])
 
-    def run_main(self, replies):
-        """main() on stubbed replies: (stdout, trace text, trace rows, exit message or None)."""
+    def run_main(self, replies, builds=((True, ""),), appended=None):
+        """main() on stubbed replies: (stdout, trace text, trace rows, exit message or None). builds:
+        what each try_build() returns; the posts file it restores after a failed build is a copy."""
         out_buf, stop = io.StringIO(), None
         with tempfile.TemporaryDirectory() as d:
-            path = os.path.join(d, "trace.jsonl")
+            path, posts = os.path.join(d, "trace.jsonl"), os.path.join(d, "posts_b.py")
+            with open(posts, "w", encoding="utf-8") as f:
+                f.write("POSTS_B = []\n")
             with patch.object(writer, "TRACE_PATH", path), patch.object(writer, "call_claude", side_effect=replies), \
-                    patch.object(writer, "already_published", return_value=False), patch.object(writer, "append_post"), \
-                    patch.object(writer, "try_build", return_value=(True, "")), patch.object(writer.sys, "argv", ["writer.py", "post"]), \
+                    patch.object(writer, "already_published", return_value=False), patch.object(writer, "POSTS_B_PATH", posts), \
+                    patch.object(writer, "append_post", side_effect=(appended if appended is not None else []).append), \
+                    patch.object(writer, "try_build", side_effect=list(builds)), patch.object(writer.sys, "argv", ["writer.py", "post"]), \
                     patch.dict(os.environ, {"GITHUB_OUTPUT": ""}), contextlib.redirect_stdout(out_buf):
                 try:
                     writer.main()
@@ -1298,6 +1302,20 @@ class HumanizePassTests(unittest.TestCase):
         self.assertEqual((rows[-1]["attempt"], rows[-1]["cut"]), (2, []))
         for words in ("crucial", "Atelier picks the provider", "sits behind a login"):
             self.assertNotIn(words, rows[-1]["post"]["body_html"])
+
+    def test_the_draft_after_a_failed_build_is_humanized(self):
+        """The site build rejects the first post: the draft that answers it gets the revision rounds too."""
+        calls, appended = [], []
+
+        def fake_call(msgs, system, search=True):
+            calls.append(search)
+            return self.js(self.draft if search else writer.STUB)
+        printed, logged, rows, stop = self.run_main(fake_call, builds=[(False, "bad slug"), (True, "")], appended=appended)
+        self.assertIsNone(stop, printed)
+        self.assertEqual(calls, [True, False, True, False])
+        self.assertEqual([r["kind"] for r in rows], ["draft", "revision", "final", "draft", "revision", "final"])
+        self.assertEqual(len(appended), 2)
+        self.assertNotIn("crucial", json.dumps(appended[-1]))
 
     def test_revision_keeps_related_and_strips_cite(self):
         fixed = dict(writer.STUB, related=["something-else"],

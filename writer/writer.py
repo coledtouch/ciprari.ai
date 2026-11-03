@@ -2630,6 +2630,7 @@ def main():
         open(POSTS_B_PATH, "w", encoding="utf-8").write(backup)
         if stub or attempt == 2:
             raise SystemExit(f"build failed: {log}")
+        humanized = False  # the draft that fixes the build gets the whole humanizer pass too
         messages += [{"role": "assistant", "content": json.dumps(post)[-4000:]},
                      {"role": "user", "content": f"The site build rejected your post:\n{log}\n"
                       "Fix it and return ONLY the corrected ```json block."}]
