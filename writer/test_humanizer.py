@@ -469,6 +469,61 @@ class ClaimTests(unittest.TestCase):
              ("The permit platform runs on Azure.", "PermitSketch", "PermitSketch: azure"),
              ("The flight planner logs every weather query.", "JetDesk", "JetDesk: keeps query"))
 
+    # system lines Cole removed in 1b1f808 that name no system: each points back at the one its
+    # paragraph named, sometimes past other lines, or states PHP in the first person
+    UNNAMED = {
+        "v1.65.0": ["One calls OpenAI for document parsing.", "One calls Anthropic for contract review.",
+                    "One calls a payment processor.", "Each key sits in a secret manager.",
+                    "The manager encrypts the key at rest.", "The manager requires authentication to read the key.",
+                    "The manager logs every access."],
+        "v1.71.0": ["The logs tell me what a user asked and what the model said.",
+                    "I check the PHP error logs by hand when a story like this breaks."],
+        "v1.74.0": ["I can delete rows older than 90 days with a single cron job.", "The table schema gives me that control.",
+                    "I can explain what data exists because the system stores nothing."],
+        "v1.75.0": ["The proposal goes into the database or the drawing goes into R2.",
+                    "The system logs how many tokens each user burned and which model they picked."],
+        "v1.76.0": ["The token expires after two hours."],
+    }
+
+    def test_a_line_that_points_back_at_a_system_is_read_against_it(self):
+        for version, sentences in self.UNNAMED.items():
+            draft, now = shipped(version), writer._plain(stored(version)["body_html"])
+            rows = {r["text"]: r for _, r in writer._claim_rows(draft)}
+            cut = {t for _, t, _ in writer.drop_high_risk(draft)[1]}
+            for s in sentences:
+                self.assertNotIn(s, now, (version, s))  # Cole took it out
+                self.assertTrue(s in cut or rows[s]["soft"], (version, s))
+                # the kinds that shipped false are cut: prompt logging, PHP, a cron, a table or R2,
+                # "stores nothing", a session's expiry, a provider the sheet does not list
+                if version != "v1.65.0" or "OpenAI" in s or "Anthropic" in s:
+                    self.assertIn(s, cut, (version, s))
+        # v1.77.0 went out uncorrected; its line about the session's expiry is cut
+        line = "It checks that the session token expires after two hours."
+        self.assertIn(line, writer._plain(stored("v1.77.0")["body_html"]))
+        self.assertIn(line, [t for _, t, _ in writer.drop_high_risk(stored("v1.77.0"))[1]])
+        # a line Cole kept goes back to the model at most
+        line, p = "The system stores a session token.", stored("v1.76.0")
+        self.assertIn(line, writer._plain(p["body_html"]))
+        self.assertNotIn(line, [t for _, t, _ in writer.drop_high_risk(p)[1]])
+        self.assertNotIn(line, [t for _, t, _ in writer.drop_high_risk(shipped("v1.76.0"))[1]])
+        for body in ("<p>Atelier calls nine providers. The system stores a session token.</p>",
+                     "<p>Atelier calls nine providers. It does not log the conversation.</p>",
+                     "<p>Atelier calls nine providers. I do not log the prompt content.</p>"):
+            self.assertFalse(any("must not ship" in x for x in writer.claim_problems(post(body))), body)
+        # a line about another company stops the paragraph's system; a paragraph that names none
+        # of his is untouched; a what-if, a denial or a quote is no claim about his stack
+        for body in ("<p>Atelier calls nine providers. GitHub moved to lifetime retention. "
+                     "The session does not disappear when you close the browser. The table holds every prompt.</p>",
+                     "<p>GitHub keeps Copilot sessions for the life of the account. The session never expires. "
+                     "The table holds every prompt. One stores it in S3.</p>",
+                     "<p>Atelier calls nine providers. OpenAI hides the chain of thought. It stores it in a table.</p>",
+                     "<p>I would check whether the permit app runs PHP.</p>", "<p>Suppose I ran Python.</p>",
+                     "<p>I don't run PHP anywhere.</p>", "<p>Rasmus Lerdorf told me PHP still runs most of the web.</p>"):
+            self.assertFalse(any("must not ship" in x for x in writer.claim_problems(post(body))), body)
+        for body in ("<p>I check the PHP error logs by hand.</p>", "<p>My cron job runs on a VPS.</p>",
+                     "<p>Atelier calls nine providers. GitHub moved. I keep every prompt in a D1 table.</p>"):
+            self.assertTrue(any("must not ship" in x for x in writer.claim_problems(post(body))), body)
+
     def test_a_plain_name_is_his(self):
         for s, brand, why in self.PLAIN:
             for p in (post(f"<p>{s}</p>"), post(f"<p>{s}</p>", title=f"What {brand} does now"),
@@ -591,7 +646,9 @@ class ClaimTests(unittest.TestCase):
         # lines from Cole's correction (37f0c70) that are true by ColeOS PRODUCTS and Atelier's privacy page
         for version, line in (("v1.72.0", "The flight-planning PWA runs on Cloudflare Pages, and the permit app runs on Base44."),
                               ("v1.65.0", "The flight planner calls a weather API."),
-                              ("v1.75.0", "I do not log the prompt content.")):
+                              ("v1.75.0", "I do not log the prompt content."),
+                              ("v1.71.0", "The logs never hold what a user asked or what the model said."),
+                              ("v1.76.0", "The system stores a session token.")):
             p = stored(version)
             self.assertIn(line, writer._plain(p["body_html"]), version)
             self.assertFalse(any("must not ship" in x and line[:60] in x for x in writer.claim_problems(p)), version)

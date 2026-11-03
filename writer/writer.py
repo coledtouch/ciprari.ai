@@ -1006,8 +1006,14 @@ ERP_VENDOR = re.compile(r"\b(?:SAP|Oracle|NetSuite|Workday|Dynamics|Infor|Epicor
 CARRY = re.compile(r"^(?:It|Its|They|Their|This|That|These|Those|Both|All three|The others|The (?:D1 )?(?:table|"
                    r"log|logs|ledger|database|router|worker|app|studio|tool|platform|session|token|cookie|codebase|"
                    r"stack|server|site|teardown|planner|module|suite))\b")
+# "The system", "One", "Each key": a subject that names no system and points back at one the
+# paragraph named, even with other sentences between (_scan reads it against the paragraph's).
+# "One calls OpenAI" is one of them; "One vendor controls that data center" is not.
+REF = re.compile(r"^(?:The (?:system|manager|secret manager|proposals?|drawings?|keys?|transcripts?|records?|rows?|"
+                 r"data|bucket|backend|service|integration|sync|schema|cron(?: job)?|logger|logging)|"
+                 r"One(?= [a-z]+s\b)|Each (?:key|one)|Neither (?:system|one|app)|Every (?:key|row|request|prompt))\b")
 WOULD = re.compile(r"(?-i:\bI)(?:'d|'ll| would| will| might| could| should| want to| plan to| need)\b|\bif I\b|"
-                   r"\bwould (?:check|look|ask|want|test)\b", re.I)
+                   r"\bwould (?:check|look|ask|want|test)\b|^Suppos(?:e|ing)\b", re.I)
 GENERIC = re.compile(r"\b(?:my|our) (?:own )?(?:platforms?|systems?|apps?|sites?|stack|servers?|products?|"
                      r"codebases?|integrations?)\b|\b(?:those|these|both|all (?:three|four|five)|every one of those) "
                      r"(?:systems|platforms|apps|sites)\b|\bthe (?:systems|platforms|apps) I (?:run|built|ship)\b|"
@@ -1047,7 +1053,11 @@ LEAK = re.compile(r"\.env\b|\b(?:in|to|into) (?:the|a|my|our|that) (?:repo|repos
                   r"\banyone with access\b|\bplain ?text\b|\breadable\b|\bpublic (?:repo|branch|bucket|gist)\b|"
                   r"\bhard-?coded\b", re.I)
 # "if it leaked", "unless the key sits in": a what-if, not a story
-HYPO = re.compile(r"\b(?:if|unless|in case)\b|\bwould\b", re.I)
+HYPO = re.compile(r"\b(?:if|unless|in case|suppos(?:e|ing))\b|\bwould\b", re.I)
+# "I check the PHP error logs": a first-person line that states PHP, Python, a VPS or S3 says
+# his stack uses it, though it names no system ("No Cole system uses PHP, Python, a VPS or S3")
+STACK = re.compile(r"(?-i:\bPHP\b|\bPython\b|\bVPS(?:es)?\b|\bS3\b)|\bvirtual private servers?\b")
+QUOTED = re.compile(r"\b(?:said|says|told|tells|wrote|writes|according to)\b", re.I)
 CRIME = (r"(?:planted|plants|stole|steals|hacked|bugged|embezzled|defrauded|smuggled|laundered|bribed|murdered|"
          r"assaulted|kidnapped|extorted|blackmailed|stalked|wiretapped|spied on|sabotaged|forged|scammed|swindled|"
          r"trafficked|impersonated|exfiltrated|broke into)\b")
@@ -1088,7 +1098,8 @@ FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a singl
                      r"\b(?:in )?local[ -]?storage\b|"
                      r"\brole-based (?:team )?permissions\b|\bhealth monitoring\b|\bhuman review gate\b|"
                      r"(?:\b(?:logs?|stores?|keeps?|saves?|holds?|records?)\s+)?(?:\b(?:never|not|no)\b|n't\b)"
-                     r"[^.?!]{0,30}?\b(?:prompts?|answers?|uploads?|reports?|frames?)\b|"
+                     r"[^.?!]{0,30}?\b(?:prompts?|answers?|uploads?|reports?|frames?|what (?:a |the |each )?(?:users?|"
+                     r"testers?|person) (?:asked|typed|sent|wrote)|what the model (?:returned|said|answered|wrote))\b|"
                      r"\b(?:opt-in|private) (?:thread )?sync\b|\b(?:expires? (?:after|in) )?(?:30|thirty)[- ]days?\b|"
                      r"(?-i:\bR2\b)(?=[^.?!]{0,40}\bopt(?:s|ed)?[- ]in\b)|"
                      r"\bIndexedDB\b|\bin (?:the|your) browser\b|\bon (?:the|your) device\b|"
@@ -1135,6 +1146,17 @@ STORY_LABEL = "a first-person story about Cole's logs, keys or infrastructure"
 TALE_LABEL = "the rest of a first-person story about Cole's systems"
 SHEET_LABEL = "a claim about Cole's systems that SYSTEM FACTS does not support"
 GENERAL_LABEL = "a first-person claim about all of Cole's systems"
+TOPIC_LABEL = "a claim about the system this paragraph names that SYSTEM FACTS does not support"
+LEAN_LABEL = "a line that leans on a claim before it that must not ship"
+# A line that names no system and is read against the one its paragraph named ("The system",
+# "One", "I") is cut for the kinds of false claim that shipped: a stack or store (PHP, R2, D1,
+# a database, cron), a provider or a count, keeping data or keeping none, a period, the testers'
+# models or a way in. The rest ("The system stores a session token") goes back to the model.
+HARD_WHY = re.compile(r": (?:no )?(?:php|python|node|rails|vps|s3|r2|d1|kv|bucket|database|server|cron|notam|aws|"
+                      r"azure|gcp|other host|site builder|anthropic|openai|google|vertex|xai|z\.ai|deepseek|meta|"
+                      r"nvidia|runway|mistral|perplexity|cohere|microsoft|amazon|alibaba|moonshot|another provider)$|"
+                      r": (?:no )?store$|: keeps |\bkept |: (?:provider|tester) \d+$| for testers$|: sign-in with ")
+SCHEMA_ONLY = re.compile(r"\bschemas?\b")  # "I validate the schema": a JSON schema, not a database
 HIGH_FIX = "cut it, or say what you would check instead"
 CRIME_FIX = 'attribute it ("prosecutors say", "the complaint alleges") or cut it'
 CLAIM_FIX = "say only what SYSTEM FACTS says, or what you would check, or cut it"
@@ -1214,7 +1236,7 @@ NOT_HIS = re.compile(r"\b(?:vendor|third-party|other|outside|competing|rival)\b"
 # keeping data: these verbs always; keep/hold/record/write only with data, a store or a period
 STRONG = re.compile(r"\blog(?:s|ged|ging)?\b(?! ?(?:in|into|on|out)\b)|\bstor(?:e|es|ed|ing|age)\b|"
                     r"\bsav(?:e|es|ed|ing)\b(?! (?:time|money|hours?|minutes?|days?|weeks?|effort|steps?|clicks?|"
-                    r"you|a trip)\b)|\bretain(?:s|ed|ing)?\b|\bretention\b|\bpersist(?:s|ed|ing|ence)?\b|"
+                    r"you|me|us|a trip)\b)|\bretain(?:s|ed|ing)?\b|\bretention\b|\bpersist(?:s|ed|ing|ence)?\b|"
                     r"\bcach(?:es|ed|ing)\b|\bback(?:s|ed)? up\b|\bbackups?\b|\barchiv(?:e|es|ed|ing)\b|"
                     r"\bsync(?:s|ed|ing)?\b", re.I)
 WEAK = re.compile(r"\b(?:keep|keeps|keeping|kept)\b" + _GOING + r"|"
@@ -1229,7 +1251,9 @@ DATA = [(key, re.compile(rx, re.I)) for key, rx in (
     ("thread", r"\bthreads?\b|\bchat history\b|\b(?:conversations?|chats?|messages?)\b"),
     ("photo link", r"\b(?:profile )?photo links?\b"), ("member id", r"\b(?:member|LinkedIn) IDs?\b"),
     ("session id", r"\b(?:hashed )?session ids?\b"), ("page view", r"\bpage views?\b"),
-    ("token cost", r"\btoken (?:costs?|counts?|usage)\b|\btokens?\b"), ("upload", r"\buploads?\b"),
+    # a model's tokens, not a session's: "stores a session token" keeps no token count
+    ("token cost", r"\btoken (?:costs?|counts?|usage)\b|(?<!session )(?<!access )(?<!auth )(?<!refresh )(?<!login )"
+                   r"\btokens?\b"), ("upload", r"\buploads?\b"),
     ("photo", r"\b(?:photos?|images?|pictures?|selfies?|frames?)\b"), ("report", r"\breports?\b"),
     ("profile", r"\bprofiles?\b"), ("memory", r"\bmemor(?:y|ies)\b"), ("feedback", r"\bfeedback\b"),
     ("cache", r"\bcaches?\b"), ("email", r"\bemails?(?: address(?:es)?)?\b"), ("name", r"\bnames?\b"),
@@ -1284,7 +1308,9 @@ EXPIRES = re.compile(r"\b(?:delet(?:e|es|ed|ing)|purg(?:e|es|ed|ing)|eras(?:e|es
 # "purges analytics every 90 days": beside a purge, an "every" period is how long it is kept
 PURGE = re.compile(r"\b(?:delet|purg|eras|wip|clear|expir|remov|drop)\w*", re.I)
 EVERY = re.compile(rf"\bevery (?:(\d+|{'|'.join(NUMBERS)})[- ])?(hour|day|week|month|year)s?\b", re.I)
-COOKIE = re.compile(r"\bcookies?\b|\bHttpOnly\b|\bsign(?:ed|s)?[- ]in\b|\blogged[- ]in\b", re.I)
+# a session or its token is how long one stays signed in: "the session token expires after two hours"
+COOKIE = re.compile(r"\bcookies?\b|\bHttpOnly\b|\bsign(?:ed|s)?[- ]in\b|\blogged[- ]in\b|\bsessions?\b(?! ids?\b)|"
+                    r"\b(?:session|access|auth|sign-in|login) tokens?\b|^\s*(?:The|A|Its|Each) tokens?\b", re.I)
 # who may do what: "xAI and Runway are owner-only", "LinkedIn testers sign in with LinkedIn"
 TESTERS = re.compile(r"\btesters?\b|\banyone\b|\beveryone\b|\b(?:every|all|any) (?:users?|members?|visitors?)\b|"
                      r"\bthe public\b", re.I)
@@ -1782,6 +1808,8 @@ def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=F
         high = ATELIER_LABEL
     elif (named or MY_SYSTEMS.search(c) or GENERIC.search(c) or (context and RUNS_ON.search(c))) and TECH.search(rest):
         high = TECH_LABEL
+    elif FIRST.search(c) and STACK.search(rest) and not HYPO.search(c) and not QUOTED.search(c):
+        high = TECH_LABEL  # "I check the PHP error logs": his stack, whichever system it is
     elif KEY.search(c) and LEAK.search(c) and not HYPO.search(c) and (named or FIRST.search(c) or story):
         high = LEAK_LABEL
     told = bool(STORY.search(c) and (named or loose or GENERIC.search(c) or INFRA.search(c)))
@@ -1854,11 +1882,47 @@ def _context(text):
     return _people(text), bool(SYSTEMS[0][1].search(text or "")) and not ERP_VENDOR.search(text or "")
 
 
+def _states(text):
+    """True when text states something the sheet speaks to: a TERMS or CLAIM term, data kept or
+    not kept, or a period. "I can delete rows older than 90 days with a single cron job" does;
+    "I read the report twice" does not."""
+    m = _mask(text)
+    return bool(CLAIM.search(m) or STACK.search(m) or any(rx.search(m) for _, rx in TERMS) or _data(m)
+                or _periods(m) or NONE_KEPT.search(m) or HAS_NO.search(m))
+
+
+def _content(text):
+    """text's longer content words, plural or not: "The proposal" meets "generates proposals"."""
+    return {w.rstrip("s") for w in re.findall(r"[a-z][a-z'-]{4,}", text.lower()) if w not in STOP}
+
+
+def _hard(why, text):
+    """True when a line read against its paragraph's system states a kind that shipped false
+    (HARD_WHY). In the first person ("I do not have a way to shut down GPT-4") a provider is not
+    one; keeping at all is one only for "I log", "I store" (I_KEEP), not "the time saved"; and a
+    database is not when the line's only database word is "schema"."""
+    first = not (CARRY.match(text) or REF.match(text))
+    labs = {k for k, _ in PROVIDERS}
+    schema = all(SCHEMA_ONLY.fullmatch(x.group(0)) for k, rx in TERMS if k == "database" for x in rx.finditer(text))
+    return any(HARD_WHY.search(w) and not (first and re.sub(r"^no ", "", w.split(": ")[-1]) in labs)
+               and not (w.split(": ")[-1] in ("store", "no store") and not I_KEEP.search(text))
+               and not (schema and w.split(": ")[-1] in ("database", "no database")) for w in why)
+
+
+def _foreign(text):
+    """True when text is about someone else: it opens with a name that is not his ("OpenAI hides
+    the chain of thought", "Sam Altman spoke") or carries a company's product news."""
+    t = text.lstrip("\"'“‘(")
+    word = (t.split() or [""])[0].lower()
+    return bool(NEWS.search(text) or (re.match(rf"(?-i:{_COMPANY})", t) and word not in DETERMINERS
+                                      and not CARRY.match(t) and not REF.match(t)))
+
+
 _CUT = set()  # every sentence a must-not-ship rule matched this run, at any step; never logged
 _ECHO = set()  # slug_words and keywords that came with a title that lost a sentence; they echo it
 
 
-def _scan(fragment, people=None, strip=None, erp=False, carry=False):
+def _scan(fragment, people=None, strip=None, erp=False, carry=False, topics=True):
     """Read an HTML fragment sentence by sentence. Returns (fragment, rows), one row per
     sentence: text, named and loose (Cole systems), soft and high (claim labels or None). A
     system named only by its plain name ("the permit app") is his, and loose only when it is
@@ -1867,8 +1931,13 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False):
     strip(row) is true is cut from the fragment; its tags stay, emptied, then tidied. Once a
     paragraph tells a first-person story about his logs, keys or stack, a later sentence there
     that reads like more of it (first person, "It", a system, logs, keys) is must-not-ship too,
-    unless it says what he would check or carries a source link. carry: a sentence that names
-    no system is about the one before it, as in a stack of art labels (_labels)."""
+    unless it says what he would check or carries a source link. A sentence that names no
+    system but points back at one ("The system", "The logs", "One", or a first-person line with
+    a sheet term) is read against the one its paragraph named, past lines between, until a line
+    about another company; it is cut only for the kinds of claim that shipped false (_hard).
+    topics: read that paragraph system (off once drop_high_risk has cut the line naming it).
+    carry: a sentence that names no system is about the one before it, as in a stack of art
+    labels (_labels)."""
     out, rows, cut = [], [], False
     last, heading = "", False
     for i, piece in enumerate(_BLOCK_TAG.split(fragment or "")):
@@ -1879,6 +1948,10 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False):
             continue
         prev, prev_loose, story, context, tale, keeping = set(), set(), False, set(), False, False
         denied = False
+        # topic: the systems the paragraph names; live while it is still about them (a line about
+        # another company stops it, a first-person line takes it back); head: the line that last
+        # named them was must-not-ship; from_topic: this line's systems are the topic's
+        topic, live, head, prev_topic, said = set(), False, False, False, []
         for sent in _split(piece):
             text = " ".join("".join(p for _, p in sent).split())
             if not text:
@@ -1887,14 +1960,38 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False):
             denied = denied or bool(STACK_DENIED.search(text))
             named, before = _systems(text), last
             loose, last = _theirs(text, before), text
-            named, loose = (named - loose, loose) if named else (
-                (set(prev), set(prev_loose)) if carry or CARRY.match(text) else (set(), set()))
+            own, from_topic = bool(named - loose), False
+            if named:
+                named, loose = named - loose, loose
+            elif carry or (CARRY.match(text) and (prev or prev_loose)):
+                named, loose, from_topic = set(prev), set(prev_loose), prev_topic
+            elif topics and live and (CARRY.match(text) or REF.match(text) or (
+                    FIRST.search(text) and _states(text)  # "I store my receipts" is not about the system
+                    and not any(re.match(r"\s+(?:my|our)\b", text[k.end():], re.I) for k in I_KEEP.finditer(text)))):
+                # "The logs tell me what a user asked": the one system the paragraph is about; with
+                # more than one, "The proposal ... the drawing" is each whose line said "proposals"
+                named = set(topic) if len(topic) == 1 else set().union(*(
+                    s for s, words in said if REF.match(text) and words & _content(text)))
+                loose, from_topic = set(), bool(named)
+            else:
+                named, loose = set(), set()
             if "Coen ERP" not in named and BARE_ERP.search(text) and not ERP_VENDOR.search(text):
                 if erp or "Coen ERP" in context:
-                    named = named | {"Coen ERP"}
+                    named, own = named | {"Coen ERP"}, True
                 else:
                     loose = loose | {"Coen ERP"}
             soft, high, story, why = _claim(_it(text, before), named, story, people, loose, context, keeping, denied)
+            if from_topic and high == SHEET_LABEL and not _hard(why, text):
+                soft, high, why = soft or TOPIC_LABEL, None, []  # cut only the kinds that shipped false
+            if from_topic and head and not (high or soft) and REF.match(text):
+                soft = LEAN_LABEL  # "One calls a payment processor." after "I keep three API keys in the ERP."
+            if own:
+                topic, live, head = topic | named, True, bool(high)
+                said.append((set(named), _content(text)))
+            elif FIRST.search(text):
+                live = bool(topic)
+            elif _foreign(text):
+                live = False
             keeping = keeping or bool(high in (SHEET_LABEL, GENERAL_LABEL) and I_KEEP.search(text))
             linked = any(re.match(r"(?i)<a\s", t) for t, _ in sent)
             if tale and not high and not linked and not WOULD.search(text) and (
@@ -1908,7 +2005,7 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False):
             if high:
                 _CUT.add(text)
             rows.append(row)
-            prev, prev_loose, context = named, loose, context | named
+            prev, prev_loose, context, prev_topic = named, loose, context | named, from_topic
             if strip and strip(row):
                 cut = True
                 out.append("".join(t for t, p in sent if t[0] == "<" and not p))
@@ -2043,7 +2140,9 @@ def drop_high_risk(post):
     out, cut = dict(post), []
     for k in fields:
         while isinstance(out.get(k), str):  # each pass removes a sentence, so this ends
-            out[k], rows = _scan(out[k], people, strip=lambda r: r["high"], erp=erp)
+            # the paragraph's system is read on the first pass, while the line that named it is there
+            out[k], rows = _scan(out[k], people, strip=lambda r: r["high"], erp=erp,
+                                 topics=not any(f == k for f, _, _ in cut))
             bad = [(k, r["text"], r["high"]) for r in rows if r["high"]]
             if not bad:
                 break
