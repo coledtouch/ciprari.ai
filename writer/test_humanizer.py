@@ -318,6 +318,12 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(out["body_html"], '<p>The FTC opened a case Monday. <a href="https://example.com/a">The FTC</a> '
                                            'named two vendors. I would check the repo first.</p><p>The court meets Friday.</p>')
         self.assertEqual([c[2] for c in cut], [writer.STORY_LABEL, writer.TALE_LABEL, writer.TALE_LABEL])
+        # a line that names its system only through the paragraph goes on with the story only with a system thing in it
+        body = ("<p>estimate.pro drafts estimates with AI. I tested it on a roofing job last week. "
+                "The proposal came out in under a minute.</p>")
+        self.assertEqual([c[1] for c in writer.drop_high_risk(post(body))[1]], ["I tested it on a roofing job last week."])
+        body = "<p>Atelier calls nine providers. I rotated the keys last month. The keys sat in the repo for a week.</p>"
+        self.assertEqual(len(writer.drop_high_risk(post(body))[1]), 2)
 
     def test_a_bare_erp_is_cut_only_when_it_is_coles(self):
         for s in ("The ERP flaw left 10,000 SAP systems exposed.", "The ERP vendor patched CVE-2026-1234 on Tuesday."):

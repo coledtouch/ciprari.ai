@@ -2035,8 +2035,11 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False, topics=True
                 live = False
             keeping = keeping or bool(high in (SHEET_LABEL, GENERAL_LABEL) and I_KEEP.search(text))
             linked = any(re.match(r"(?i)<a\s", t) for t, _ in sent)
+            # "The proposal came out in under a minute." after "I tested it on a roofing job" names its
+            # system only through the paragraph: it goes on with the story only with a system thing in it
             if tale and not high and not linked and not WOULD.search(text) and (
-                    named or loose or CARRY.match(text) or FIRST.search(text) or GENERIC.search(text)
+                    (named and not (from_topic and REF.match(text))) or loose or CARRY.match(text)
+                    or FIRST.search(text) or GENERIC.search(text)
                     or INFRA.search(text) or KEY.search(text) or LEAK.search(text) or CLAIM.search(text)):
                 high = TALE_LABEL
             tale = tale or high in (STORY_LABEL, LEAK_LABEL) or bool(
