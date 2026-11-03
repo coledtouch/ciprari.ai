@@ -1168,14 +1168,16 @@ class HumanizePassTests(unittest.TestCase):
         short = dict(writer.STUB, body_html=writer.STUB["body_html"].replace(
             pad * 60, pad * 47 + "Atelier logs every prompt to a D1 table. Atelier runs on Python. "))
         self.assertEqual((writer.validate(short, "post"), writer._body_words(short)), ([], 454))
-        for refill, published in ((writer.STUB, True), (short, False)):
+        # the new draft gets the humanizer pass too: none for a clean one, three revisions for one that
+        # still holds the false lines
+        for refill, published, again in ((writer.STUB, True, []), (short, False, [False] * 3)):
             calls = []
 
             def fake_call(msgs, system, search=True):
                 calls.append((list(msgs), search))
                 return self.js(refill if len(calls) == 5 else short)
             printed, logged, rows, stop = self.run_main(fake_call)
-            self.assertEqual([search for _, search in calls], [True, False, False, False, True])
+            self.assertEqual([search for _, search in calls], [True, False, False, False, True] + again)
             self.assertIn("claims: the cuts broke the post (1 problem(s)); asking for one more draft", printed)
             ask = calls[4][0][-1]["content"]
             self.assertTrue(ask.startswith(writer.REFILL_ASK), ask)
@@ -1184,12 +1186,40 @@ class HumanizePassTests(unittest.TestCase):
             self.assertNotIn("Atelier logs every prompt", calls[4][0][-2]["content"])
             for text in (printed, logged):
                 self.assertNotIn("every prompt to a D1", text)
-            self.assertEqual([r["kind"] for r in rows], ["draft", "revision", "revision", "revision", "final", "final"])
+            self.assertEqual([r["kind"] for r in rows], ["draft", "revision", "revision", "revision", "final", "draft"]
+                             + ["revision"] * len(again) + ["final"])
             if published:
                 self.assertIsNone(stop, printed)
                 self.assertEqual((rows[-1]["attempt"], rows[-1]["cut"]), (2, []))
             else:
                 self.assertEqual(stop, "claims: cutting must-not-ship sentences broke the post: body too short (442 words)")
+
+    def test_the_one_more_draft_is_humanized(self):
+        """The draft asked for after the cuts goes through the revision rounds, the merge and the lint
+        before its own cuts: its banned word and soft claims go back to the model, and the fix ships."""
+        pad = "This sentence pads the stub to a plausible length. "
+        short = dict(writer.STUB, body_html=writer.STUB["body_html"].replace(
+            pad * 60, pad * 47 + "Atelier logs every prompt to a D1 table. Atelier runs on Python. "))
+        refill = dict(writer.STUB, body_html=writer.STUB["body_html"].replace(
+            "<p>End.</p>", "<p>This is crucial. Atelier picks the provider for each request. "
+                           "The construction ERP sits behind a login.</p>"))
+        calls = []
+
+        def fake_call(msgs, system, search=True):
+            calls.append((list(msgs), search))
+            return self.js(refill if len(calls) == 5 else writer.STUB if len(calls) > 5 else short)
+        printed, logged, rows, stop = self.run_main(fake_call)
+        self.assertIsNone(stop, printed)
+        self.assertEqual([search for _, search in calls], [True, False, False, False, True, False])
+        ask = calls[5][0][-1]["content"]
+        self.assertTrue(ask.startswith(writer.HUMANIZE_ASK), ask)
+        for words in ('"crucial"', "Atelier picks the provider", "sits behind a login"):
+            self.assertIn(words, ask)
+        self.assertEqual([r["kind"] for r in rows],
+                         ["draft", "revision", "revision", "revision", "final", "draft", "revision", "final"])
+        self.assertEqual((rows[-1]["attempt"], rows[-1]["cut"]), (2, []))
+        for words in ("crucial", "Atelier picks the provider", "sits behind a login"):
+            self.assertNotIn(words, rows[-1]["post"]["body_html"])
 
     def test_revision_keeps_related_and_strips_cite(self):
         fixed = dict(writer.STUB, related=["something-else"],

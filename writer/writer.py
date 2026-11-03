@@ -2499,6 +2499,7 @@ def main():
                 messages += [{"role": "assistant", "content": "```json\n" + json.dumps(post, ensure_ascii=False) + "\n```"},
                              {"role": "user", "content": REFILL_ASK + "\n- " + "\n- ".join(errs) + "\nThe cut lines:\n- "
                               + "\n- ".join(f"{field}: {text}" for field, text, _ in cut)}]
+                humanized = False  # the new draft gets the whole humanizer pass before its cuts
                 continue
             if errs:  # exit non-zero: nothing is appended, and the next scheduled run writes again
                 raise SystemExit("claims: cutting must-not-ship sentences broke the post: " + "; ".join(errs))
