@@ -383,6 +383,9 @@ class ClaimTests(unittest.TestCase):
         "Keep Fix Cut stores nothing.": "Keep Fix Cut: keeps no data",
         "Keep Fix Cut keeps your photos for a day.": "Keep Fix Cut: keeps photo",
         "Keep Fix Cut runs on a Worker and Atelier stores threads in D1.": "(Atelier: d1)",
+        "JetDesk syncs your trips to the cloud.": "JetDesk: keeps trip",
+        "JetDesk logs your location.": "JetDesk: keeps location",
+        "JetDesk runs on Vercel.": "JetDesk: vercel",
     }
 
     def test_unsupported_system_lines_are_must_not_ship(self):
@@ -405,9 +408,20 @@ class ClaimTests(unittest.TestCase):
                   "When Cloudflare went down, JetDesk kept working offline.", "Forty percent of requests failed on Atelier.",
                   "My estimating platform reads plans across a couple dozen trades.", "Aurora replaced six vendor apps.",
                   "The ERP at coenconstruction.com does not call Meta's APIs.", "I keep writing prompts for Atelier.",
-                  "When I ran the knowledge base at Liberty Mutual, it had 3,000 users."):
+                  "When I ran the knowledge base at Liberty Mutual, it had 3,000 users.",
+                  # JetDesk, from ColeOS PRODUCTS: Pages, Pages Functions, PIN-synced prices, local trips
+                  "JetDesk runs on Cloudflare Pages.", "JetDesk runs on Cloudflare Pages Functions.",
+                  "JetDesk syncs fuel prices to every phone behind a sync PIN.",
+                  "JetDesk keeps your trips in local storage.", "JetDesk calls a weather API."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
+        # two lines from Cole's correction (37f0c70) that are true by ColeOS PRODUCTS
+        for version, line in (("v1.72.0", "The flight-planning PWA runs on Cloudflare Pages, and the permit app runs on Base44."),
+                              ("v1.65.0", "The flight planner calls a weather API.")):
+            p = stored(version)
+            self.assertIn(line, writer._plain(p["body_html"]), version)
+            self.assertFalse(any("must not ship" in x and line[:60] in x for x in writer.claim_problems(p)), version)
+            self.assertNotIn(line, [t for _, t, _ in writer.drop_high_risk(p)[1]], version)
 
     def test_only_a_person_commits_a_crime(self):
         for s in ('<a href="https://example.com/a">Palo Alto Networks</a> found the agent exfiltrated credentials '
@@ -850,6 +864,8 @@ class PromptTests(unittest.TestCase):
                      "Its server keeps an optional profile and memory, voluntary feedback and a Look up cache",
                      "member ID, name, email and photo link", "Never write that either keeps nothing",
                      "Uploads and reports are not saved", "kept 30 days", "4 scans a minute",
+                     "It runs on Cloudflare Pages. Three Pages Functions serve its weather, winds-aloft and fuel-price APIs.",
+                     "Fuel prices sync between phones behind a PIN", "Trips are saved in local storage on the device",
                      "No Cole system uses PHP, Python, a VPS or S3", "Atelier has no D1 database",
                      "JetDesk has no NOTAMs", "CurbScript has no service routes", "what you would check",
                      "Name at most three of Cole's systems", "charged but not convicted", "calendar dates",

@@ -220,7 +220,9 @@ def style_example(mode):
 # The only facts about Cole's systems a post may state. Taken from the ColeOS PRODUCTS list and
 # each product's own privacy page; posts that went past it published false stacks, incidents and
 # a logging claim that contradicts Atelier's privacy policy. Keep it closed: when a product
-# changes, change this sheet first.
+# changes, change this sheet first. PRODUCTS facts no post has used stay off it on purpose:
+# CurbScript as a PWA, PermitSketch accounts, React, and estimate.pro's Okta and Azure AD SSO
+# ("Azure" here would let "estimate.pro runs on Azure" pass).
 SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may state. The list is closed.
 - Coen ERP (coenconstruction.com): a construction ERP with 120+ routes, built solo. Estimating
   tools, Stripe payments, payroll runs with ADP mapping, crew apps, a Twilio dialer and a
@@ -234,7 +236,9 @@ SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may s
 - The Punchlist (thepunchlist.vercel.app): an AI automation consultancy built as a Next.js app
   on Vercel. Its AI advisor turns a plain-English bottleneck into a scoped fix.
 - JetDesk.AI (jetdesk.ai): an offline-first flight-planning PWA for a PA-46 turboprop. Every US
-  airport ships inside the app. METAR/TAF, winds aloft and crowd-shared fuel prices.
+  airport ships inside the app. METAR/TAF, winds aloft and crowd-shared fuel prices. It runs on
+  Cloudflare Pages. Three Pages Functions serve its weather, winds-aloft and fuel-price APIs.
+  Fuel prices sync between phones behind a PIN. Trips are saved in local storage on the device.
 - North Point Construction (north.construction): a contractor site with local SEO pages for 94
   towns and an AI design preview that renders a finished project from customer photos.
 - Valhalla K9 (valhalla-k9.com): the site of a dog-training company in Plymouth, NH. Every
@@ -1013,7 +1017,8 @@ GAP_STOP = re.compile(r"\bthat\b|,\s*(?:and|but)\b|\b(?:found|finds|said|says|sh
                       r"claimed|alleged|is|was|are|were|has|had|have|does|did|will|would|can|could|may|might)\b", re.I)
 # soft: back to the model
 FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a single) Cloudflare Worker\b|"
-                     r"\bCloudflare Pages(?: Functions)?\b|\b(?:runs? on |on |built on |is a )?(?:Base44|Vercel)\b|"
+                     r"\b(?:runs? on |on )?Cloudflare Pages(?: Functions)?\b|\b(?:runs? on |on |built on |is a )?(?:Base44|Vercel)\b|"
+                     r"\b(?:in )?local[ -]?storage\b|"
                      r"\brole-based (?:team )?permissions\b|\bhealth monitoring\b|\bhuman review gate\b|"
                      r"(?:\b(?:logs?|stores?|keeps?|saves?|holds?|records?)\s+)?(?:\b(?:never|not|no)\b|n't\b)"
                      r"[^.?!]{0,30}?\b(?:prompts?|answers?|uploads?|reports?|frames?)\b|"
@@ -1153,6 +1158,7 @@ DATA = [(key, re.compile(rx, re.I)) for key, rx in (
     ("cost", r"\bcosts?\b|\bspend(?:ing)?\b"), ("time", r"\btimes?\b|\btimestamps?\b|\blatency\b"),
     ("request", r"\brequests?\b"), ("analytics", r"\banalytics\b|\busage\b"), ("scan", r"\bscans?\b"),
     ("ip", r"(?-i:\bIPs?\b)|\bIP address(?:es)?\b"), ("location", r"\blocations?\b|\baddress(?:es)?\b"),
+    ("trip", r"\btrips?\b"), ("price", r"\bprices?\b"),
     ("drawing", r"\bdrawings?\b|\bplans?\b"), ("estimate", r"\bestimates?\b|\bbids?\b"),
     ("timesheet", r"\btimesheets?\b|\binvoices?\b|\breceipts?\b|\bpay stubs?\b"),
     ("listing", r"\blistings?\b|\bdescriptions?\b|\bvideos?\b|\bscripts?\b"),
@@ -1160,9 +1166,12 @@ DATA = [(key, re.compile(rx, re.I)) for key, rx in (
     ("data", r"\b(?:data|everything|anything|nothing|information|info|logs?|records|history)\b"),
 )]
 GENERIC_DATA = {"data"}
-LOCAL_HERE = re.compile(r"\bIndexedDB\b|\blocalStorage\b|\bin (?:the|your|a|each|their) browser\b|"
+LOCAL_HERE = re.compile(r"\bIndexedDB\b|\blocal[ -]?storage\b|\bin (?:the|your|a|each|their) browser\b|"
                         r"\bon (?:the|your|my|each|a|their) (?:device|phone|laptop|iPad|tablet)\b|\bpage memory\b|"
                         r"\blocally\b|\bon-device\b|\bCache Storage\b", re.I)
+# data the sheet keeps on the device only ("Trips are saved in local storage") leaves it here
+OFF_DEVICE = re.compile(r"\bsync(?:s|ed|ing)?\b|\bcloud\b|\bupload(?:s|ed|ing)?\b|\b(?:servers?|buckets?|databases?|"
+                        r"tables?)\b|(?-i:\bR2\b|\bD1\b|\bKV\b|\bS3\b)", re.I)
 NEG_WORDS = {"no", "not", "never", "without", "zero", "neither", "nor", "none", "nothing"}
 CLAUSE_NEG = re.compile(r"\s*[\"'“‘(]?\s*(?:None|No|Not|Nothing|Neither|Never)\b", re.I)
 LEADS = re.compile(r"(?:^\s*[\"'“‘(]?\s*|\b(?:When|If|As|After|Before|Since|While|Once|Until|Because|Though|"
@@ -1332,7 +1341,7 @@ def _data(m, sheet=False):
 
 def _support():
     """What SYSTEM_FACTS states (pos) and denies (neg) for each system, and the data its storage
-    lines say it keeps (posdata) or does not (negdata)."""
+    lines say it keeps (posdata), keeps on the device only (localdata) or does not (negdata)."""
     facts, denials = SYSTEM_FACTS.split("\nDOES NOT")
     units = []
     for entry in re.split(r"\n- ", facts)[1:]:
@@ -1344,13 +1353,14 @@ def _support():
         for sent in _sentences(" ".join(line.split())):
             prev = _systems(sent) or (prev if CARRY.match(sent) else set())
             units += [(prev, c) for c in CLAUSE.split(sent)]
-    sup = {name: {"pos": set(), "neg": set(), "posdata": set(), "negdata": set()} for name, _ in SYSTEMS}
+    sup = {name: {"pos": set(), "neg": set(), "posdata": set(), "localdata": set(), "negdata": set()}
+           for name, _ in SYSTEMS}
     for named, c in units:
         for name in named:
             for key, neg, _, _ in _terms(_mask(c)):
                 sup[name]["neg" if neg else "pos"].add(key)
             for key, neg, _ in _data(_mask(c), sheet=True):
-                sup[name]["negdata" if neg else "posdata"].add(key)
+                sup[name]["negdata" if neg else "localdata" if LOCAL_HERE.search(c) else "posdata"].add(key)
     for name in NO_AI:
         sup[name]["neg"] |= {"ai", "api"}  # no AI: no model API to call
     for s in sup.values():
@@ -1414,7 +1424,8 @@ def _unsupported(c, here):
                     continue
                 if neg and (key in sup["posdata"] or (key in GENERIC_DATA and sup["posdata"])):
                     why.append(f"{name}: keeps no {key}")
-                elif not neg and (key in sup["negdata"] or (sup["posdata"] and key not in sup["posdata"])):
+                elif not neg and (key in sup["negdata"] or (sup["posdata"] and key not in sup["posdata"] and not (
+                        key in sup["localdata"] and not OFF_DEVICE.search(c)))):
                     why.append(f"{name}: keeps {key}")
     return list(dict.fromkeys(why))
 
