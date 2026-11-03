@@ -685,6 +685,17 @@ class ClaimTests(unittest.TestCase):
         run = ("<p>I don't log payroll amounts. I log whether the payroll run was inside bounds. "
                "I log whether the total matched the estimate.</p>")
         self.assertEqual(len(writer.drop_high_risk(post(run))[1]), 3)
+        # a denial the sheet holds for the paragraph's system stays when the lines before it go
+        run = ("<p>Atelier runs prompts against seven providers. I log the timestamp, model name and token count "
+               "to D1. I do not log the prompt content.</p>")
+        self.assertEqual([t for _, t, _ in writer.drop_high_risk(post(run))[1]],
+                         ["Atelier runs prompts against seven providers.",
+                          "I log the timestamp, model name and token count to D1."])
+        self.assertNotIn("I do not log the prompt content.",
+                         [t for _, t, _ in writer.drop_high_risk(shipped("v1.75.0"))[1]])
+        for run in ("<p>Atelier runs on a VPS. I do not keep any data.</p>",
+                    "<p>Keep Fix Cut keeps reports in R2. I keep nothing.</p>"):
+            self.assertEqual(len(writer.drop_high_risk(post(run))[1]), 2, run)
 
     def test_only_a_person_commits_a_crime(self):
         for s in ('<a href="https://example.com/a">Palo Alto Networks</a> found the agent exfiltrated credentials '

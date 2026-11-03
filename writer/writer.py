@@ -2146,11 +2146,18 @@ def drop_high_risk(post):
     people, erp = _claim_context(post)
     out, cut = dict(post), []
     for k in fields:
+        held = set()  # first-person lines the first pass read clean against their paragraph's system
         while isinstance(out.get(k), str):  # each pass removes a sentence, so this ends
-            # the paragraph's system is read on the first pass, while the line that named it is there
-            out[k], rows = _scan(out[k], people, strip=lambda r: r["high"], erp=erp,
-                                 topics=not any(f == k for f, _, _ in cut))
-            bad = [(k, r["text"], r["high"]) for r in rows if r["high"]]
+            # the paragraph's system is read on the first pass, while the line that named it is
+            # there; "I do not log the prompt content." held for Atelier then still holds once
+            # "I log the timestamp ... to D1." is cut, though no line names Atelier any more
+            first = not any(f == k for f, _, _ in cut)
+            hit = lambda r: r["high"] and not (r["text"] in held and r["high"] in (SHEET_LABEL, GENERAL_LABEL)
+                                               and r["why"] and all(": no " in w for w in r["why"]))
+            out[k], rows = _scan(out[k], people, strip=hit, erp=erp, topics=first)
+            if first:
+                held = {r["text"] for r in rows if r["named"] and not (r["high"] or r["soft"]) and FIRST.search(r["text"])}
+            bad = [(k, r["text"], r["high"]) for r in rows if hit(r)]
             if not bad:
                 break
             cut += bad
