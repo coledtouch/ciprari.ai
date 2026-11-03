@@ -662,7 +662,8 @@ class ClaimTests(unittest.TestCase):
                 (stack("ATELIER", "LOGS EVERY PROMPT", "TO D1"), ["LOGS EVERY PROMPT", "TO D1"], [">ATELIER<"]),
                 (stack("Atelier logs", "every prompt."), ["every prompt."], []),
                 (stack("KEEP FIX CUT KEEPS", "ANALYTICS FOR A YEAR"), ["FOR A YEAR"], []),
-                (stack("ATELIER", "Every prompt is logged."), ["Every prompt is logged."], [">ATELIER<"])):
+                (stack("ATELIER", "Every prompt is logged."), ["Every prompt is logged."], [">ATELIER<"]),
+                (stack("JETDESK", "NOTAMS: LIVE", "TRIPS: LOCAL"), ["NOTAMS: LIVE"], [">JETDESK<"])):
             draft = dict(writer.STUB, svg_inner=labels + writer.STUB["svg_inner"])
             self.assertTrue(any(p.startswith("svg_inner: must not ship") for p in writer.claim_problems(draft)), labels)
             out, cut = writer.drop_high_risk(draft)
@@ -672,9 +673,13 @@ class ClaimTests(unittest.TestCase):
             for words in kept + [">STUB<", writer.STUB["svg_caption"]]:
                 self.assertIn(words, out["svg_inner"], labels)
             self.assertFalse(any("must not ship" in p for p in writer.claim_problems(out)), labels)
-        # true lines stacked, and a line boxed apart from the name, stay
+        # true lines stacked, a count of none ("NOTAMS: NONE"), a news label over a line that opens
+        # with a system's name, and a line boxed apart from the name, stay
         for labels in (stack("ATELIER", "THREADS IN INDEXEDDB", "R2 SYNC IS OPT-IN"),
                        stack("KEEP FIX CUT", "ANALYTICS KEPT 30 DAYS", "NO UPLOADS SAVED"),
+                       stack("JETDESK", "NOTAMS: NONE", "TRIPS: LOCAL"), stack("JETDESK NOTAMS: NONE"),
+                       stack("ATELIER", "D1 TABLES: 0"),
+                       stack("SUPPLY CHAIN ATTACK", "NPM PACKAGE STOLE TOKENS", "ATELIER HAS NO BUILD STEP"),
                        stack("ATELIER") + f'<rect x="30" y="50" width="200" height="30" stroke="{writer.D}"/>'
                        + stack("LOGS EVERY PROMPT")):
             draft = dict(writer.STUB, svg_inner=labels + writer.STUB["svg_inner"])

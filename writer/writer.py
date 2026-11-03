@@ -1017,6 +1017,9 @@ LOCAL = re.compile(r"\b(?:browser|IndexedDB|on (?:the|your|my) (?:device|phone|l
 SERVER = re.compile(r"(?-i:\bD1\b)|\b(?:tables?|databases?|servers?)\b", re.I)
 # A sentence's clauses. Each is checked on its own, so "X, so I would check Y" still answers for X.
 CLAUSE = re.compile(r",\s*(?:so|and|but|then|because)\b|;|:(?!\d)", re.I)
+# an art label's count of none, "NOTAMS: NONE" or "D1 TABLES: 0", denies the thing it counts
+NONE_LABEL = re.compile(r"\b([\w-]+)\s*:\s*(?:none|no|zero|0)(?=\s*$|\s*[.,;!?)]|\s+(?-i:[A-Z0-9][A-Z0-9-]*\b))",
+                        re.I)
 RUNS_ON = re.compile(r"\b(?:runs?|running|ran) on\b|\b(?:sits?|sat) (?:on|behind|exposed)\b|\b(?:hosted|deployed) on\b",
                      re.I)
 _BUG = r"(?:bugs?|flaws?|CVEs?|vulnerabilit(?:y|ies)|exploits?|holes?)"
@@ -1705,6 +1708,7 @@ def _claim(s, named, story, people, loose=frozenset(), context=frozenset(), keep
     that says "I would" is let off."""
     if s.endswith("?"):
         return None, None, story, []
+    s = NONE_LABEL.sub(r"no \1", s)  # "NOTAMS: NONE" says there are no NOTAMs
     high = soft = None
     told = False
     why = []
@@ -1885,11 +1889,13 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False):
 
 def _label_para(svg, spans):
     """The text of the <text> elements at spans of svg as one paragraph, a <tspan> a word apart.
-    A label in sentence case ("This is only a test.") starts a sentence; one in capitals or
-    lower case ("LOGS EVERY PROMPT", "every prompt") goes on with the label above it."""
+    A label in sentence case ("This is only a test.") or one that opens with a system's name
+    ("ATELIER HAS NO BUILD STEP") starts a sentence; one in capitals or lower case ("LOGS EVERY
+    PROMPT", "every prompt") goes on with the label above it."""
     words = [w for w in (" ".join(_plain(svg[a:b]).split()) for a, b in spans) if w]
     for i in range(1, len(words)):
-        if re.match(r"[\"'“(]?[A-Z][a-z]", words[i]) and not re.search(r"[.?!:;][\"'”)]*$", words[i - 1]):
+        if (re.match(r"[\"'“(]?[A-Z][a-z]", words[i]) or any(rx.match(words[i]) for _, rx in SYSTEMS)) and \
+                not re.search(r"[.?!:;][\"'”)]*$", words[i - 1]):
             words[i - 1] += "."
     return "<p>" + html.escape(" ".join(words), quote=False) + "</p>"
 
