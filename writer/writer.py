@@ -2115,8 +2115,13 @@ def _kept_keywords(keywords, lost, title):
         return {w.rstrip("s") for w in re.findall(r"[a-z0-9][a-z0-9'-]*", s.lower())
                 if (len(w) >= 3 or re.search(r"\d", w)) and w not in STOP and w not in SMALL}
 
-    def same(a, b):  # "log" and "logging", "table" and "tables"
-        return a == b or (min(len(a), len(b)) >= 3 and (a.startswith(b) or b.startswith(a)))
+    def base(w):  # "logging" and "logged" are "log", "stored", "storing" and "store" "stor"
+        b = re.sub(r"(?:ing|ed|ers?|es)$", "", w) if len(w) > 4 else w
+        b = re.sub(r"([^aeiou])\1$", r"\1", b)
+        return b[:-1] if b.endswith("e") and len(b) > 3 else b
+
+    def same(a, b):  # inflections only: "run" is not "runway", nor "pro" "product"
+        return a == b or (min(len(a), len(b)) >= 3 and len(base(a)) >= 3 and base(a) == base(b))
 
     gone = set().union(*map(words, lost)) - words(title)
     kept = [k.strip() for k in keywords.split(",") if k.strip() and not any(

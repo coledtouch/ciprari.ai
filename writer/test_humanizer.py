@@ -1205,6 +1205,13 @@ class HumanizePassTests(unittest.TestCase):
                                             keywords="Atelier inbox, prompt logging"))
         self.assertEqual(out["keywords"], "Atelier inbox")  # a word the title still has is not a cut word
         self.assertEqual(writer.drop_high_risk(dict(two, title="The agent has an email."))[0]["keywords"], two["keywords"])
+        # a cut word takes its inflections ("logs", "logging", "stored"), not every word it starts
+        kw = "Runway video, product launch, Atelier inbox, process mining, VPS hosting"
+        out, _ = writer.drop_high_risk(dict(two, title="Atelier gets an inbox. estimate.pro runs on a VPS.", keywords=kw))
+        self.assertEqual(out["keywords"], "Runway video, product launch, Atelier inbox, process mining")
+        out, _ = writer.drop_high_risk(dict(two, title="Atelier gets an inbox. Atelier stored every prompt in a D1 table.",
+                                            keywords="storing receipts, table stakes, Atelier inbox, storm damage"))
+        self.assertEqual(out["keywords"], "Atelier inbox, storm damage")
         # a revision makes the draft's next line the rest of a story: refused, and the line leaves every row
         tail = "<p>It was quiet that week. You can check it.</p>"
         draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>This is crucial.</p>" + tail)
