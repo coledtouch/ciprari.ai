@@ -892,37 +892,45 @@ def humanizer_problems(post):
 # headcount, permission or past action goes back for revision. A few claims must never ship
 # at all: Atelier keeping prompts or answers, a stack/version/exposure/patch claim, a
 # first-person leaked-credentials story or story about his logs, keys or infrastructure (and
-# the rest of its paragraph), a crime stated as fact. drop_high_risk() cuts any that are
-# still there after the revisions. Checks run clause by clause, so a trailing "so I would
-# check..." never excuses the clause before it.
+# the rest of its paragraph), a crime stated as fact, a stack, storage, auth, count or other
+# sheet term for one of his systems that its SYSTEM_FACTS line does not state, and the same
+# terms said of all his systems at once. Each term answers to the system named nearest before
+# it. drop_high_risk() cuts any that are still there after the revisions. Checks run clause
+# by clause, so a trailing "so I would check..." never excuses the clause before it.
 SYSTEMS = [(name, re.compile(rx, re.I)) for name, rx in (
-    ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\bthe construction ERP\b|\b(?:my|our|his) (?:construction )?ERP\b"),
-    ("estimate.pro", r"\bestimate\.pro\b|\bthe estimating (?:SaaS|tool|suite|platform|app)\b"),
+    ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\bthe construction ERP\b|\b(?:my|our|his) (?:construction )?ERP\b|"
+                 r"\bthe Twilio dialer\b|\bthe snow(?:[- ]operations)? module\b|\bthe crew apps?\b"),
+    ("estimate.pro", r"\bestimate\.pro\b|\b(?:the|my) estimating (?:SaaS|tool|suite|platform|app|system|agent|interface)\b"),
     ("CurbScript", r"\bcurbscript\b"),
-    ("The Punchlist", r"(?-i:\bPunchlist\b)|\bthepunchlist\b"),
+    ("The Punchlist", r"(?-i:\bPunchlist\b|\bPUNCHLIST\b)|\bthepunchlist\b"),
     ("JetDesk", r"\bjetdesk\b|\bthe flight[- ]plann(?:er|ing (?:PWA|app|desk|tool))\b"),
-    ("North Point", r"\bNorth Point Construction\b|\bnorth\.construction\b"),
-    ("Valhalla K9", r"(?-i:\bValhalla\b)|\bvalhalla-k9\b|\bthe dog[- ]training (?:site|platform|company|business)\b"),
+    ("North Point", r"\bNorth Point Construction\b|\bnorth\.construction\b|\bthe contractor site\b"),
+    ("Valhalla K9", r"(?-i:\bValhalla\b|\bVALHALLA\b)|\bvalhalla-k9\b|\bthe dog[- ]training (?:site|platform|company|business)\b|"
+                    r"\bthe K9 (?:site|business|company)\b"),
     ("Hire Mariaelena", r"\bhire ?mariaelena\b|\bthe (?:freelancer|résumé|resume) (?:portfolio|site|page)\b"),
-    ("Show It With Words", r"(?-i:Show It With Words)|\bshowitwithwords\b|\bthe jewelry (?:site|storefront|store|shop)\b"),
-    ("PermitSketch", r"\bpermitsketch\b|\bthe permit(?:[- ]drawing)? (?:app|tool)\b"),
-    ("Atelier", r"(?-i:\bAtelier\b)|\batelier\.ciprari\.ai\b"),
-    ("Keep Fix Cut", r"\bkeep ?fix ?cut\b|\bthe dating[- ]profile (?:teardown|tool|app)\b"),
-    ("Base44 apps", r"(?-i:(?<!Amazon )(?<!AWS )\bAurora\b(?! (?:DB|Serverless|PostgreSQL|MySQL|Innovation)))|"
+    ("Show It With Words", r"(?-i:Show It With Words|SHOW IT WITH WORDS)|\bshowitwithwords\b|"
+                           r"\bthe (?:jewelry|bead) (?:site|storefront|store|shop)\b"),
+    ("PermitSketch", r"\bpermitsketch\b|\bthe permit(?:[- ](?:drawing|sketching))? (?:app|tool|platform)\b|"
+                     r"\bthe permit sketcher\b"),
+    ("Atelier", r"(?-i:\bAtelier\b|\bATELIER\b)|\batelier\.ciprari\.ai\b|\bmy (?:AI )?studio\b"),
+    ("Keep Fix Cut", r"\bkeep ?fix ?cut\b|\bthe dating[- ]profile (?:teardown|tool|app|site)\b"),
+    ("Base44 apps", r"(?-i:(?<!Amazon )(?<!AWS )\bAurora\b(?! (?:DB|Serverless|PostgreSQL|MySQL|Innovation))|\bAURORA\b)|"
+                    r"\bthe (?:smart-home|IPTV) (?:platform|app)\b|"
                     r"\bNorthern Hardy Honey\b|\bMari' Cosmetics\b|\bthe (?:three )?Base44 (?:apps|stack)\b|"
                     r"\bthe (?:honey|cosmetics) (?:shop|store|storefront|site)\b"),
 )]
 NO_AI = {"Valhalla K9", "Hire Mariaelena", "Show It With Words"}
 # A bare "the ERP" is Cole's only when the post names his ERP and no vendor's. Otherwise it
 # counts for the soft labels alone: a news line about SAP's ERP is never cut.
-BARE_ERP = re.compile(r"\bthe ERP\b(?! (?:vendors?|makers?|market|industry|sector)\b)", re.I)
+BARE_ERP = re.compile(r"\bthe ERP\b(?! (?:vendors?|makers?|market|industry|sector)\b)|"
+                      r"\bthe payroll (?:system|module|integration)\b", re.I)
 ERP_VENDOR = re.compile(r"\b(?:SAP|Oracle|NetSuite|Workday|Dynamics|Infor|Epicor|Sage|Odoo|Acumatica|Dolibarr|"
                         r"Deltek|Syspro|Unit4|IFS|JD Edwards|PeopleSoft|Procore|Viewpoint)\b")
 # "It" or "The table" right after a sentence about a system is still about that system.
 CARRY = re.compile(r"^(?:It|Its|They|Their|This|That|These|Those|Both|All three|The others|The (?:D1 )?(?:table|"
                    r"log|logs|ledger|database|router|worker|app|studio|tool|platform|session|token|cookie|codebase|"
                    r"stack|server|site|teardown|planner|module|suite))\b")
-WOULD = re.compile(r"(?-i:\bI)(?:'d|'ll| would| will| might| could| should| want to| plan to)\b|\bif I\b|"
+WOULD = re.compile(r"(?-i:\bI)(?:'d|'ll| would| will| might| could| should| want to| plan to| need)\b|\bif I\b|"
                    r"\bwould (?:check|look|ask|want|test)\b", re.I)
 GENERIC = re.compile(r"\b(?:my|our) (?:own )?(?:platforms?|systems?|apps?|sites?|stack|servers?|products?|"
                      r"codebases?|integrations?)\b|\b(?:those|these|both|all (?:three|four|five)|every one of those) "
@@ -933,7 +941,7 @@ ME = re.compile(r"(?-i:\bI) (?:log|store|keep|retain|monitor|run|host|patch|trac
                 r"tables?|users|testers|customers|clients|crews?|integrations?|test suite|tests)\b", re.I)
 FIRST = re.compile(r"(?-i:\bI\b)|\b(?:my|me|our)\b", re.I)
 # must not ship
-STORE = re.compile(r"\b(?:log(?:s|ged|ging)?|stor(?:e|es|ed|ing)|retain(?:s|ed|ing)?|keep(?:s|ing)?|kept|"
+STORE = re.compile(r"\b(?:log(?:s|ged|ging)?|stor(?:e|es|ed|ing)|retain(?:s|ed|ing)?|(?:keep(?:s|ing)?|kept)(?!\s+\w+ing\b)|"
                    r"sav(?:e|es|ed|ing)|record(?:s|ed|ing)?|hold(?:s|ing)?|held|writes?|wrote|tables?|database)\b|"
                    r"(?-i:\bD1\b)", re.I)
 CONTENT = re.compile(r"\b(?:prompts?|answers?|responses?|conversations?|exchanges?|chats?|messages?|transcripts?|"
@@ -942,11 +950,6 @@ CONTENT = re.compile(r"\b(?:prompts?|answers?|responses?|conversations?|exchange
 LOCAL = re.compile(r"\b(?:browser|IndexedDB|on (?:the|your|my) (?:device|phone|laptop)|locally|local-first|"
                    r"opt-in|sync)\b", re.I)
 SERVER = re.compile(r"(?-i:\bD1\b)|\b(?:tables?|databases?|servers?)\b", re.I)
-# The negation has to govern the keeping: "does not log", "never stores", "logs no prompts".
-# "logs each prompt, not the answer" and "stores every prompt and never deletes it" keep them.
-KEEPS_NONE = re.compile(r"(?:\b(?:not|never|no)\b|n't\b)[^,.;]{0,20}?\b(?:log|stor|keep|kept|sav|record|hold|held|"
-                        r"retain|writ)\w*|\b(?:log|stor|keep|kept|sav|record|hold|held|retain|writ)\w*\s+"
-                        r"(?:no|none|nothing|neither)\b", re.I)
 # A sentence's clauses. Each is checked on its own, so "X, so I would check Y" still answers for X.
 CLAUSE = re.compile(r",\s*(?:so|and|but|then|because)\b|;|:(?!\d)", re.I)
 RUNS_ON = re.compile(r"\b(?:runs?|running|ran) on\b|\b(?:sits?|sat) (?:on|behind|exposed)\b|\b(?:hosted|deployed) on\b",
@@ -977,7 +980,25 @@ Or So Then After Before During Since Until While Security Department Justice Off
 North South East West Rollout Report January February March April May June July August September October November
 December Monday Tuesday Wednesday Thursday Friday Saturday Sunday Google OpenAI Anthropic Meta Microsoft Amazon
 Apple Nvidia Cloud Claude Gemini Federal Supreme Court House Senate Governor President Attorney General Police
-Act Street Journal Times Post News Wall Silicon Valley White Washington York Bay Area""".split())
+Act Street Journal Times Post News Wall Silicon Valley White Washington York Bay Area Codex Copilot Grok Llama
+Sora Veo Opus Sonnet Haiku Siri Alexa Cortana Spark Terra Carbon Argon Astra Daybreak Mythos Palo Alto Santa
+Mountain Menlo Park Redmond Seattle Boston Austin Texas California Virginia Beijing Moscow Tehran Pyongyang""".split())
+# a company, lab or threat actor, not a person: "Palo Alto Networks", "Salt Typhoon", "Wheels Inc"
+ORG_WORD = (r"(?:Inc|Corp|Corporation|Co|Ltd|LLC|Networks|Labs|Systems|Group|Technologies|Security|Software|"
+            r"Solutions|Research|Capital|Partners|Ventures|Holdings|Foundation|Institute|University|College|Bank|"
+            r"Motors|Airlines|Health|Media|Games|Analytics|Robotics|Dynamics|Energy|Telecom|Communications|Cloud|"
+            r"Intelligence|Agency|Bureau|Ministry|Commission|Council|Committee|Typhoon|Bear|Spider|Panda|Kitten|"
+            r"Tempest|Blizzard|Sleet|Sandstorm|Storm|Chollima|Jackal)\b")
+# "a scammer posing as Sam Altman stole": the named person is not the one who stole
+NOT_THE_DOER = re.compile(r"\b(?:as|of|by|from|with|to|for|against|at|about|like|than|impersonating|"
+                          r"pretending to be|named|called)\s+$", re.I)
+# the name and the crime verb sit in one clause: a verb or a new clause between them hands the
+# crime to someone else ("Palo Alto Networks found the agent exfiltrated")
+GAP_STOP = re.compile(r"\bthat\b|,\s*(?:and|but)\b|\b(?:found|finds|said|says|showed|shows|reported|reports|"
+                      r"discovered|discovers|warned|warns|noted|notes|wrote|writes|told|tells|believes|believed|"
+                      r"thinks|thought|knew|knows|learned|learns|saw|sees|watched|traced|caught|confirmed|confirms|"
+                      r"revealed|reveals|argued|argues|added|adds|explained|described|tested|tests|asked|asks|"
+                      r"claimed|alleged|is|was|are|were|has|had|have|does|did|will|would|can|could|may|might)\b", re.I)
 # soft: back to the model
 FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a single) Cloudflare Worker\b|"
                      r"\bCloudflare Pages(?: Functions)?\b|\b(?:runs? on |on |built on |is a )?(?:Base44|Vercel)\b|"
@@ -987,7 +1008,7 @@ FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a singl
                      r"\b(?:opt-in|private) (?:thread )?sync\b|\b(?:expires? (?:after|in) )?(?:30|thirty)[- ]days?\b|"
                      r"\bIndexedDB\b|\bin (?:the|your) browser\b|\bon (?:the|your) device\b|"
                      r"\busage (?:ledger|analytics)\b|\bhashed session id\b|\bpage memory\b|"
-                     r"\b(?:no|not|never)\b[^.?!]{0,20}?(?-i:\bPHP\b|\bPython\b|\bVPS\b|\bS3\b)", re.I)
+                     r"\b(?:no|not|never|none)\b[^.?!]{0,30}?(?-i:\bPHP\b|\bPython\b|\bVPS\b|\bS3\b)", re.I)
 CLAIM = re.compile(
     r"(?-i:\bPHP\b|\bPython\b|\bNode(?:\.js)?\b|\bRails\b|\bVPS\b|\bD1\b|\bS3\b|\bR2\b)|\bruns? on\b|"
     r"\b(?:hosted|deployed) on\b|\bsits? (?:on|behind)\b|\bv?\d+\.\d+\.\d+\b|\bversion \d|\bpatch(?:ed|es|ing)?\b|"
@@ -1023,9 +1044,129 @@ TECH_LABEL = "a stack, version, exposure or patch claim about Cole's systems"
 LEAK_LABEL = "a first-person leaked-credentials story"
 STORY_LABEL = "a first-person story about Cole's logs, keys or infrastructure"
 TALE_LABEL = "the rest of a first-person story about Cole's systems"
+SHEET_LABEL = "a claim about Cole's systems that SYSTEM FACTS does not support"
+GENERAL_LABEL = "a first-person claim about all of Cole's systems"
 HIGH_FIX = "cut it, or say what you would check instead"
 CRIME_FIX = 'attribute it ("prosecutors say", "the complaint alleges") or cut it'
 CLAIM_FIX = "say only what SYSTEM FACTS says, or what you would check, or cut it"
+LINK_FIX = "it carries a source link, so rephrase it around the link rather than cut it"
+
+# ---- what the sheet supports
+# A clause about one of his systems may state a stack, host, storage, logging, auth, count,
+# permission, monitoring, routing, payroll, NOTAM or API term only as its SYSTEM_FACTS line
+# does: stated where the sheet states it, denied where the sheet denies it. SUPPORT is read
+# from SYSTEM_FACTS itself, so changing the sheet changes what passes.
+TERMS = [(key, re.compile(rx, re.I)) for key, rx in (
+    ("php", r"(?-i:\bPHP\b)"), ("python", r"(?-i:\bPython\b)"), ("node", r"(?-i:\bNode(?:\.js)?\b)|\bnode\.js\b"),
+    ("rails", r"(?-i:\bRails\b)"), ("next.js", r"\bNext\.?js\b"), ("react", r"(?-i:\bReact\b)"),
+    ("typescript", r"\bTypeScript\b"), ("site builder", r"\b(?:WordPress|Shopify|Wix|Squarespace|Webflow)\b"),
+    ("vercel", r"\bVercel\b"), ("cloudflare", r"\bCloudflare\b"), ("worker", r"(?-i:\bWorkers?\b)"),
+    ("base44", r"\bBase44\b"), ("pwa", r"(?-i:\bPWAs?\b)|\bprogressive web apps?\b"),
+    ("durable objects", r"\bDurable Objects?\b"), ("kv", r"(?-i:\bKV\b)"), ("r2", r"(?-i:\bR2\b)"),
+    ("d1", r"(?-i:\bD1\b)"), ("s3", r"(?-i:\bS3\b)"), ("vps", r"(?-i:\bVPS(?:es)?\b)|\bvirtual private servers?\b"),
+    ("aws", r"(?-i:\bAWS\b|\bEC2\b)|\bAmazon Web Services\b"), ("azure", r"\bAzure\b"),
+    ("gcp", r"(?-i:\bGCP\b)|\bGoogle Cloud\b"),
+    ("other host", r"(?-i:\b(?:Heroku|Netlify|Fly\.io|DigitalOcean|Linode|Hetzner|GoDaddy|Bluehost)\b)"),
+    ("database", r"\b(?:databases?|Postgres(?:QL)?|MySQL|SQLite|MongoDB|Redis|DynamoDB|Supabase|Firebase|schemas?|"
+                 r"(?<!on the )(?<!at the )(?<!off the )tables?)\b"),
+    ("indexeddb", r"\bIndexedDB\b"), ("localstorage", r"\blocalStorage\b|\blocal storage\b"),
+    ("server", r"\b(?:servers?|data ?cent(?:er|re)s?|VMs?|virtual machines?|Docker|Kubernetes|k8s)\b"),
+    ("bucket", r"\bbuckets?\b"), ("cdn", r"(?-i:\bCDNs?\b|\bWAFs?\b)|\bfirewalls?\b"),
+    ("cron", r"\bcron\b|\bscheduled jobs?\b"), ("webhook", r"\bwebhooks?\b"),
+    ("secrets", r"\b(?:secret managers?|secrets?|credentials?|passwords?|API keys?|access tokens?|private keys?)\b|"
+                r"\.env\b"),
+    ("encryption", r"\bencrypt(?:s|ed|ing|ion)?\b"), ("api", r"(?-i:\bAPIs?\b)(?! keys?\b)"),
+    ("session", r"\bsessions?\b"), ("token", r"\btokens?\b"), ("cookie", r"\bcookies?\b|\bHttpOnly\b"),
+    ("passcode", r"\bpasscodes?\b"), ("linkedin", r"\bLinkedIn\b"),
+    ("sso", r"(?-i:\bSSO\b|\bJWTs?\b|\bSAML\b)|\bsingle sign-on\b|\bOkta\b|\bOAuth\b"),
+    ("stripe", r"\bStripe\b"), ("twilio", r"\bTwilio\b"), ("adp", r"(?-i:\bADP\b)"),
+    ("permissions", r"\b(?:permissions?|role-based|access control|least[- ]privilege|RBAC|"
+                    r"scoped (?:permissions?|access|tokens?|keys?|roles?))\b"),
+    ("monitoring", r"\b(?:monitor(?:s|ed|ing)?|observability|uptime|alert(?:s|ing)?|status page|health checks?)\b"),
+    ("review gate", r"\breview gates?\b|\bhuman review\b"), ("payroll", r"\bpayroll\b"),
+    ("deposit", r"\b(?:deposits?|routing numbers?|bank accounts?)\b"), ("tax", r"\btax(?:es)?\b"),
+    ("routing", r"\brout(?:er|ers|ing)\b(?! numbers?)|\broutes? (?:\w+ ){0,3}?(?:through|via|over|across)\b"),
+    ("service route", r"\bservice routes?\b"), ("notam", r"\bNOTAMs?\b"), ("zoning", r"\bzoning\b"),
+)]
+# AI providers; the sheet's lists are closed, so denying one it does not list is fine
+PROVIDERS = [(key, re.compile(rx)) for key, rx in (
+    ("anthropic", r"\bAnthropic\b|\bClaude\b"), ("openai", r"\bOpenAI\b|\bChatGPT\b|\bGPT\b|\bGPT-|\bCodex\b"),
+    ("google", r"\bGoogle\b(?! Cloud)|\bGemini\b"), ("vertex", r"\bVertex\b"), ("xai", r"\bxAI\b|\bGrok\b"),
+    ("z.ai", r"\bZ\.ai\b|\bGLM\b|\bZhipu\b"), ("deepseek", r"\bDeepSeek\b"), ("meta", r"\bMeta\b|\bLlama\b"),
+    ("nvidia", r"\bNVIDIA\b|\bNvidia\b|\bNemotron\b"), ("runway", r"\bRunway\b"), ("mistral", r"\bMistral\b|\bMixtral\b"),
+    ("perplexity", r"\bPerplexity\b"), ("cohere", r"\bCohere\b"), ("microsoft", r"\bMicrosoft\b|\bCopilot\b|\bAzure\b"),
+    ("amazon", r"\bAmazon\b|\bAWS\b|\bBedrock\b"), ("alibaba", r"\bAlibaba\b|\bQwen\b"), ("moonshot", r"\bMoonshot\b|\bKimi\b"),
+    ("another provider", r"\bHugging ?Face\b|\bTogether AI\b|\bGroq\b|\bFireworks AI\b|\bReplicate\b|\bMidjourney\b|"
+                         r"\bElevenLabs\b|\bAI21\b|\bOpenRouter\b|\bInflection\b|\bStability AI\b"),
+)]
+# vendors read as news when they lead a clause: "When Cloudflare went down, ..."
+VENDORS = {"cloudflare", "vercel", "aws", "azure", "gcp", "other host", "base44", "stripe", "twilio", "adp",
+           "linkedin", "site builder"}
+GLOBAL_NEG = {"php", "python", "vps", "s3"}  # "No Cole system uses PHP, Python, a VPS or S3."
+GLOBAL_POS = {"platform 15", "system 15"}  # "15 production platforms"
+NUMBERS = dict(zip("two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen "
+                   "seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred "
+                   "dozen".split(), [*range(2, 21), 30, 40, 50, 60, 70, 80, 90, 100, 12]))
+COUNT_NOUN = (r"(?:people|persons?|employees?|workers?|staff|users?|customers?|clients?|crews?|testers?|tenants?|"
+              r"trades?|routes?|towns?|providers?|models?|agents?|accounts?|seats?|members?|subscribers?|scans?|"
+              r"airports?|sheets?|apps?|platforms?|systems?|sites?|servers?|endpoints?|integrations?|requests?|"
+              r"calls?|jobs?|projects?)")
+COUNT = re.compile(rf"(?<![\w.$#-])((?!(?:19|20)\d\d\b)\d[\d,]*\+?|(?:an? )?(?:{'|'.join(NUMBERS)})|dozens|hundreds|"
+                   rf"thousands|millions)(?:[\s-]+(?!{COUNT_NOUN}\b|percent\b|per\b|times\b)[\w'’.-]+|"
+                   rf"[\s-]+{COUNT_NOUN}(?=[\s-]+{COUNT_NOUN}\b)){{0,2}}?[\s-]+({COUNT_NOUN})\b"
+                   rf"(?![\s-]+(?:{COUNT_NOUN}|IDs?|names?|versions?|families|tiers?|keys?|errors?)\b)", re.I)
+VAGUE = re.compile(r"\b(?:couple|few|several)\s+(?:of\s+)?$", re.I)  # "a couple dozen trades" counts nothing
+NOT_HIS = re.compile(r"\b(?:vendor|third-party|other|outside|competing|rival)\b", re.I)  # "six vendor apps"
+# keeping data: these verbs always; keep/hold/record/write only with data, a store or a period
+STRONG = re.compile(r"\blog(?:s|ged|ging)?\b(?! ?(?:in|into|on|out)\b)|\bstor(?:e|es|ed|ing|age)\b|"
+                    r"\bsav(?:e|es|ed|ing)\b(?! (?:time|money|hours?|minutes?|days?|weeks?|effort|steps?|clicks?|"
+                    r"you|a trip)\b)|\bretain(?:s|ed|ing)?\b|\bretention\b|\bpersist(?:s|ed|ing|ence)?\b|"
+                    r"\bcach(?:es|ed|ing)\b|\bback(?:s|ed)? up\b|\bbackups?\b|\barchiv(?:e|es|ed|ing)\b|"
+                    r"\bsync(?:s|ed|ing)?\b", re.I)
+WEAK = re.compile(r"\b(?:keep|keeps|keeping|kept)\b(?!\s+\w+ing\b)|"
+                  r"\b(?:hold|holds|holding|held|record|records|recorded|recording)\b|"
+                  r"\b(?:writes?|wrote|written)\b(?=(?:\s+\S+){0,4}?\s+(?:to|into)\s+(?:the\s+|a\s+|an\s+|its\s+)?"
+                  r"(?:D1|R2|KV|S3|disk|databases?|tables?|buckets?|servers?|logs?|ledger|IndexedDB)\b)", re.I)
+DATA = [(key, re.compile(rx, re.I)) for key, rx in (
+    ("prompt", r"\bprompts?\b|\bwhat (?:the |a |each )?(?:users?|testers?|person|owner|you) (?:asked|typed|sent|wrote)\b|"
+               r"\b(?:conversations?|chats?|messages?|exchanges?|transcripts?|chat history)\b"),
+    ("answer", r"\b(?:answers?|responses?|replies|outputs?|completions?)\b|\bwhat the model (?:returned|said|answered|wrote)\b"),
+    ("thread", r"\bthreads?\b"),
+    ("photo link", r"\b(?:profile )?photo links?\b"), ("member id", r"\b(?:member|LinkedIn) IDs?\b"),
+    ("session id", r"\b(?:hashed )?session ids?\b"), ("page view", r"\bpage views?\b"),
+    ("token cost", r"\btoken (?:costs?|counts?|usage)\b|\btokens?\b"), ("upload", r"\buploads?\b"),
+    ("photo", r"\b(?:photos?|images?|pictures?|selfies?|frames?)\b"), ("report", r"\breports?\b"),
+    ("profile", r"\bprofiles?\b"), ("memory", r"\bmemor(?:y|ies)\b"), ("feedback", r"\bfeedback\b"),
+    ("cache", r"\bcaches?\b"), ("email", r"\bemails?(?: address(?:es)?)?\b"), ("name", r"\bnames?\b"),
+    ("cost", r"\bcosts?\b|\bspend(?:ing)?\b"), ("time", r"\btimes?\b|\btimestamps?\b|\blatency\b"),
+    ("request", r"\brequests?\b"), ("analytics", r"\banalytics\b|\busage\b"), ("scan", r"\bscans?\b"),
+    ("ip", r"(?-i:\bIPs?\b)|\bIP address(?:es)?\b"), ("location", r"\blocations?\b|\baddress(?:es)?\b"),
+    ("drawing", r"\bdrawings?\b|\bplans?\b"), ("estimate", r"\bestimates?\b|\bbids?\b"),
+    ("timesheet", r"\btimesheets?\b|\binvoices?\b|\breceipts?\b|\bpay stubs?\b"),
+    ("listing", r"\blistings?\b|\bdescriptions?\b|\bvideos?\b|\bscripts?\b"),
+    ("file", r"\bfiles?\b|\bdocuments?\b|\bPDFs?\b|\bcop(?:y|ies)\b"), ("key", r"\bkeys?\b|\bcredentials?\b|\bpasswords?\b"),
+    ("data", r"\b(?:data|everything|anything|nothing|information|info|logs?|records|history)\b"),
+)]
+GENERIC_DATA = {"data"}
+LOCAL_HERE = re.compile(r"\bIndexedDB\b|\blocalStorage\b|\bin (?:the|your|a|each|their) browser\b|"
+                        r"\bon (?:the|your|my|each|a|their) (?:device|phone|laptop|iPad|tablet)\b|\bpage memory\b|"
+                        r"\blocally\b|\bon-device\b|\bCache Storage\b", re.I)
+NEG_WORDS = {"no", "not", "never", "without", "zero", "neither", "nor", "none", "nothing"}
+CLAUSE_NEG = re.compile(r"\s*[\"'“‘(]?\s*(?:None|No|Not|Nothing|Neither|Never)\b", re.I)
+LEADS = re.compile(r"(?:^\s*[\"'“‘(]?\s*|\b(?:When|If|As|After|Before|Since|While|Once|Until|Because|Though|"
+                   r"Although|Unless|Whether)\s+)(?:the\s+)?$", re.I)
+PASSIVE = re.compile(r"\b(?:is|are|was|were|be|been|being|gets?|got)\s+(?:(?:not|never|also|only|still|all|"
+                     r"then|now)\s+)?$|n't\s+(?:been\s+)?$", re.I)
+# "my apps", "every one of those systems", "I monitor": a claim about all of them
+GENERAL = re.compile(rf"{GENERIC.pattern}|\bmy (?:own )?(?:systems?|platforms?|apps?|sites?|stack|servers?)\b|"
+                     r"(?-i:\bI) (?:run|host|operate|ship|built|build|maintain) (?:[\w-]+ ){0,3}?(?:systems|platforms|"
+                     r"apps|sites|servers|integrations|products)\b|\b(?:systems?|platforms?|apps?|sites?) I "
+                     r"(?:run|host|operate|ship|built|maintain)\b|(?-i:\bI) (?:(?:do not|don't|never|also|only) )?"
+                     r"(?:log|store|keep(?!\s+\w+ing\b)|retain|monitor|track|record|save|back up|encrypt|host|patch|"
+                     r"rotate|scope|audit)\b", re.I)
+DETERMINERS = set("""the a an my our your his her their i we you he she some any no every each all either neither
+nothing none someone everyone anyone nobody there here what which who when where while if as so then but and or
+because since though although unless until once after before not""".split())
 
 
 def _systems(text):
@@ -1033,40 +1174,268 @@ def _systems(text):
 
 
 def _people(text):
-    """A pattern for a named person (full name or surname) followed closely by a crime verb."""
+    """A pattern for the people the post names (full name or surname). Companies, labs, models
+    and threat actors ("Palo Alto Networks", "Salt Typhoon", "Codex Spark") are not people."""
     names = set()
     for m in FULL_NAME.finditer(text or ""):
-        if m.group(1) not in NOT_A_NAME and m.group(2) not in NOT_A_NAME:
+        if (m.group(1) not in NOT_A_NAME and m.group(2) not in NOT_A_NAME
+                and not re.fullmatch(ORG_WORD, m.group(2)) and not re.match(rf"\s+{ORG_WORD}", text[m.end():])):
             names |= {m.group(0), m.group(2)}
     if not names:
         return None
-    alt = "|".join(re.escape(n) for n in sorted(names, key=len, reverse=True))
-    return re.compile(rf"\b(?:{alt})\b(?:[\s,]+[\w'’.-]+){{0,6}}?[\s,]+{CRIME}")
+    return re.compile(rf"\b(?:{'|'.join(re.escape(n) for n in sorted(names, key=len, reverse=True))})\b")
+
+
+def _crime(c, people):
+    """True when a person the post names is the one a crime verb in clause c is pinned on."""
+    for m in people.finditer(c) if people else ():
+        if NOT_THE_DOER.search(c[:m.start()]) or re.match(rf"\s+{ORG_WORD}", c[m.end():]):
+            continue
+        gap = re.match(rf"((?:[\s,]+[\w'’.-]+){{0,6}}?)[\s,]+{CRIME}", c[m.end():])
+        if gap and not GAP_STOP.search(gap.group(1)):
+            return True
+    return False
+
+
+def _keeps_content(c):
+    """True when a prompt or answer is what a keeping verb in clause c keeps: its object with no
+    negation between ("logs every prompt"), or the subject of a passive one ("prompts are
+    logged"). "Nothing in the ledger holds a prompt" and "records the cost, never the prompt"
+    keep none."""
+    if CLAUSE_NEG.match(c):
+        return False
+    for v in STORE.finditer(c):
+        if _negated(c, v.start(), v.end()):
+            continue
+        obj = CONTENT.search(c, v.end(), v.end() + 60)
+        if obj and not re.search(r"\b(?:not|never|no|none|nothing|neither|without)\b|n't\b", c[v.end():obj.start()], re.I):
+            return True
+        if PASSIVE.search(c[:v.start()]) and CONTENT.search(c[:v.start()]):
+            return True
+    return False
+
+
+def _mask(c):
+    """Clause c with each of Cole's system names replaced by Ω and a letter for which one, so
+    "Keep Fix Cut" keeps nothing and a term can be tied to the system named before it."""
+    for i, (_, rx) in enumerate(SYSTEMS):
+        c = rx.sub("Ω" + chr(97 + i), c)
+    return BARE_ERP.sub("Ωa", c)
+
+
+def _owners(m, pos, here):
+    """The systems a term at m[pos] is said of: the nearest named before it (or the first after
+    it), with any named alongside it ("Atelier and Keep Fix Cut run on..."); here when the
+    clause names none."""
+    groups = []
+    for x in re.finditer(r"Ω([a-z])", m):
+        name = SYSTEMS[ord(x.group(1)) - 97][0]
+        if groups and re.fullmatch(r"\s*(?:,|,?\s*(?:and|or|&|plus))\s*", m[groups[-1][1]:x.start()]):
+            groups[-1] = (groups[-1][0] | {name}, x.end(), groups[-1][2])
+        else:
+            groups.append(({name}, x.end(), x.start()))
+    if not groups:
+        return set(here)
+    before = [g for g in groups if g[2] < pos]
+    return set((before[-1] if before else groups[0])[0])
+
+
+def _negated(m, a, b):
+    """True when the term at m[a:b] is denied: a negation in the three words before it (and
+    after any comma), "logs nothing", "D1 is not used", or a clause that opens with No, None,
+    Nothing or Never."""
+    before = re.findall(r"[\w'’]+", re.split(r"[,;:(]", m[:a])[-1])[-3:]
+    return bool(CLAUSE_NEG.match(m) or any(w.lower() in NEG_WORDS or w.lower().endswith(("n't", "n’t")) for w in before)
+                or re.match(r"\s+(?:no|none|nothing|neither|zero)\b", m[b:], re.I)
+                or re.match(r"[^,;.]{0,20}?(?<!\band )(?<!\bbut )(?<!\bor )(?<!\bthen )"  # "stores X and never deletes"
+                            r"\b(?:(?:is|are|was|were|has|have|had|does|do|did)(?: not|n't)|never)\b", m[b:], re.I))
+
+
+def _nouns(text):
+    """(kind, start) for each kind of data text names, left to right, longest name first. A
+    keeping verb ("logs", "records") is not data."""
+    spans = [(None, v.start(), v.end()) for v in [*STRONG.finditer(text), *WEAK.finditer(text)]]
+    for key, rx in DATA:
+        for d in rx.finditer(text):
+            if not any(d.start() < e and s0 < d.end() for _, s0, e in spans):
+                spans.append((key, d.start(), d.end()))
+    return [(key, s0) for key, s0, _ in sorted(spans, key=lambda x: x[1]) if key]
+
+
+def _stores(m):
+    """(start, end, negated, passive) for each verb or noun in m that keeps data."""
+    out = []
+    for v in sorted([*STRONG.finditer(m), *WEAK.finditer(m)], key=lambda v: v.start()):
+        passive = bool(PASSIVE.search(m[:v.start()]))
+        if WEAK.fullmatch(v.group(0)) and not (
+                _nouns(" ".join(m[v.end():].split()[:3]))
+                or re.match(r"\s+(?:for\s+)?\d|\s+(?:\w+\s+){0,2}?(?:on|in|to)\s+(?:the\s+|a\s+|its\s+|your\s+)?"
+                            r"(?:servers?|device|browser|cloud|R2|D1|KV|database|tables?|bucket|IndexedDB|memory|disk)\b",
+                            m[v.end():], re.I)
+                or (passive and _nouns(m[:v.start()]))):
+            continue
+        out.append((v.start(), v.end(), _negated(m, v.start(), v.end()), passive))
+    return out
+
+
+def _terms(m):
+    """(key, negated, leads, position) for each sheet term in masked clause m: TERMS keys,
+    providers ("@openai"), counts ("tester 25"), "store" for keeping data and "ai" for AI words.
+    leads: the term opens the clause or a "when"/"if" part of it, as a news subject does."""
+    out = []
+    for key, rx in TERMS + [("@" + k, rx) for k, rx in PROVIDERS] + [("ai", AI_WORDS)]:
+        out += [(key, _negated(m, t.start(), t.end()), bool(LEADS.search(m[:t.start()])), t.start())
+                for t in rx.finditer(m)]
+    for t in COUNT.finditer(m):
+        if VAGUE.search(m[:t.start()]) or NOT_HIS.search(t.group(0)):
+            continue
+        n = t.group(1).lower().replace(",", "").rstrip("+")
+        n = n if n.isdigit() else str(NUMBERS.get(n.split()[-1], n))
+        noun = t.group(2).lower()
+        noun = "person" if noun in ("people", "persons") else noun[:-1] if noun.endswith("s") else noun
+        out.append((f"{noun} {n}", _negated(m, t.start(), t.end()), False, t.start()))
+    out += [("store", neg, False, a) for a, _, neg, _ in _stores(m)]
+    return out
+
+
+def _data(m, sheet=False):
+    """(kind, negated, position of the keeping word) for the data masked clause m keeps or
+    denies keeping: the object of an active keeping verb (a negation between them denies it)
+    or the subject of a passive one. On the sheet, every kind its storage clause names."""
+    stores = _stores(m)
+    if sheet:
+        return [(key, any(neg for _, _, neg, _ in stores), 0) for key, _ in _nouns(m)] if stores else []
+    out = []
+    for i, (a, b, neg, passive) in enumerate(stores):
+        lo = stores[i - 1][1] if i else 0
+        hi = stores[i + 1][0] if i + 1 < len(stores) else len(m)
+        if passive:
+            out += [(key, neg, a) for key, _ in _nouns(m[lo:a])]
+        else:
+            span = m[b:min(hi, b + 80)]
+            out += [(key, neg or bool(re.search(r"\b(?:no|not|never|none|nothing|neither|without)\b|n't\b",
+                                                span[:s0], re.I)), a) for key, s0 in _nouns(span)]
+    return out
+
+
+def _support():
+    """What SYSTEM_FACTS states (pos) and denies (neg) for each system, and the data its storage
+    lines say it keeps (posdata) or does not (negdata)."""
+    facts, denials = SYSTEM_FACTS.split("\nDOES NOT")
+    units = []
+    for entry in re.split(r"\n- ", facts)[1:]:
+        entry = " ".join(entry.split())
+        first = min((rx.search(entry).start(), name) for name, rx in SYSTEMS if rx.search(entry))[1]
+        units += [({first}, c) for sent in _sentences(entry) for c in CLAUSE.split(sent)]
+    prev = set()
+    for line in re.split(r"\n- ", denials)[1:]:
+        for sent in _sentences(" ".join(line.split())):
+            prev = _systems(sent) or (prev if CARRY.match(sent) else set())
+            units += [(prev, c) for c in CLAUSE.split(sent)]
+    sup = {name: {"pos": set(), "neg": set(), "posdata": set(), "negdata": set()} for name, _ in SYSTEMS}
+    for named, c in units:
+        for name in named:
+            for key, neg, _, _ in _terms(_mask(c)):
+                sup[name]["neg" if neg else "pos"].add(key)
+            for key, neg, _ in _data(_mask(c), sheet=True):
+                sup[name]["negdata" if neg else "posdata"].add(key)
+    for name in NO_AI:
+        sup[name]["neg"] |= {"ai", "api"}  # no AI: no model API to call
+    for s in sup.values():
+        if any(k.startswith("@") for k in s["pos"]):
+            s["pos"].add("api")  # a provider it calls is an API it calls
+    return sup
+
+
+SUPPORT = _support()
+
+
+def _here(c, sep, first, own, named, prev):
+    """The systems clause c is about: the ones it names; the sentence's carried subject for a
+    first clause that names none ("It logs..."); the previous clause's after a colon or when c
+    goes on with a verb or "it" ("..., and keeps threads on the device")."""
+    mine = _systems(c) | ({"Coen ERP"} if "Coen ERP" in named and BARE_ERP.search(c) else set())
+    t = c.strip()
+    if mine or not t:
+        return mine
+    if first:
+        return set() if own else set(named)
+    if sep.strip() == ":" or CARRY.match(t[:1].upper() + t[1:]) or (
+            t[:1].islower() and t.split()[0].strip(",.;:'\"").lower() not in DETERMINERS):
+        return set(prev)
+    return set()
+
+
+def _unsupported(c, here):
+    """The terms clause c states about the systems in here that SYSTEM_FACTS does not support,
+    as "system: term". With no system in here (a first-person claim about all of them), every
+    sheet term but a true denial of PHP, Python, a VPS or S3."""
+    m = _mask(c)
+    found, why = _terms(m), []
+    local = bool(LOCAL_HERE.search(c)) and not any(
+        k in ("server", "database", "d1", "r2", "kv", "bucket", "s3") and not neg for k, neg, _, _ in found)
+    for name in sorted(here) or ["all of them"]:
+        sup = SUPPORT.get(name)
+        for key, neg, leads, pos in found:
+            if sup and name not in _owners(m, pos, here):
+                continue
+            if sup is None:  # every one of his systems at once
+                ok = (key.startswith("@") or key == "ai" or (neg and key in GLOBAL_NEG)
+                      or (not neg and key in GLOBAL_POS) or (key == "store" and not neg and local))
+            elif key.startswith("@"):
+                ok = leads or (key not in sup["pos"] if neg else key in sup["pos"])
+            elif key == "ai":
+                ok = neg or name not in NO_AI
+            elif leads and key in VENDORS:
+                ok = True
+            elif key == "store" and not neg and local:
+                ok = True
+            elif key == "api" and neg and any(k.startswith("@") and n and k not in sup["pos"] for k, n, _, _ in found):
+                ok = True  # "does not call Meta's APIs" denies the provider
+            else:
+                ok = key in sup["neg"] | GLOBAL_NEG if neg else key in sup["pos"] | GLOBAL_POS
+            if not ok:
+                why.append(f"{name}: {'no ' if neg else ''}{key.lstrip('@')}")
+        if sup and not local and any(key == "store" for key, _, _, _ in found):
+            for key, neg, pos in _data(m):
+                if name not in _owners(m, pos, here):
+                    continue
+                if neg and (key in sup["posdata"] or (key in GENERIC_DATA and sup["posdata"])):
+                    why.append(f"{name}: keeps no {key}")
+                elif not neg and (key in sup["negdata"] or (sup["posdata"] and key not in sup["posdata"])):
+                    why.append(f"{name}: keeps {key}")
+    return list(dict.fromkeys(why))
 
 
 def _claim(s, named, story, people, loose=frozenset(), context=frozenset()):
-    """(soft label, must-not-ship label, story) for one sentence. named: the Cole systems it is
-    about; loose: ones it may be about (soft labels only); story: an earlier sentence in this
-    paragraph told a first-person story about them; context: systems the paragraph named before
-    it. Each clause answers for itself: only a clause that says "I would" is let off."""
+    """(soft label, must-not-ship label, story, why) for one sentence. named: the Cole systems
+    it is about; loose: ones it may be about (soft labels only); story: an earlier sentence in
+    this paragraph told a first-person story about them; context: systems the paragraph named
+    before it; why: the sheet terms it states without support. Each clause answers for itself:
+    only a clause that says "I would" is let off."""
     if s.endswith("?"):
-        return None, None, story
+        return None, None, story, []
     high = soft = None
     told = False
-    for c in CLAUSE.split(s):
+    why = []
+    parts, own, prev = re.split(f"({CLAUSE.pattern})", s, flags=re.I), _systems(s), set()
+    for i in range(0, len(parts), 2):
+        c = parts[i]
+        prev = _here(c, parts[i - 1] if i else "", i == 0, own, named, prev)
         if c.strip() and not WOULD.search(c):
-            h, so, t = _clause(c, named, story or told, people, loose, context)
+            h, so, t, w = _clause(c, named, story or told, people, loose, context, prev)
+            why = why if high else w
             high, soft, told = high or h, soft or so, told or t
-    return soft, high, story or told
+    return soft, high, story or told, why
 
 
-def _clause(c, named, story, people, loose, context):
+def _clause(c, named, story, people, loose, context, here=frozenset()):
     high = soft = None
+    why = []
     rest = FACT_OK.sub(" ", c)
-    if people and people.search(c) and not ATTRIBUTED.search(c):
+    if _crime(c, people) and not ATTRIBUTED.search(c):
         high = CRIME_LABEL
-    elif ("Atelier" in named and STORE.search(c) and CONTENT.search(c) and not KEEPS_NONE.search(c)
-          and not (LOCAL.search(c) and not SERVER.search(c))):
+    elif "Atelier" in named and _keeps_content(c) and not (LOCAL.search(c) and not SERVER.search(c)):
         high = ATELIER_LABEL
     elif (named or MY_SYSTEMS.search(c) or GENERIC.search(c) or (context and RUNS_ON.search(c))) and TECH.search(rest):
         high = TECH_LABEL
@@ -1076,6 +1445,9 @@ def _clause(c, named, story, people, loose, context):
     if told and not high and any(INFRA.search(c, m.end(), m.end() + 60) or KEY.search(c, m.end(), m.end() + 60)
                                  for m in STORY.finditer(c)):
         high = STORY_LABEL  # the prompt bans these outright: "I checked the logs", "I rotated the keys"
+    if not high and (here or GENERAL.search(c)):
+        why = _unsupported(c, here)
+        high = (SHEET_LABEL if here else GENERAL_LABEL) if why else None
     about = named or loose or ME.search(c) or GENERIC.search(c)
     if "Atelier" in named and NOT_ATELIER_PROVIDER.search(c):
         soft = "a provider Atelier does not use (its nine are in SYSTEM FACTS)"
@@ -1087,7 +1459,7 @@ def _clause(c, named, story, people, loose, context):
         soft = "a first-person story about Cole's systems"
     elif about and CLAIM.search(rest):
         soft = "a claim about Cole's systems outside SYSTEM FACTS"
-    return high, soft, told
+    return high, soft, told, why
 
 
 _BLOCK_TAG = re.compile(r"(?is)(</?(?:p|h[1-6]|li|ul|ol|blockquote|div)\b[^>]*>|<br\s*/?>)")
@@ -1155,14 +1527,16 @@ def _scan(fragment, people=None, strip=None, erp=False):
                     named = named | {"Coen ERP"}
                 else:
                     loose = {"Coen ERP"}
-            soft, high, story = _claim(text, named, story, people, loose, context)
+            soft, high, story, why = _claim(text, named, story, people, loose, context)
             linked = any(re.match(r"(?i)<a\s", t) for t, _ in sent)
             if tale and not high and not linked and not WOULD.search(text) and (
                     named or loose or CARRY.match(text) or FIRST.search(text) or GENERIC.search(text)
                     or INFRA.search(text) or KEY.search(text) or LEAK.search(text) or CLAIM.search(text)):
                 high = TALE_LABEL
-            tale = tale or high in (STORY_LABEL, LEAK_LABEL) or bool(high == TECH_LABEL and STORY.search(text))
-            row = {"text": text, "named": named, "loose": loose, "soft": soft, "high": high}
+            tale = tale or high in (STORY_LABEL, LEAK_LABEL) or bool(
+                high in (TECH_LABEL, SHEET_LABEL, GENERAL_LABEL) and STORY.search(text))
+            row = {"text": text, "named": named, "loose": loose, "soft": soft, "high": high, "why": why,
+                   "linked": linked}
             rows.append(row)
             prev, context = named, context | named
             if strip and strip(row):
@@ -1173,16 +1547,24 @@ def _scan(fragment, people=None, strip=None, erp=False):
     return (_tidy("".join(out)) if cut else fragment), rows
 
 
+def _claim_context(post):
+    text = [post.get(k) for k in ("title", "desc", "svg_caption", "body_html")]
+    return _context(" ".join(_plain(v) for v in text if isinstance(v, str)))
+
+
 def claim_problems(post):
-    """Claims about Cole's systems (and named people) for the revision to fix."""
+    """Claims about Cole's systems (and named people) for the revision to fix. A must-not-ship
+    line that carries a source link asks for a rephrase that keeps the link, since cutting it
+    takes the source along."""
     fields = [(k, post.get(k) or "") for k in ("title", "desc", "svg_caption", "body_html")]
-    people, erp = _context(" ".join(_plain(v) for _, v in fields))
+    people, erp = _claim_context(post)
     probs = []
     for name, raw in fields:
         for r in _scan(raw, people, erp=erp)[1]:
             if r["high"]:
-                fix = CRIME_FIX if r["high"] == CRIME_LABEL else HIGH_FIX
-                probs.append(f'{name}: must not ship, {r["high"]}; {fix}: "{_clip(r["text"])}"')
+                fix = (CRIME_FIX if r["high"] == CRIME_LABEL else HIGH_FIX) + (f"; {LINK_FIX}" if r["linked"] else "")
+                why = f' ({"; ".join(r["why"])})' if r["why"] else ""
+                probs.append(f'{name}: must not ship, {r["high"]}; {fix}: "{_clip(r["text"])}"{why}')
             elif r["soft"]:
                 probs.append(f'{name}: {r["soft"]}; {CLAIM_FIX}: "{_clip(r["text"])}"')
     named = _systems(" ".join(_plain(v) for _, v in fields))
@@ -1193,15 +1575,19 @@ def claim_problems(post):
 
 
 def drop_high_risk(post):
-    """Cut every must-not-ship sentence still in the title, desc, caption or body. Runs after the
-    revisions; returns (post, [(field, sentence, label)])."""
+    """Cut every must-not-ship sentence still in the title, desc, caption or body. A cut can
+    hand "It" a new system, so a field is read again until nothing is left to cut. Runs after
+    the revisions; returns (post, [(field, sentence, label)])."""
     fields = ("title", "desc", "svg_caption", "body_html")
-    people, erp = _context(" ".join(_plain(post.get(k)) for k in fields if isinstance(post.get(k), str)))
+    people, erp = _claim_context(post)
     out, cut = dict(post), []
     for k in fields:
-        if isinstance(out.get(k), str):
+        while isinstance(out.get(k), str):  # each pass removes a sentence, so this ends
             out[k], rows = _scan(out[k], people, strip=lambda r: r["high"], erp=erp)
-            cut += [(k, r["text"], r["high"]) for r in rows if r["high"]]
+            bad = [(k, r["text"], r["high"]) for r in rows if r["high"]]
+            if not bad:
+                break
+            cut += bad
     return out, cut
 
 
@@ -1258,7 +1644,7 @@ def _public_problem(p):
     if "must not ship" not in p:
         return p
     head, _, quote = p.partition(': "')  # labels and fixes hold no ': "', so this is the quote
-    return f"{head}: [{_words(quote)} words, kept out of the trace]"
+    return f"{head}: [{_words(quote.rpartition(chr(34))[0] or quote)} words, kept out of the trace]"
 
 
 def _body_words(p):
@@ -1291,7 +1677,9 @@ def _shape_loss(post, rev):
 
 
 def _must(problem):
-    return problem.startswith(MUST_FIX) or "must not ship" in problem
+    """Must-fix: the one-line fields, every must-not-ship line and every claim about Cole's
+    systems, so a revision that fixes style by adding a claim never scores cleaner."""
+    return problem.startswith(MUST_FIX) or "must not ship" in problem or f"; {CLAIM_FIX}:" in problem
 
 
 def _score(post):
@@ -1299,9 +1687,16 @@ def _score(post):
     return sum(1 for p in probs if _must(p)), len(probs)
 
 
+def _claims(post):
+    """The claim problems in post, without the field, so a claim moved to another field is
+    the same claim."""
+    return {p.split(": ", 1)[1] for p in claim_problems(post) if _must(p)}
+
+
 def _merge(best, rev, draft, mode):
-    """Take each field group from the revision when it validates, keeps the draft's material
-    and scores better: fewer must-fix problems first, then fewer problems in all."""
+    """Take each field group from the revision when it validates, keeps the draft's material,
+    adds no claim about Cole's systems and scores better: fewer must-fix problems first, then
+    fewer problems in all."""
     taken = []
     for group in GROUPS:
         if all(rev.get(k) == best.get(k) for k in group):
@@ -1315,6 +1710,10 @@ def _merge(best, rev, draft, mode):
         lost = _shape_loss(draft, trial) if "body_html" in group else None
         if errs or lost:
             print(f"humanizer: {name} refused ({'; '.join(errs) or lost})", flush=True)
+            continue
+        added = _claims(trial) - _claims(best)
+        if added:
+            print(f"humanizer: {name} refused (it adds {len(added)} claim(s) about Cole's systems)", flush=True)
             continue
         before, after = _score(best), _score(trial)
         if after >= before:

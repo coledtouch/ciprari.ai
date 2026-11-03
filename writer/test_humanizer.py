@@ -293,8 +293,9 @@ class ClaimTests(unittest.TestCase):
             if version == "v1.70.0":  # a third of it was made up: too short to ship, so the run exits and retries
                 self.assertTrue(any(e.startswith("body too short") for e in writer.validate(
                     dict(writer.STUB, body_html=out["body_html"]), "post")))
-            else:
-                self.assertGreater(writer._body_words(out), 0.8 * writer._body_words(draft), version)
+            else:  # v1.65.0 named six systems with a false line each, so it loses near a quarter
+                floor = 0.75 if version == "v1.65.0" else 0.8
+                self.assertGreater(writer._body_words(out), floor * writer._body_words(draft), version)
 
     def test_a_would_clause_excuses_only_itself(self):
         for s in ("Atelier logs every prompt to D1, so I would check the retention.",
@@ -344,17 +345,93 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(writer.claim_problems(post("<p>Prosecutors say Jane Roe stole the files.</p>")), [])
 
     def test_soft_claims_go_back_to_the_model(self):
-        cases = {"Atelier routes each request through Mistral.": "a provider Atelier does not use",
-                 "Atelier expires each session after an hour.": "an Atelier detail",
-                 "Valhalla K9 uses a small model to write SMS reminders.": "says it does not do",
-                 "JetDesk shows NOTAMs on the route.": "says it does not do",
+        cases = {"Atelier does not use Mistral.": "a provider Atelier does not use",
+                 "Atelier picks the provider for each request.": "an Atelier detail",
+                 "JetDesk has no NOTAMs.": "says it does not do",
                  "I reviewed the CurbScript listing copy on Tuesday.": "a first-person story",
-                 "The construction ERP stores every timesheet in a database.": "outside SYSTEM FACTS",
+                 "The construction ERP sits behind a login.": "outside SYSTEM FACTS",
                  "Atelier, JetDesk, PermitSketch and CurbScript all shipped.": "names 4 of Cole's systems"}
         for text, label in cases.items():
             found = writer.claim_problems(post(f"<p>{text}</p>"))
             self.assertTrue(any(label in p for p in found), (text, found))
             self.assertFalse(any("must not ship" in p for p in found), text)
+
+    # a system named with a term its SYSTEM FACTS line does not hold, or a first-person line about
+    # all of them: the sentence, then the terms the problem names
+    UNSUPPORTED = {
+        "None of my platforms have scoped permissions.": "all of them: no permissions",
+        "I monitor nothing.": "all of them: no monitoring",
+        "My apps all log to D1.": "all of them: d1",
+        "My systems all run on Vercel.": "all of them: vercel",
+        "The permit app writes drawings to R2 and logs sessions to D1.": "PermitSketch: r2; PermitSketch: d1",
+        "The permit app runs on Cloudflare Workers.": "PermitSketch: cloudflare",
+        "The construction ERP runs payroll for 40 people.": "Coen ERP: person 40",
+        "The construction ERP stores every timesheet in a database.": "Coen ERP: database",
+        "Curbscript generates service routes through an API.": "CurbScript: api",
+        "CurbScript generates service routes for agents.": "CurbScript: service route",
+        "The flight planner checks NOTAMs before every leg.": "JetDesk: notam",
+        "JetDesk shows NOTAMs on the route.": "JetDesk: notam",
+        "Valhalla K9 uses a small model to write SMS reminders.": "Valhalla K9: ai",
+        "Atelier offers models from OpenAI, Anthropic, Google, Mistral, Perplexity, Cohere and xAI.": "Atelier: mistral",
+        "Atelier routes each request through Mistral.": "Atelier: mistral",
+        "Atelier routes prompts to seven providers.": "Atelier: provider 7",
+        "Atelier expires each session after an hour.": "Atelier: session",
+        "When Azure goes down, Atelier switches to AWS.": "Atelier: aws",
+        "Atelier keeps nothing on a server.": "Atelier: no server",
+        "Atelier stores nothing.": "Atelier: keeps no data",
+        "Atelier keeps no feedback.": "Atelier: keeps no feedback",
+        "Keep Fix Cut stores nothing.": "Keep Fix Cut: keeps no data",
+        "Keep Fix Cut keeps your photos for a day.": "Keep Fix Cut: keeps photo",
+        "Keep Fix Cut runs on a Worker and Atelier stores threads in D1.": "(Atelier: d1)",
+    }
+
+    def test_unsupported_system_lines_are_must_not_ship(self):
+        for s, why in self.UNSUPPORTED.items():
+            found = writer.claim_problems(post(f"<p>{s}</p>"))
+            self.assertTrue(any("must not ship" in p and why in p for p in found), (s, found))
+            out, cut = writer.drop_high_risk(post(f"<p>Fine.</p><p>{s}</p>"))
+            self.assertEqual((out["body_html"], len(cut)), ("<p>Fine.</p>", 1), s)
+
+    def test_lines_the_sheet_holds_stay(self):
+        for s in ("Keep Fix Cut runs on one Cloudflare Worker.", "Atelier keeps threads in IndexedDB on the device.",
+                  "Keep Fix Cut keeps anonymous analytics for 30 days.", "Each IP gets 4 scans a minute on Keep Fix Cut.",
+                  "Keep Fix Cut sends photos to Claude.", "Up to 25 LinkedIn testers sign in to Atelier with LinkedIn.",
+                  "Atelier routes prompts to nine providers and logs the cost and time of each tester request.",
+                  "Atelier routes prompts to nine model providers.", "Atelier calls each provider's API directly.",
+                  "The estimating SaaS runs on Vercel with Next.js.", "None of my systems run PHP.",
+                  "The construction ERP has role-based permissions and health monitoring.",
+                  "The construction ERP has 120 routes and the estimating SaaS serves 25 trades.",
+                  "The permit app turns photos into an 8-sheet permit set.", "Valhalla K9 has no AI.",
+                  "When Cloudflare went down, JetDesk kept working offline.", "Forty percent of requests failed on Atelier.",
+                  "My estimating platform reads plans across a couple dozen trades.", "Aurora replaced six vendor apps.",
+                  "The ERP at coenconstruction.com does not call Meta's APIs.", "I keep writing prompts for Atelier.",
+                  "When I ran the knowledge base at Liberty Mutual, it had 3,000 users."):
+            found = writer.claim_problems(post(f"<p>{s}</p>"))
+            self.assertFalse(any("must not ship" in p for p in found), (s, found))
+
+    def test_only_a_person_commits_a_crime(self):
+        for s in ('<a href="https://example.com/a">Palo Alto Networks</a> found the agent exfiltrated credentials '
+                  'from a test network.', "Salt Typhoon hacked nine US telecom carriers.",
+                  "A scammer posing as Sam Altman stole $2 million from investors.",
+                  "In the test, Codex Spark broke into an outside server.", "Sam Altman said the scammer stole $2 million."):
+            self.assertFalse(any("must not ship" in p for p in writer.claim_problems(post(f"<p>{s}</p>"))), s)
+        self.assertTrue(any("crime stated as fact" in p for p in writer.claim_problems(
+            post("<p>Abdulrahman Alfozan planted a recording device in an executive conference room.</p>"))))
+
+    def test_the_ledger_holding_no_prompt_is_not_a_prompt_log(self):
+        for s in ("Nothing in Atelier's ledger holds a prompt.", "Atelier records what each request cost, never the prompt itself.",
+                  "Prompts and answers are never logged in Atelier."):
+            self.assertEqual(writer.claim_problems(post(f"<p>{s}</p>")), [], s)
+
+    def test_a_linked_line_asks_for_a_rephrase_before_the_cut(self):
+        found = writer.claim_problems(post('<p>Atelier logs every prompt to <a href="https://example.com/a">a D1 table</a>.</p>'))
+        self.assertTrue(any("must not ship" in p and writer.LINK_FIX in p for p in found), found)
+        self.assertFalse(any(writer.LINK_FIX in p for p in writer.claim_problems(post("<p>Atelier runs on Python.</p>"))))
+        draft = dict(writer.STUB, body_html=writer.STUB["body_html"].replace(
+            '<a href="https://ciprari.ai/">two</a>', 'Atelier routes prompts to <a href="https://ciprari.ai/">seven providers</a>'))
+        out, cut = writer.drop_high_risk(draft)
+        self.assertEqual(len(cut), 1)
+        self.assertIn("not enough outbound source links", " ".join(writer.validate(out, "post")))  # main() exits non-zero
 
     def test_true_facts_and_what_ifs_stay_clean(self):
         for s in ("Atelier keeps threads in IndexedDB on your device.", "Keep Fix Cut runs on one Cloudflare Worker.",
@@ -556,6 +633,23 @@ class HumanizePassTests(unittest.TestCase):
             out, _ = self.run_pass(reply=self.js(dict(writer.STUB, slug_words=bad)))
             self.assertEqual(out["slug_words"], self.draft["slug_words"])
             self.assertEqual(out["body_html"], writer.STUB["body_html"])
+
+    def test_a_revision_that_adds_a_claim_never_wins(self):
+        long = ("The crew poured the north footing at dawn and the inspector signed the card before the rain came in. "
+                "The pump truck left at noon and the finisher stayed until the slab could take a boot print without a mark.")
+        split = ("The crew poured the north footing at dawn. The inspector signed the card before the rain came in. "
+                 "The pump truck left at noon. The finisher stayed until the slab could take a boot print.")
+        draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{long}</p>")
+        self.assertEqual(writer._score(draft), (0, 2))
+        for claim in ("CurbScript generates service routes for agents.", "The construction ERP sits behind a login."):
+            rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{split} {claim}</p>")
+            self.assertIs(self.run_pass(reply=self.js(rev), errs=None, draft=draft)[0], draft)
+            self.assertIn("body_html refused (it adds 1 claim(s) about Cole's systems)", self.log)
+            self.assertNotIn(claim, self.log)
+        swap = dict(draft, body_html=draft["body_html"] + "<p>The construction ERP sits behind a login.</p>")
+        rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{split}</p><p>JetDesk runs on an iPad.</p>")
+        self.assertLess(writer._score(rev), writer._score(swap))  # cleaner by count, and still refused
+        self.assertIs(self.run_pass(reply=self.js(rev), errs=None, draft=swap)[0], swap)
 
     def test_must_fix_beats_a_new_long_sentence(self):
         draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>Atelier runs on Python.</p>")
