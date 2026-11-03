@@ -895,8 +895,9 @@ def humanizer_problems(post):
 # the rest of its paragraph), a crime stated as fact, a stack, storage, auth, count or other
 # sheet term for one of his systems that its SYSTEM_FACTS line does not state, and the same
 # terms said of all his systems at once. Each term answers to the system named nearest before
-# it. drop_high_risk() cuts any that are still there after the revisions. Checks run clause
-# by clause, so a trailing "so I would check..." never excuses the clause before it.
+# it. drop_high_risk() cuts any that are still there after the revisions, from the art's
+# labels and the alt text too. Checks run clause by clause, so a trailing "so I would
+# check..." never excuses the clause before it.
 SYSTEMS = [(name, re.compile(rx, re.I)) for name, rx in (
     ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\bthe construction ERP\b|\b(?:my|our|his) (?:construction )?ERP\b|"
                  r"\bthe Twilio dialer\b|\bthe snow(?:[- ]operations)? module\b|\bthe crew apps?\b"),
@@ -1547,19 +1548,29 @@ def _scan(fragment, people=None, strip=None, erp=False):
     return (_tidy("".join(out)) if cut else fragment), rows
 
 
+def _labels(svg):
+    """The art's <text> elements: (whole element, its text as a paragraph)."""
+    return [(m.group(0), f"<p>{m.group(1)}</p>") for m in re.finditer(r"(?s)<text\b[^>]*>(.*?)</text>",
+                                                                       svg if isinstance(svg, str) else "")]
+
+
 def _claim_context(post):
-    text = [post.get(k) for k in ("title", "desc", "svg_caption", "body_html")]
+    text = [post.get(k) for k in ("title", "desc", "svg_caption", "body_html", "svg_alt")]
+    text += [p for _, p in _labels(post.get("svg_inner"))]
     return _context(" ".join(_plain(v) for v in text if isinstance(v, str)))
 
 
 def claim_problems(post):
-    """Claims about Cole's systems (and named people) for the revision to fix. A must-not-ship
-    line that carries a source link asks for a rephrase that keeps the link, since cutting it
-    takes the source along."""
+    """Claims about Cole's systems (and named people) for the revision to fix: the text fields,
+    the art's labels and the alt text. A must-not-ship line that carries a source link asks
+    for a rephrase that keeps the link, since cutting it takes the source along."""
     fields = [(k, post.get(k) or "") for k in ("title", "desc", "svg_caption", "body_html")]
+    alt = post.get("svg_alt")
+    art = [("svg_inner", "".join(p for _, p in _labels(post.get("svg_inner")))),
+           ("svg_alt", alt if isinstance(alt, str) else "")]
     people, erp = _claim_context(post)
     probs = []
-    for name, raw in fields:
+    for name, raw in fields + art:
         for r in _scan(raw, people, erp=erp)[1]:
             if r["high"]:
                 fix = (CRIME_FIX if r["high"] == CRIME_LABEL else HIGH_FIX) + (f"; {LINK_FIX}" if r["linked"] else "")
@@ -1575,9 +1586,10 @@ def claim_problems(post):
 
 
 def drop_high_risk(post):
-    """Cut every must-not-ship sentence still in the title, desc, caption or body. A cut can
-    hand "It" a new system, so a field is read again until nothing is left to cut. Runs after
-    the revisions; returns (post, [(field, sentence, label)])."""
+    """Cut every must-not-ship sentence still in the title, desc, caption or body, every art
+    label that holds one, and an alt text that holds one (it becomes a plain description of the
+    caption). A cut can hand "It" a new system, so a field is read again until nothing is left
+    to cut. Runs after the revisions; returns (post, [(field, sentence, label)])."""
     fields = ("title", "desc", "svg_caption", "body_html")
     people, erp = _claim_context(post)
     out, cut = dict(post), []
@@ -1588,6 +1600,18 @@ def drop_high_risk(post):
             if not bad:
                 break
             cut += bad
+    if isinstance(out.get("svg_inner"), str):
+        for element, para in _labels(out["svg_inner"]):
+            bad = [r for r in _scan(para, people, erp=erp)[1] if r["high"]]
+            if bad:
+                out["svg_inner"] = out["svg_inner"].replace(element, "", 1)
+                cut += [("svg_inner", r["text"], r["high"]) for r in bad]
+    if isinstance(out.get("svg_alt"), str):
+        bad = [r for r in _scan(out["svg_alt"], people, erp=erp)[1] if r["high"]]
+        if bad:
+            cap = " ".join(_plain(out.get("svg_caption") or "").split())
+            out["svg_alt"] = f"A CRT terminal showing the caption: {cap}" if cap else "A CRT terminal drawing in green."
+            cut += [("svg_alt", r["text"], r["high"]) for r in bad]
     return out, cut
 
 

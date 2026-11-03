@@ -433,6 +433,19 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(len(cut), 1)
         self.assertIn("not enough outbound source links", " ".join(writer.validate(out, "post")))  # main() exits non-zero
 
+    def test_art_labels_and_alt_text_are_checked_and_cut(self):
+        art = writer.STUB["svg_inner"].replace("This is only a test.", "Atelier logs every prompt to D1.")
+        draft = dict(writer.STUB, svg_inner=art, svg_alt="A terminal: CurbScript generates service routes for agents.")
+        found = writer.claim_problems(draft)
+        self.assertTrue(any(p.startswith("svg_inner: must not ship") for p in found), found)
+        self.assertTrue(any(p.startswith("svg_alt: must not ship") and "CurbScript: service route" in p for p in found), found)
+        out, cut = writer.drop_high_risk(draft)
+        self.assertNotIn("every prompt", out["svg_inner"])
+        self.assertEqual(out["svg_inner"].count("<text"), art.count("<text") - 1)
+        self.assertEqual(out["svg_alt"], f"A CRT terminal showing the caption: {writer.STUB['svg_caption']}")
+        self.assertEqual(sorted(c[0] for c in cut), ["svg_alt", "svg_inner"])
+        self.assertFalse(any("must not ship" in p for p in writer.claim_problems(out)))
+
     def test_true_facts_and_what_ifs_stay_clean(self):
         for s in ("Atelier keeps threads in IndexedDB on your device.", "Keep Fix Cut runs on one Cloudflare Worker.",
                   "Keep Fix Cut does not save uploads or reports.", "PermitSketch is a Base44 app.",
