@@ -496,8 +496,10 @@ def validate(post, mode):
 
 
 INK = r"(?<![\w-])(?:fill|stroke|stop-color)"
-# a fill here shows as text: a label's own, or one its children inherit
-INHERITED_FILL = ("text", "tspan", "textpath", "g", "svg", "symbol", "use", "a", "switch")
+# a fill here shows as text: a label's own, or (on a container that holds a label) one its
+# children inherit. A <use> may draw a label from anywhere, so its fill always shows.
+LABEL_FILL = ("text", "tspan", "textpath", "use")
+CONTAINERS = ("g", "svg", "symbol", "a", "switch")
 
 
 def _colors(svg):
@@ -587,9 +589,9 @@ def repair_svg(svg):
     staged posts, so validate() never refuses art this could fix. A <line> drawn with x/y gets
     x1/y1, and a missing end defaults to 0 as SVG draws it. Every fill, stroke and stop-color
     (attribute or inline style, with or without !important) gets a palette value from _ink();
-    a stroke, a <text> fill or a fill on a container its children inherit (<g>, <svg>,
-    <symbol>, <use>, <a>) gets one that shows on the background. Only tags change, never the
-    text."""
+    a stroke, a label's fill, a <use> fill or the fill of a container that holds a label (<g>,
+    <svg>, <symbol>, <a>) gets one that shows on the background. A container of shapes only
+    may still take the background. Only tags change, never the text."""
     def line(m):
         t = m.group(0)
         for a in ("x", "y"):
@@ -599,18 +601,29 @@ def repair_svg(svg):
         missing = [a for a in ("x1", "y1", "x2", "y2") if not re.search(rf"(?i)\s{a}\s*=", t)]
         return t[:5] + "".join(f" {a}={q}0{q}" for a in missing) + t[5:]
 
-    def ink(m, element):
+    def ink(m, visible):
         attr = re.match(r"[\w-]+", m.group(1) or m.group(4)).group(0).lower()
-        visible = attr == "stroke" or (attr == "fill" and element in INHERITED_FILL)
+        visible = attr == "stroke" or (attr == "fill" and visible)
         if m.group(1):
             return m.group(1) + m.group(2) + _ink(m.group(3), visible) + m.group(2)
         return m.group(4) + _ink(m.group(5), visible)
 
     def tag(t):
         element = (re.match(r"<\s*([\w:-]+)", t.group(0)) or [None, ""])[1].lower()
+        visible = element in LABEL_FILL or t.start() in labelled
         return re.sub(rf"""(?i)({INK}\s*=\s*)(["'])(.*?)\2|({INK}\s*:\s*)((?:url\([^)]*\)|[^;"'])+)""",
-                      lambda m: ink(m, element), t.group(0))
+                      lambda m: ink(m, visible), t.group(0))
     svg = re.sub(r"(?i)<line\b[^>]*>", line, svg)
+    labelled, open_ = set(), []  # the containers that hold a <text>, by where their tag starts
+    for t in re.finditer(r"<\s*(/?)\s*([\w:-]+)[^>]*?(/?)\s*>", svg):
+        element = t.group(2).lower()
+        if element == "text" and not t.group(1):
+            labelled.update(start for _, start in open_)
+        elif element in CONTAINERS and t.group(1):
+            while open_ and open_.pop()[0] != element:
+                pass
+        elif element in CONTAINERS and not t.group(3):
+            open_.append((element, t.start()))
     return re.sub(r"<[^>]+>", tag, svg)
 
 

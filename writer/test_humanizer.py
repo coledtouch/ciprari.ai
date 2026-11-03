@@ -789,6 +789,16 @@ class ArtTests(unittest.TestCase):
                          "<text fill='#04120a' stroke='#000'>A</text>")  # palette values are kept as drawn
         group = f'<g fill="{writer.G}"><text x="9" y="9">LOG</text></g>'  # posts_b.py draws labels this way
         self.assertEqual(writer.repair_svg(group), group)
+        # a container of shapes only may take the background, as a bare shape may
+        for art, fixed in (('<g fill="black"><rect width="640" height="300"/></g>',
+                            '<g fill="#000"><rect width="640" height="300"/></g>'),
+                           ('<g fill="navy"><rect/></g><text fill="navy">B</text>',
+                            '<g fill="#04120a"><rect/></g><text fill="#2d6b4a">B</text>'),
+                           ('<g fill="black"/><text x="9" y="9">Y</text>', '<g fill="#000"/><text x="9" y="9">Y</text>'),
+                           ('<svg fill="black"><g><rect/></g><g><text x="9" y="9">X</text></g></svg>',
+                            '<svg fill="#2d6b4a"><g><rect/></g><g><text x="9" y="9">X</text></g></svg>')):
+            with self.subTest(art=art):
+                self.assertEqual(writer.repair_svg(art), fixed)
 
     def test_art_text_must_fit_the_frame(self):
         def overflow(art):
