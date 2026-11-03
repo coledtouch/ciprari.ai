@@ -17,7 +17,7 @@ Usage:
 
 Env: ANTHROPIC_API_KEY (required unless --stub), CLAUDE_MODEL (optional).
 """
-import os, sys, json, re, html, datetime, subprocess, urllib.request, urllib.error
+import os, sys, json, re, html, hashlib, datetime, subprocess, urllib.request, urllib.error
 from zoneinfo import ZoneInfo
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -1128,15 +1128,40 @@ TRACE_PATH = os.environ.get("WRITER_TRACE")  # publish.yml uploads it as a run a
 
 
 def trace(kind, **data):
-    """Append one JSON line to WRITER_TRACE (when set): drafts, revisions and what was kept."""
+    """Append one JSON line to WRITER_TRACE (when set): drafts, revisions and what was kept.
+    The repo is public and so is the artifact, so no must-not-ship sentence goes in it."""
     if not TRACE_PATH:
         return
-    row = {"at": datetime.datetime.now(ET).isoformat(timespec="seconds"), "kind": kind, **data}
+    row = {"at": datetime.datetime.now(ET).isoformat(timespec="seconds"), "kind": kind,
+           **{k: _public(k, v) for k, v in data.items()}}
     try:
         with open(TRACE_PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
     except OSError as e:
         print(f"trace: could not write {TRACE_PATH} ({e})", flush=True)
+
+
+def _public(key, value):
+    """A trace value without its must-not-ship text: cut from drafts and raw output, a word
+    count in place of the quote in a problem, a short hash in place of a cut sentence."""
+    if key in ("post", "revision") and isinstance(value, dict):
+        return drop_high_risk(value)[0]
+    if key == "raw" and isinstance(value, str):
+        people, erp = _context(_plain(value))
+        return _scan(value, people, strip=lambda r: r["high"], erp=erp)[0]
+    if key == "problems" and isinstance(value, list):
+        return [_public_problem(p) for p in value]
+    if key == "cut":
+        return [{"field": f, "label": label, "words": _words(t), "sha256": hashlib.sha256(t.encode()).hexdigest()[:12]}
+                for f, t, label in value]
+    return value
+
+
+def _public_problem(p):
+    if "must not ship" not in p:
+        return p
+    head, _, quote = p.partition(': "')  # labels and fixes hold no ': "', so this is the quote
+    return f"{head}: [{_words(quote)} words, kept out of the trace]"
 
 
 def _body_words(p):
@@ -1398,8 +1423,8 @@ def main():
                 post = humanize(post, mode, messages, system)  # the lint sees <cite> and asks for a restatement
             post["body_html"] = STRIP_TAGS.sub("", post["body_html"])  # no <cite> or bold in the published body
             post, cut = drop_high_risk(post)
-            for field, text, label in cut:
-                print(f'claims: cut from {field} ({label}): "{_clip(text, 160)}"', flush=True)
+            for field, text, label in cut:  # the run log is public: the label and length, never the words
+                print(f"claims: cut a {_words(text)}-word sentence from {field} ({label})", flush=True)
             trace("final", post=post, cut=cut, problems=humanizer_problems(post))
             errs = validate(post, mode) if cut else []
             if errs:  # exit non-zero: nothing is appended, and the next scheduled run writes again

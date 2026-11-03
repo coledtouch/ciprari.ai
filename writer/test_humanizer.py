@@ -531,6 +531,29 @@ class HumanizePassTests(unittest.TestCase):
         with patch.object(writer, "TRACE_PATH", None):
             writer.trace("draft", post={})  # no path: nothing written, nothing raised
 
+    def test_cut_sentences_stay_out_of_the_public_log_and_trace(self):
+        bad = "Atelier logs every prompt to a D1 table."
+        draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{bad} You can check it.</p>")
+        out_buf = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "trace.jsonl")
+            with patch.object(writer, "TRACE_PATH", path), patch.object(writer, "call_claude", return_value=self.js(draft)), \
+                    patch.object(writer, "already_published", return_value=False), patch.object(writer, "append_post"), \
+                    patch.object(writer, "try_build", return_value=(True, "")), patch.object(writer.sys, "argv", ["writer.py", "post"]), \
+                    patch.dict(os.environ, {"GITHUB_OUTPUT": ""}), contextlib.redirect_stdout(out_buf):
+                writer.main()
+            with open(path, encoding="utf-8") as f:
+                logged = f.read()
+        printed = out_buf.getvalue()
+        self.assertIn("claims: cut a 8-word sentence from body_html (Atelier logs no prompts", printed)
+        for text in (printed, logged):
+            self.assertNotIn("every prompt to a D1", text)
+        rows = [json.loads(line) for line in logged.splitlines()]
+        self.assertEqual([r["kind"] for r in rows], ["draft", "revision", "revision", "revision", "final"])
+        self.assertIn("You can check it.", rows[0]["post"]["body_html"])
+        self.assertTrue(any(p.endswith("[8 words, kept out of the trace]") for p in rows[0]["problems"]), rows[0]["problems"])
+        self.assertEqual([(c["field"], c["words"]) for c in rows[-1]["cut"]], [("body_html", 8)])
+
     def test_revision_keeps_related_and_strips_cite(self):
         fixed = dict(writer.STUB, related=["something-else"],
                      body_html=writer.STUB["body_html"].replace("<p>End.</p>", "<p><cite index='1'>End.</cite></p>"))

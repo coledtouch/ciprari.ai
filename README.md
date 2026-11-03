@@ -41,8 +41,10 @@ No desktop app, no laptop. The machine can be off.
 - Facts about Cole's systems come only from `SYSTEM_FACTS` in `writer/writer.py`. When a
   product changes, change that sheet first.
 - Every run uploads a `writer-trace` artifact: the draft, each humanizer pass and the final
-  post. GitHub keeps it 14 days. Offline writer checks:
-  `python -m unittest discover -s writer -p test_humanizer.py`.
+  post. GitHub keeps it 14 days. The repo is public, so the artifact and the run log are too.
+  Neither holds a sentence the writer cut as must-not-ship. The trace keeps its label, length
+  and a short hash. Offline writer checks:
+  `python -m unittest discover -s writer -p "test_*.py"`.
 
 ## Posts staged from the ColeOS Root Console
 
