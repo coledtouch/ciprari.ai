@@ -1736,7 +1736,7 @@ _CUT = set()  # every sentence a must-not-ship rule matched this run, at any ste
 _ECHO = set()  # slug_words and keywords that came with a title that lost a sentence; they echo it
 
 
-def _scan(fragment, people=None, strip=None, erp=False):
+def _scan(fragment, people=None, strip=None, erp=False, carry=False):
     """Read an HTML fragment sentence by sentence. Returns (fragment, rows), one row per
     sentence: text, named and loose (Cole systems), soft and high (claim labels or None). A
     system named only by its plain name ("the permit app") is his, and loose only when it is
@@ -1745,7 +1745,8 @@ def _scan(fragment, people=None, strip=None, erp=False):
     strip(row) is true is cut from the fragment; its tags stay, emptied, then tidied. Once a
     paragraph tells a first-person story about his logs, keys or stack, a later sentence there
     that reads like more of it (first person, "It", a system, logs, keys) is must-not-ship too,
-    unless it says what he would check or carries a source link."""
+    unless it says what he would check or carries a source link. carry: a sentence that names
+    no system is about the one before it, as in a stack of art labels (_labels)."""
     out, rows, cut = [], [], False
     last, heading = "", False
     for i, piece in enumerate(_BLOCK_TAG.split(fragment or "")):
@@ -1763,7 +1764,7 @@ def _scan(fragment, people=None, strip=None, erp=False):
             named = _systems(text)
             loose, last = _theirs(text, last), text
             named, loose = (named - loose, loose) if named else (
-                (set(prev), set(prev_loose)) if CARRY.match(text) else (set(), set()))
+                (set(prev), set(prev_loose)) if carry or CARRY.match(text) else (set(), set()))
             if "Coen ERP" not in named and BARE_ERP.search(text) and not ERP_VENDOR.search(text):
                 if erp or "Coen ERP" in context:
                     named = named | {"Coen ERP"}
@@ -1792,10 +1793,60 @@ def _scan(fragment, people=None, strip=None, erp=False):
     return (_tidy("".join(out)) if cut else fragment), rows
 
 
+def _label_para(svg, spans):
+    """The text of the <text> elements at spans of svg as one paragraph, a <tspan> a word apart.
+    A label in sentence case ("This is only a test.") starts a sentence; one in capitals or
+    lower case ("LOGS EVERY PROMPT", "every prompt") goes on with the label above it."""
+    words = [w for w in (" ".join(_plain(svg[a:b]).split()) for a, b in spans) if w]
+    for i in range(1, len(words)):
+        if re.match(r"[\"'“(]?[A-Z][a-z]", words[i]) and not re.search(r"[.?!:;][\"'”)]*$", words[i - 1]):
+            words[i - 1] += "."
+    return "<p>" + html.escape(" ".join(words), quote=False) + "</p>"
+
+
 def _labels(svg):
-    """The art's <text> elements: (whole element, its text as a paragraph)."""
-    return [(m.group(0), f"<p>{m.group(1)}</p>") for m in re.finditer(r"(?s)<text\b[^>]*>(.*?)</text>",
-                                                                       svg if isinstance(svg, str) else "")]
+    """The art's labels as blocks: each run of <text> elements with only space between them (a
+    label stacked over lines, "ATELIER" above "LOGS EVERY PROMPT") reads as one paragraph.
+    Returns [(spans of its elements in svg, that paragraph)]."""
+    svg, blocks = svg if isinstance(svg, str) else "", []
+    for m in re.finditer(r"(?s)<text\b[^>]*>.*?</text>", svg):
+        if blocks and not svg[blocks[-1][-1][1]:m.start()].strip():
+            blocks[-1].append(m.span())
+        else:
+            blocks.append([m.span()])
+    return [(spans, _label_para(svg, spans)) for spans in blocks]
+
+
+def _cut_labels(svg, people, erp, bad):
+    """svg without the labels that hold a row bad(row) is true of, and those rows. A label that
+    holds one by itself goes; then, while what is left of its block still reads as one, the last
+    label inside it whose going clears it, else every such label. A label that names the system
+    ("ATELIER" over "LOGS EVERY PROMPT") goes only when no other label inside the row does."""
+    if not isinstance(svg, str):
+        return svg, []
+    drop, cut = set(), []
+
+    def rows(spans):
+        return [r for r in _scan(_label_para(svg, spans), people, erp=erp, carry=True)[1] if bad(r)]
+
+    for spans, para in _labels(svg):
+        found = rows(spans)
+        if not found:
+            continue
+        cut += found
+        keep = [s for s in spans if not rows([s])]
+        left = rows(keep) if keep else []
+        while left:  # each pass drops a label, so this ends
+            words = {s: " ".join(_plain(svg[s[0]:s[1]]).split()) for s in keep}
+            inside = [s for s in keep if words[s] and any(words[s] in r["text"] for r in left)]
+            claims = [s for s in inside if not _systems(words[s])] or inside or keep
+            alone = [s for s in reversed(claims) if not rows([x for x in keep if x != s])]
+            keep = [x for x in keep if x not in (alone[:1] or claims)]
+            left = rows(keep) if keep else []
+        drop |= set(spans) - set(keep)
+    for a, b in sorted(drop, reverse=True):
+        svg = svg[:a] + svg[b:]
+    return svg, cut
 
 
 def _claim_context(post):
@@ -1811,7 +1862,7 @@ def _claim_rows(post):
     art = [("svg_inner", "".join(p for _, p in _labels(post.get("svg_inner")))),
            ("svg_alt", alt if isinstance(alt, str) else "")]
     people, erp = _claim_context(post)
-    return [(name, r) for name, raw in fields + art for r in _scan(raw, people, erp=erp)[1]]
+    return [(name, r) for name, raw in fields + art for r in _scan(raw, people, erp=erp, carry=name == "svg_inner")[1]]
 
 
 def claim_problems(post):
@@ -1834,9 +1885,9 @@ def claim_problems(post):
 
 
 def drop_high_risk(post):
-    """Cut every must-not-ship sentence still in the title, desc, caption or body, every art
-    label that holds one, and an alt text that holds one (it becomes a plain description of the
-    caption). A cut can hand "It" a new system, so a field is read again until nothing is left
+    """Cut every must-not-ship sentence still in the title, desc, caption or body, the art labels
+    that hold one (a stacked label reads as one: _cut_labels), and an alt text that holds one (it
+    becomes a plain description of the caption). A cut can hand "It" a new system, so a field is read again until nothing is left
     to cut. A cut title gets new slug_words, so the URL never carries the cut words. Runs after
     the revisions; returns (post, [(field, sentence, label)])."""
     fields = ("title", "desc", "svg_caption", "body_html")
@@ -1854,11 +1905,8 @@ def drop_high_risk(post):
     if any(f == "title" for f, _, _ in cut) and isinstance(out.get("slug_words"), str):
         out["slug_words"] = " ".join(slugify(re.sub(r"^Rollout Report:\s*", "", out["title"])).split("-")[:6])
     if isinstance(out.get("svg_inner"), str):
-        for element, para in _labels(out["svg_inner"]):
-            bad = [r for r in _scan(para, people, erp=erp)[1] if r["high"]]
-            if bad:
-                out["svg_inner"] = out["svg_inner"].replace(element, "", 1)
-                cut += [("svg_inner", r["text"], r["high"]) for r in bad]
+        out["svg_inner"], bad = _cut_labels(out["svg_inner"], people, erp, lambda r: r["high"])
+        cut += [("svg_inner", r["text"], r["high"]) for r in bad]
     if isinstance(out.get("svg_alt"), str):
         bad = [r for r in _scan(out["svg_alt"], people, erp=erp)[1] if r["high"]]
         if bad:
@@ -1942,9 +1990,7 @@ def _public_post(post):
     out.update({k: "[kept out of the trace]" for k in ("slug_words", "keywords")
                 if isinstance(out.get(k), str) and out[k] in _ECHO})
     if isinstance(out.get("svg_inner"), str):
-        for element, para in _labels(out["svg_inner"]):
-            if any(r["text"] in _CUT for r in _scan(para, people, erp=erp)[1]):
-                out["svg_inner"] = out["svg_inner"].replace(element, "", 1)
+        out["svg_inner"] = _cut_labels(out["svg_inner"], people, erp, lambda r: r["text"] in _CUT)[0]
     if isinstance(out.get("svg_alt"), str) and any(
             r["text"] in _CUT for r in _scan(out["svg_alt"], people, erp=erp)[1]):
         out["svg_alt"] = "[kept out of the trace]"

@@ -597,6 +597,36 @@ class ClaimTests(unittest.TestCase):
         self.assertEqual(sorted(c[0] for c in cut), ["svg_alt", "svg_inner"])
         self.assertFalse(any("must not ship" in p for p in writer.claim_problems(out)))
 
+    def test_a_label_over_lines_reads_as_one(self):
+        """A <tspan> is a word apart, and a stack of <text> lines with nothing between them reads
+        as one label: the cut takes the lines that make the claim and leaves the rest."""
+        text = '<text x="40" y="{}" fill="{}" font-family="monospace" font-size="14">{}</text>'
+        stack = lambda *lines: "".join(text.format(40 + 20 * i, writer.G, t) for i, t in enumerate(lines))
+        for labels, gone, kept in (
+                (f'<text x="40" y="40" fill="{writer.G}" font-family="monospace" font-size="14"><tspan>ATELIER</tspan>'
+                 f'<tspan x="40" dy="16">LOGS EVERY PROMPT</tspan></text>', ["LOGS EVERY PROMPT"], []),
+                (stack("ATELIER", "LOGS EVERY PROMPT"), ["LOGS EVERY PROMPT"], [">ATELIER<"]),
+                (stack("ATELIER", "LOGS EVERY PROMPT", "TO D1"), ["LOGS EVERY PROMPT", "TO D1"], [">ATELIER<"]),
+                (stack("Atelier logs", "every prompt."), ["every prompt."], []),
+                (stack("KEEP FIX CUT KEEPS", "ANALYTICS FOR A YEAR"), ["FOR A YEAR"], []),
+                (stack("ATELIER", "Every prompt is logged."), ["Every prompt is logged."], [">ATELIER<"])):
+            draft = dict(writer.STUB, svg_inner=labels + writer.STUB["svg_inner"])
+            self.assertTrue(any(p.startswith("svg_inner: must not ship") for p in writer.claim_problems(draft)), labels)
+            out, cut = writer.drop_high_risk(draft)
+            self.assertEqual([c[0] for c in cut], ["svg_inner"], labels)
+            for words in gone:
+                self.assertNotIn(words, out["svg_inner"], labels)
+            for words in kept + [">STUB<", writer.STUB["svg_caption"]]:
+                self.assertIn(words, out["svg_inner"], labels)
+            self.assertFalse(any("must not ship" in p for p in writer.claim_problems(out)), labels)
+        # true lines stacked, and a line boxed apart from the name, stay
+        for labels in (stack("ATELIER", "THREADS IN INDEXEDDB", "R2 SYNC IS OPT-IN"),
+                       stack("KEEP FIX CUT", "ANALYTICS KEPT 30 DAYS", "NO UPLOADS SAVED"),
+                       stack("ATELIER") + f'<rect x="30" y="50" width="200" height="30" stroke="{writer.D}"/>'
+                       + stack("LOGS EVERY PROMPT")):
+            draft = dict(writer.STUB, svg_inner=labels + writer.STUB["svg_inner"])
+            self.assertEqual(writer.drop_high_risk(draft)[1], [], labels)
+
     def test_true_facts_and_what_ifs_stay_clean(self):
         for s in ("Atelier keeps threads in IndexedDB on your device.", "Keep Fix Cut runs on one Cloudflare Worker.",
                   "Keep Fix Cut does not save uploads or reports.", "PermitSketch is a Base44 app.",
