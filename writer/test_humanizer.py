@@ -738,7 +738,7 @@ class HumanizePassTests(unittest.TestCase):
         split = ("The crew poured the north footing at dawn. The inspector signed the card before the rain came in. "
                  "The pump truck left at noon. The finisher stayed until the slab could take a boot print.")
         draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{long}</p>")
-        self.assertEqual(writer._score(draft), (0, 2))
+        self.assertEqual(writer._score(draft), (0, 0, 2))
         for claim in ("CurbScript generates service routes for agents.", "The construction ERP sits behind a login."):
             rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{split} {claim}</p>")
             self.assertIs(self.run_pass(reply=self.js(rev), errs=None, draft=draft)[0], draft)
@@ -758,10 +758,50 @@ class HumanizePassTests(unittest.TestCase):
                              "flight across the state line.")):
             draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{long}</p>")
             rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{split}</p>")
-            self.assertEqual((writer._score(draft), writer._score(rev)), ((1, 2), (1, 1)))
+            self.assertEqual((writer._score(draft), writer._score(rev)), ((0, 1, 2), (0, 1, 1)))
             out, _ = self.run_pass(reply=self.js(rev), errs=None, draft=draft)
             self.assertEqual(out["body_html"], rev["body_html"])
             self.assertNotIn("refused", self.log)
+
+    def test_the_fix_of_a_false_line_is_taken(self):
+        """The model's correction of a must-not-ship line can still draw a soft label; it is no new claim."""
+        for wrong, right in (('Atelier routes prompts to <a href="https://example.com/x">seven providers</a>.',
+                              'Atelier routes prompts to <a href="https://example.com/x">nine providers</a>.'),
+                             ("Atelier routes prompts to seven providers.", "Atelier routes prompts to nine providers."),
+                             ("JetDesk checks NOTAMs before every leg.", "JetDesk has no NOTAMs, so check them elsewhere."),
+                             ("Keep Fix Cut stores nothing.", "Keep Fix Cut keeps anonymous usage analytics for 30 days."),
+                             ("Atelier logs every prompt to a D1 table.", "Atelier syncs threads to R2 only when you opt in."),
+                             ("Atelier runs on Python.", "Atelier keeps threads in IndexedDB on the device.")):
+            draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{wrong}</p>")
+            rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{right}</p>")
+            out, _ = self.run_pass(reply=self.js(rev), errs=None, draft=draft)
+            self.assertEqual(out["body_html"], rev["body_html"], (wrong, self.log))
+            self.assertNotIn("refused", self.log)
+        # the fix is matched to the false line it replaces; a second, unrelated claim is still new
+        draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>Atelier routes prompts to seven providers.</p>")
+        rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>Atelier picks the provider for each request.</p>"
+                   "<p>The construction ERP sits behind a login.</p>")
+        self.assertIs(self.run_pass(reply=self.js(rev), errs=None, draft=draft)[0], draft)
+        self.assertIn("body_html refused (it adds 1 claim(s) about Cole's systems)", self.log)
+
+    def test_the_fixed_line_keeps_its_source_link_end_to_end(self):
+        """rev2: the draft's 'seven providers' line holds one of its two source links. The model's
+        revision says 'nine'; it wins, the link survives and the post publishes."""
+        body = writer.STUB["body_html"].replace(
+            '<a href="https://ciprari.ai/">two</a>', 'Atelier routes prompts to <a href="https://ciprari.ai/">seven providers</a>'
+        ).replace('<a href="https://ciprari.ai/status">three</a>', "three")
+        draft = dict(writer.STUB, body_html=body)
+        rev = dict(draft, body_html=body.replace("seven providers", "nine providers"))
+        self.assertEqual((len(writer._sources(draft)), writer.validate(draft, "post")), (2, []))
+        printed, logged, rows, stop = self.run_main([self.js(draft)] + [self.js(rev)] * 3)
+        self.assertIsNone(stop, printed)
+        self.assertIn("humanizer: pass 1 took body_html", printed)
+        self.assertNotIn("refused", printed)
+        self.assertNotIn("claims: cut", printed)
+        final = rows[-1]
+        self.assertEqual((final["kind"], final["cut"]), ("final", []))
+        self.assertIn('<a href="https://ciprari.ai/">nine providers</a>', final["post"]["body_html"])
+        self.assertEqual(writer._sources(final["post"]), writer._sources(draft))
 
     def test_must_fix_beats_a_new_long_sentence(self):
         draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>Atelier runs on Python.</p>")

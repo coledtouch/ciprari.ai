@@ -1862,25 +1862,63 @@ def _must(problem):
 
 
 def _score(post):
+    """(must-not-ship lines, must-fix problems, all problems): a revision that turns a false
+    line into a true one that still draws a soft label scores better."""
     probs = humanizer_problems(post)
-    return sum(1 for p in probs if _must(p)), len(probs)
+    return sum(1 for p in probs if "must not ship" in p), sum(1 for p in probs if _must(p)), len(probs)
+
+
+def _pair(why):
+    """A sheet term from _unsupported() as (system, term): "Atelier: keeps no feedback" ->
+    ("Atelier", "feedback"), so a denial and a claim of the same thing are one pair."""
+    name, _, term = why.partition(": ")
+    term = re.sub(r"^(?:keeps )?(?:no )?|(?: only on the device| kept [^:]*)$", "", term)
+    return name, term
 
 
 def _claims(post):
-    """The claims about Cole's systems in post, as a multiset of (label, systems, sheet terms).
-    The words and the field are left out: a claim reworded, split or moved is the same claim."""
-    return Counter((f'must not ship, {r["high"]}' if r["high"] else r["soft"], tuple(sorted(r["named"] | r["loose"])),
-                    tuple(sorted(r["why"]))) for _, r in _claim_rows(post) if r["high"] or r["soft"])
+    """The claims about Cole's systems in post, read so a claim reworded, split or moved is the
+    same claim: (must, soft, mentioned). must counts each must-not-ship row's (label, systems,
+    term) for every sheet term it states without support, or once with no term. soft lists
+    (systems, pairs) for each soft row whose sheet terms SYSTEM_FACTS does not all hold; a
+    pair is (system, term), or (system, label) for a row that states no sheet term. mentioned
+    holds every (system, term) and (system, label) pair any sentence of the post states."""
+    must, soft, mentioned = Counter(), [], set()
+    for _, r in _claim_rows(post):
+        systems = tuple(sorted(r["named"] | r["loose"]))
+        m = _mask(r["text"])
+        terms = {k.lstrip("@") for k, _, _, _ in _terms(m)} | {k for k, _ in _nouns(m)}
+        mentioned |= {(s, t) for s in systems or ("",) for t in terms | {r["high"], r["soft"]} if t}
+        if r["high"]:
+            must.update((r["high"], systems, w) for w in r["why"] or [None])
+        elif r["soft"]:
+            why = _unsupported(r["text"], set(systems)) if _terms(m) else []
+            if why or not _terms(m):  # a soft line whose every sheet term the sheet holds is no new claim
+                soft.append((systems, {_pair(w) for w in why} or {(s, r["soft"]) for s in systems or ("",)}))
+    return must, soft, mentioned
 
 
-def _unshippable(claims):
-    return sum(n for (label, _, _), n in claims.items() if label.startswith("must not ship"))
+def _added_claims(best, trial):
+    """How many claims about Cole's systems trial adds to best: every must-not-ship one best
+    lacks, and every soft one about a (system, term) pair best never mentions, less one for
+    each must-not-ship claim it drops on the same systems (the model's fix of a false line)."""
+    (old_must, _, mentioned), (new_must, soft, _) = _claims(best), _claims(trial)
+    dropped = Counter(systems for _, systems, _ in (old_must - new_must).elements())
+    added = sum((new_must - old_must).values())
+    for systems, pairs in soft:
+        if pairs <= mentioned:
+            continue
+        if dropped[systems] > 0:
+            dropped[systems] -= 1
+        else:
+            added += 1
+    return added
 
 
 def _merge(best, rev, draft, mode):
     """Take each field group from the revision when it validates, keeps the draft's material,
-    adds no claim about Cole's systems and scores better: fewer must-fix problems first, then
-    fewer problems in all."""
+    adds no claim about Cole's systems (_added_claims) and scores better: fewer must-not-ship
+    lines first, then fewer must-fix problems, then fewer problems in all."""
     taken = []
     for group in GROUPS:
         if all(rev.get(k) == best.get(k) for k in group):
@@ -1895,14 +1933,13 @@ def _merge(best, rev, draft, mode):
         if errs or lost:
             print(f"humanizer: {name} refused ({'; '.join(errs) or lost})", flush=True)
             continue
-        new, old = _claims(trial), _claims(best)
-        added = sum((new - old).values()) or _unshippable(new) - _unshippable(old)
+        added = _added_claims(best, trial)
         if added > 0:
             print(f"humanizer: {name} refused (it adds {added} claim(s) about Cole's systems)", flush=True)
             continue
         before, after = _score(best), _score(trial)
         if after >= before:
-            print(f"humanizer: {name} not cleaner ({after[1]} problem(s), {after[0]} must-fix)", flush=True)
+            print(f"humanizer: {name} not cleaner ({after[2]} problem(s), {after[1]} must-fix)", flush=True)
             continue
         dropped = _sources(best) - _sources(trial)
         if dropped:
