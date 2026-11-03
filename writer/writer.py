@@ -1884,11 +1884,33 @@ def claim_problems(post):
     return probs
 
 
+def _kept_keywords(keywords, lost, title):
+    """keywords without each phrase built from a word of the lost title sentences that the title
+    left no longer has ("prompt logging" goes with "Atelier logs every prompt"); when no phrase
+    is left, the content words of that title."""
+    def words(s):
+        return {w.rstrip("s") for w in re.findall(r"[a-z0-9][a-z0-9'-]*", s.lower())
+                if (len(w) >= 3 or re.search(r"\d", w)) and w not in STOP and w not in SMALL}
+
+    def same(a, b):  # "log" and "logging", "table" and "tables"
+        return a == b or (min(len(a), len(b)) >= 3 and (a.startswith(b) or b.startswith(a)))
+
+    gone = set().union(*map(words, lost)) - words(title)
+    kept = [k.strip() for k in keywords.split(",") if k.strip() and not any(
+        same(w, g) for w in words(k) for g in gone)]
+    if kept:
+        return ", ".join(kept)
+    rest = re.sub(r"^Rollout Report:\s*", "", title).lower()
+    return " ".join(w for w in re.findall(r"[a-z0-9][a-z0-9'-]*", rest)
+                    if (len(w) >= 4 or re.search(r"\d", w)) and w not in STOP)
+
+
 def drop_high_risk(post):
     """Cut every must-not-ship sentence still in the title, desc, caption or body, the art labels
     that hold one (a stacked label reads as one: _cut_labels), and an alt text that holds one (it
     becomes a plain description of the caption). A cut can hand "It" a new system, so a field is read again until nothing is left
-    to cut. A cut title gets new slug_words, so the URL never carries the cut words. Runs after
+    to cut. A cut title gets new slug_words, so the URL never carries the cut words, and keeps
+    only the keywords not built from them (_kept_keywords). Runs after
     the revisions; returns (post, [(field, sentence, label)])."""
     fields = ("title", "desc", "svg_caption", "body_html")
     people, erp = _claim_context(post)
@@ -1902,8 +1924,11 @@ def drop_high_risk(post):
             cut += bad
             if k != "body_html":  # one-line fields: no space left where a sentence was
                 out[k] = " ".join(out[k].split())
-    if any(f == "title" for f, _, _ in cut) and isinstance(out.get("slug_words"), str):
+    lost = [t for f, t, _ in cut if f == "title"]
+    if lost and isinstance(out.get("slug_words"), str):
         out["slug_words"] = " ".join(slugify(re.sub(r"^Rollout Report:\s*", "", out["title"])).split("-")[:6])
+    if lost and isinstance(out.get("keywords"), str):
+        out["keywords"] = _kept_keywords(out["keywords"], lost, out["title"] or "")
     if isinstance(out.get("svg_inner"), str):
         out["svg_inner"], bad = _cut_labels(out["svg_inner"], people, erp, lambda r: r["high"])
         cut += [("svg_inner", r["text"], r["high"]) for r in bad]
@@ -1978,7 +2003,8 @@ def _public(key, value):
 
 def _public_post(post):
     """A post without any sentence, art label or alt text in _CUT. When the title lost a
-    sentence, its slug_words and keywords go too, in this row and every other: they echo it."""
+    sentence, the slug_words and keywords it came with go too, in this row and every other:
+    they echo it. The ones drop_high_risk() rebuilt from what is left stay."""
     out = drop_high_risk(post)[0]
     people, erp = _claim_context(out)
     for k in ("title", "desc", "svg_caption", "body_html"):

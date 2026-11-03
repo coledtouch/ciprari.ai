@@ -1023,10 +1023,20 @@ class HumanizePassTests(unittest.TestCase):
         for text in (printed, logged, stop):
             self.assertNotIn("every prompt to a d1", text.lower())  # the title, and slug_words that echo it
             self.assertNotIn("prompt logging", text)
-        self.assertEqual({r["post"]["keywords"] for r in rows if "post" in r}, {"[kept out of the trace]"})
-        # a title that loses one sentence of two publishes with slug words from what is left
-        out, cut = writer.drop_high_risk(dict(title, title="The agent has an email. Atelier logs every prompt to a D1 table."))
-        self.assertEqual((out["title"], out["slug_words"], len(cut)), ("The agent has an email.", "the agent has an email", 1))
+        for r in rows:  # each row's keywords were rebuilt without the cut words, or kept out
+            if "post" in r:
+                self.assertIsNone(re.search(r"atelier|prompt|logging|d1|table", r["post"]["keywords"]), r["post"]["keywords"])
+        # a title that loses one sentence of two publishes with slug words and keywords from what is left
+        two = dict(title, title="The agent has an email. Atelier logs every prompt to a D1 table.")
+        out, cut = writer.drop_high_risk(two)
+        self.assertEqual((out["title"], out["slug_words"], out["keywords"], len(cut)),
+                         ("The agent has an email.", "the agent has an email", "agent email", 1))
+        out, _ = writer.drop_high_risk(dict(two, keywords="Atelier prompt logging, D1 tables, AI agent email, agent identity"))
+        self.assertEqual(out["keywords"], "AI agent email, agent identity")  # the phrases not built from cut words stay
+        out, _ = writer.drop_high_risk(dict(two, title="Atelier gets an inbox. Atelier logs every prompt to a D1 table.",
+                                            keywords="Atelier inbox, prompt logging"))
+        self.assertEqual(out["keywords"], "Atelier inbox")  # a word the title still has is not a cut word
+        self.assertEqual(writer.drop_high_risk(dict(two, title="The agent has an email."))[0]["keywords"], two["keywords"])
         # a revision makes the draft's next line the rest of a story: refused, and the line leaves every row
         tail = "<p>It was quiet that week. You can check it.</p>"
         draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>This is crucial.</p>" + tail)
