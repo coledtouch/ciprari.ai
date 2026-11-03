@@ -433,6 +433,8 @@ class ClaimTests(unittest.TestCase):
         "Testers can use Grok in Atelier.": "Atelier: xai for testers",
         "Testers can make Runway videos in Atelier.": "Atelier: runway for testers",
         "Atelier gives testers access to xAI and Runway.": "Atelier: runway for testers",
+        "Testers can use Grok or Runway in Atelier.": "Atelier: runway for testers",
+        "Atelier doesn't use Claude or GPT.": "Atelier: no openai",
         "Atelier signs testers in with Google.": "Atelier: sign-in with google",
         "Testers sign in to Atelier with Google.": "Atelier: sign-in with google",
         "Atelier uses Google sign-in for testers.": "Atelier: sign-in with google",
@@ -566,6 +568,8 @@ class ClaimTests(unittest.TestCase):
                   # the owner's models, the ways in, and a host outage that is news
                   "The owner can use Grok and Runway in Atelier.", "Grok and Runway are owner-only in Atelier.",
                   "Testers can't use Grok in Atelier.", "Testers can use Claude, GPT and Gemini in Atelier.",
+                  "Testers can't use Grok or Runway in Atelier.", "Testers can't use xAI or Runway in Atelier.",
+                  "Atelier doesn't use Mistral or Cohere.", "Atelier does not call Mistral, Cohere or Perplexity.",
                   "The owner signs in to Atelier with a passcode.", "Atelier testers sign in with LinkedIn, not Google.",
                   "Atelier calls Google's Gemini API directly.",
                   "Cloudflare Pages had an outage on Tuesday, and Atelier stayed up."):

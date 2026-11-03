@@ -1475,11 +1475,18 @@ def _stores(m):
 def _terms(m):
     """(key, negated, leads, position) for each sheet term in masked clause m: TERMS keys,
     providers ("@openai"), counts ("tester 25"), "store" for keeping data and "ai" for AI words.
-    leads: the term opens the clause or a "when"/"if" part of it, as a news subject does."""
+    leads: the term opens the clause or a "when"/"if" part of it, as a news subject does. A
+    provider listed after a denied one is denied too: "can't use Grok or Runway"."""
     out = []
-    for key, rx in TERMS + [("@" + k, rx) for k, rx in PROVIDERS] + [("ai", AI_WORDS)]:
+    for key, rx in TERMS:
         out += [(key, _negated(m, t.start(), t.end()), bool(LEADS.search(m[:t.start()])), t.start())
                 for t in rx.finditer(m)]
+    labs, neg = sorted((t.start(), t.end(), key) for key, rx in PROVIDERS for t in rx.finditer(m)), False
+    for i, (a, b, key) in enumerate(labs):
+        neg = _negated(m, a, b) or bool(neg and re.fullmatch(r"\s*,?\s*(?:(?:or|nor|and)\s+)?", m[labs[i - 1][1]:a], re.I))
+        out.append(("@" + key, neg, bool(LEADS.search(m[:a])), a))
+    out += [("ai", _negated(m, t.start(), t.end()), bool(LEADS.search(m[:t.start()])), t.start())
+            for t in AI_WORDS.finditer(m)]
     for t in COUNT.finditer(m):
         if VAGUE.search(m[:t.start()]) or NOT_HIS.search(t.group(0)):
             continue
