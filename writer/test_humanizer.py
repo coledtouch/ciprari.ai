@@ -534,6 +534,8 @@ class ClaimTests(unittest.TestCase):
                      "The table held every prompt for a year.</p>",
                      "<p>Keep Fix Cut grades photos. A rival teardown app launched this week. It stores every upload for 90 days.</p>",
                      "<p>Atelier calls nine providers. No prompt ever lands in a log.</p>",
+                     # what the tests run in is not where the system runs: Atelier's run in Node
+                     "<p>Atelier is a plain-JavaScript PWA. The tests run in Node.</p>",
                      "<p>Atelier calls nine providers. Prompts never go into the logs.</p>",
                      # a paragraph that speaks of Cole by name has another narrator, whose "I" is not his
                      "<p>The root console on the résumé site used to be a place Cole looked things up. Now the delegate is me. "

@@ -1181,6 +1181,9 @@ HARD_WHY = re.compile(r": (?:no )?(?:php|python|node|rails|vps|s3|r2|d1|kv|bucke
                       r"azure|gcp|other host|site builder|anthropic|openai|google|vertex|xai|z\.ai|deepseek|meta|"
                       r"nvidia|runway|mistral|perplexity|cohere|microsoft|amazon|alibaba|moonshot|another provider)$|"
                       r": (?:no )?store$|: keeps |\bkept |: (?:provider|tester) \d+$| for testers$|: sign-in with ")
+# the stack and host kinds of HARD_WHY: what "The tests run in Node" says of the tests, not the system
+HARD_STACK = re.compile(r": (?:no )?(?:php|python|node|rails|vps|s3|r2|d1|kv|bucket|database|server|cron|aws|azure|gcp|"
+                        r"other host|site builder)$")
 SCHEMA_ONLY = re.compile(r"\bschemas?\b")  # "I validate the schema": a JSON schema, not a database
 HIGH_FIX = "cut it, or say what you would check instead"
 CRIME_FIX = 'attribute it ("prosecutors say", "the complaint alleges") or cut it'
@@ -1935,12 +1938,15 @@ def _hard(why, text):
     """True when a line read against its paragraph's system states a kind that shipped false
     (HARD_WHY). In the first person ("I do not have a way to shut down GPT-4") a provider is not
     one, nor NOTAMs ("I check NOTAMs on the FAA site": the pilot checks them, not the app);
-    keeping at all is one only for "I log", "I store" (I_KEEP), not "the time saved"; and a
-    database is not when the line's only database word is "schema"."""
+    keeping at all is one only for "I log", "I store" (I_KEEP), not "the time saved"; a
+    database is not when the line's only database word is "schema"; and what the tests run in
+    or on is not where the system runs ("The tests run in Node": Atelier's do)."""
     first = not (CARRY.match(text) or REF.match(text))
     labs = {k for k, _ in PROVIDERS} | {"notam"}
+    tests = bool(re.match(r"The (?:test suite|tests)\b", text))
     schema = all(SCHEMA_ONLY.fullmatch(x.group(0)) for k, rx in TERMS if k == "database" for x in rx.finditer(text))
     return any(HARD_WHY.search(w) and not (first and re.sub(r"^no ", "", w.split(": ")[-1]) in labs)
+               and not (tests and HARD_STACK.search(w))
                and not (w.split(": ")[-1] in ("store", "no store") and not I_KEEP.search(text))
                and not (schema and w.split(": ")[-1] in ("database", "no database")) for w in why)
 
