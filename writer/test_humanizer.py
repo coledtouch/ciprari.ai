@@ -368,9 +368,10 @@ class ArtTests(unittest.TestCase):
                                                  "<rect fill=\"#04120a\" style='stroke: #ffd75e'/>")
         self.assertEqual(writer.repair_svg(writer.STUB["svg_inner"]), writer.STUB["svg_inner"])
         wrapper = re.compile(r'^<svg [^>]*><rect width="640" height="300" fill="#04120a"/>|</svg>$')
-        for p in writer.ALL:  # every published picture passes once repaired
-            inner = wrapper.sub("", p["svg"])
-            self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.repair_svg(inner)), "post"), [], p["version"])
+        for p in writer.ALL:  # every published picture passes once repaired, and a second repair changes nothing
+            inner = writer.repair_svg(wrapper.sub("", p["svg"]))
+            self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=inner), "post"), [], p["version"])
+            self.assertEqual(writer.repair_svg(inner), inner, p["version"])
 
     def test_art_checks_read_tags_not_text(self):
         art = writer.STUB["svg_inner"] + "<text x='10' y='20' fill='#33ff66'>DISK FILL: 92%</text>"
@@ -386,6 +387,31 @@ class ArtTests(unittest.TestCase):
                "<stop stop-color='#ff0000'/><text fill='#33ff66'>FILL: red</text>")
         self.assertEqual(writer.repair_svg(art), "<rect fill='#ffd75e' stroke='#000'/><circle style='fill: #ffd75e; "
                                                  "stroke: none'/><stop stop-color='#ffd75e'/><text fill='#33ff66'>FILL: red</text>")
+
+    def test_repair_is_total(self):
+        """Every value validate() refuses, repair_svg() turns into one it takes (rev2 probes)."""
+        for art, fixed in (
+                ("<rect fill='darkgreen'/>", "<rect fill='#04120a'/>"),
+                ("<rect fill='LimeGreen'/>", "<rect fill='#33ff66'/>"),
+                ('<rect style="fill: cyan"/>', '<rect style="fill: #33ff66"/>'),
+                ("<rect fill='hsl(120,100%,60%)'/>", "<rect fill='#33ff66'/>"),
+                ("<rect fill='hsla(45, 100%, 68%, 0.5)'/>", "<rect fill='#ffd75e'/>"),
+                ("<rect fill='currentColor' stroke='inherit'/>", "<rect fill='#33ff66' stroke='#33ff66'/>"),
+                ("<rect fill='#33ff6680' stroke='#3f6'/>", "<rect fill='#33ff66' stroke='#33ff66'/>"),
+                ("<rect fill='#f008'/>", "<rect fill='#ffd75e'/>"),
+                ("<rect fill='rgb(100% 0% 0%)' stroke='rgba(255 0 0 / 50%)'/>", "<rect fill='#ffd75e' stroke='#ffd75e'/>"),
+                ("<rect fill='rgba(20%, 100%, 40%, .3)'/>", "<rect fill='#33ff66'/>"),
+                ("<rect fill='glowgreen' stroke=''/>", "<rect fill='#33ff66' stroke='none'/>"),
+                ('<rect style="fill: #33ff66 !important; stroke:Red!important"/>', '<rect style="fill: #33ff66; stroke:#ffd75e"/>'),
+                ("""<rect style="fill: url('#g')" stroke="url('#g')"/>""", '<rect style="fill: url(#g)" stroke="url(#g)"/>'),
+                ('<line x2="640" y2="0" stroke="#33ff66"/>', '<line x1="0" y1="0" x2="640" y2="0" stroke="#33ff66"/>'),
+                ("<line y1='5' x='3' x2='1' y2='2'/>", "<line y1='5' x1='3' x2='1' y2='2'/>"),
+                ("<line/>", '<line x1="0" y1="0" x2="0" y2="0"/>')):
+            with self.subTest(art=art):
+                self.assertTrue(writer.validate(dict(writer.STUB, svg_inner=writer.STUB["svg_inner"] + art), "post"))
+                self.assertEqual(writer.repair_svg(art), fixed)
+                self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.STUB["svg_inner"] + fixed), "post"), [])
+        self.assertEqual(writer.repair_svg("<rect fill='#33FF66' stroke='NONE'/>"), "<rect fill='#33FF66' stroke='NONE'/>")
 
     def test_art_text_must_fit_the_frame(self):
         def overflow(art):

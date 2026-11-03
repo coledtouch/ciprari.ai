@@ -50,7 +50,9 @@ class StagedPublishingTests(unittest.TestCase):
     def test_off_palette_art_is_repaired_not_refused(self):
         stub = staged.writer.STUB
         art = (stub['svg_inner'].replace(staged.writer.G, '#ff4444') + "<rect fill='white' stroke='rgb(255, 0, 0)'/>"
-               "<line x='1' y='1' x2='9' y2='1' stroke='#33ff66'/><text x='10' y='20' fill='#33ff66'>DISK FILL: 92%</text>")
+               "<line x='1' y='1' x2='9' y2='1' stroke='#33ff66'/><text x='10' y='20' fill='#33ff66'>DISK FILL: 92%</text>"
+               "<rect fill='darkgreen' stroke='LimeGreen'/><rect style='fill: cyan !important'/><circle fill='hsl(120,100%,60%)'/>"
+               "<circle stroke='currentColor' fill='#33ff6680'/><line x2='640' y2='0' stroke='#3f6'/><rect fill='glowgreen'/>")
         staged_post = dict({k: stub[k] for k in staged.writer.REQUIRED}, id=43, svg_inner=art)
         self.assertTrue(REAL_VALIDATE(dict(staged_post), 'post'))  # as staged, it fails
         with patch.object(staged, 'call', return_value={'posts':[staged_post]}), \
@@ -61,6 +63,9 @@ class StagedPublishingTests(unittest.TestCase):
         posted = staged.writer.compose_entry.call_args[0][0]
         self.assertEqual(REAL_VALIDATE(posted, 'post'), [])
         self.assertNotIn('#ff4444', posted['svg_inner'])
+        for probe in ('darkgreen', 'LimeGreen', 'cyan', 'hsl(', 'currentColor', '#33ff6680', 'glowgreen'):
+            self.assertNotIn(probe, posted['svg_inner'])
+        self.assertIn("<line x1='0' y1='0' x2='640' y2='0' stroke='#33ff66'/>", posted['svg_inner'])
         self.assertIn('>DISK FILL: 92%</text>', posted['svg_inner'])
         self.assertEqual(json.loads(staged.RECEIPT.read_text()), {'ids':[43]})
 
