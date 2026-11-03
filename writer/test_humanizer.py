@@ -743,6 +743,20 @@ class HumanizePassTests(unittest.TestCase):
         self.assertLess(writer._score(rev), writer._score(swap))  # cleaner by count, and still refused
         self.assertIs(self.run_pass(reply=self.js(rev), errs=None, draft=swap)[0], swap)
 
+    def test_splitting_a_flagged_sentence_is_the_same_claim(self):
+        for long, split in (("Atelier routes prompts to nine model providers, and each of them bills by the token at its "
+                             "own posted rate.", "Atelier routes prompts to nine model providers. Each of them bills by "
+                             "the token at its own posted rate."),
+                            ("JetDesk has no NOTAMs, so a pilot still checks the FAA briefing before every flight across "
+                             "the state line.", "JetDesk has no NOTAMs. A pilot still checks the FAA briefing before every "
+                             "flight across the state line.")):
+            draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{long}</p>")
+            rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{split}</p>")
+            self.assertEqual((writer._score(draft), writer._score(rev)), ((1, 2), (1, 1)))
+            out, _ = self.run_pass(reply=self.js(rev), errs=None, draft=draft)
+            self.assertEqual(out["body_html"], rev["body_html"])
+            self.assertNotIn("refused", self.log)
+
     def test_must_fix_beats_a_new_long_sentence(self):
         draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>Atelier runs on Python.</p>")
         rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>" + " ".join(["word"] * 17) + ".</p>")

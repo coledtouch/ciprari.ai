@@ -18,6 +18,7 @@ Usage:
 Env: ANTHROPIC_API_KEY (required unless --stub), CLAUDE_MODEL (optional).
 """
 import os, sys, json, re, html, colorsys, hashlib, datetime, subprocess, urllib.request, urllib.error
+from collections import Counter
 from zoneinfo import ZoneInfo
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -1667,25 +1668,29 @@ def _claim_context(post):
     return _context(" ".join(_plain(v) for v in text if isinstance(v, str)))
 
 
-def claim_problems(post):
-    """Claims about Cole's systems (and named people) for the revision to fix: the text fields,
-    the art's labels and the alt text. A must-not-ship line that carries a source link asks
-    for a rephrase that keeps the link, since cutting it takes the source along."""
+def _claim_rows(post):
+    """(field, row) for each sentence of the text fields, the art's labels and the alt text."""
     fields = [(k, post.get(k) or "") for k in ("title", "desc", "svg_caption", "body_html")]
     alt = post.get("svg_alt")
     art = [("svg_inner", "".join(p for _, p in _labels(post.get("svg_inner")))),
            ("svg_alt", alt if isinstance(alt, str) else "")]
     people, erp, known = _claim_context(post)
+    return [(name, r) for name, raw in fields + art for r in _scan(raw, people, erp=erp, known=known)[1]]
+
+
+def claim_problems(post):
+    """Claims about Cole's systems (and named people) for the revision to fix: the text fields,
+    the art's labels and the alt text. A must-not-ship line that carries a source link asks
+    for a rephrase that keeps the link, since cutting it takes the source along."""
     probs = []
-    for name, raw in fields + art:
-        for r in _scan(raw, people, erp=erp, known=known)[1]:
-            if r["high"]:
-                fix = (CRIME_FIX if r["high"] == CRIME_LABEL else HIGH_FIX) + (f"; {LINK_FIX}" if r["linked"] else "")
-                why = f' ({"; ".join(r["why"])})' if r["why"] else ""
-                probs.append(f'{name}: must not ship, {r["high"]}; {fix}: "{_clip(r["text"])}"{why}')
-            elif r["soft"]:
-                probs.append(f'{name}: {r["soft"]}; {CLAIM_FIX}: "{_clip(r["text"])}"')
-    named = _systems(" ".join(_plain(v) for _, v in fields))
+    for name, r in _claim_rows(post):
+        if r["high"]:
+            fix = (CRIME_FIX if r["high"] == CRIME_LABEL else HIGH_FIX) + (f"; {LINK_FIX}" if r["linked"] else "")
+            why = f' ({"; ".join(r["why"])})' if r["why"] else ""
+            probs.append(f'{name}: must not ship, {r["high"]}; {fix}: "{_clip(r["text"])}"{why}')
+        elif r["soft"]:
+            probs.append(f'{name}: {r["soft"]}; {CLAIM_FIX}: "{_clip(r["text"])}"')
+    named = _systems(" ".join(_plain(post.get(k) or "") for k in ("title", "desc", "svg_caption", "body_html")))
     if len(named) > 3:
         probs.append(f"body_html: names {len(named)} of Cole's systems ({', '.join(sorted(named))}); "
                      "keep the two or three the story touches")
@@ -1859,9 +1864,14 @@ def _score(post):
 
 
 def _claims(post):
-    """The claim problems in post, without the field, so a claim moved to another field is
-    the same claim."""
-    return {p.split(": ", 1)[1] for p in claim_problems(post) if _must(p)}
+    """The claims about Cole's systems in post, as a multiset of (label, systems, sheet terms).
+    The words and the field are left out: a claim reworded, split or moved is the same claim."""
+    return Counter((f'must not ship, {r["high"]}' if r["high"] else r["soft"], tuple(sorted(r["named"] | r["loose"])),
+                    tuple(sorted(r["why"]))) for _, r in _claim_rows(post) if r["high"] or r["soft"])
+
+
+def _unshippable(claims):
+    return sum(n for (label, _, _), n in claims.items() if label.startswith("must not ship"))
 
 
 def _merge(best, rev, draft, mode):
@@ -1882,9 +1892,10 @@ def _merge(best, rev, draft, mode):
         if errs or lost:
             print(f"humanizer: {name} refused ({'; '.join(errs) or lost})", flush=True)
             continue
-        added = _claims(trial) - _claims(best)
-        if added:
-            print(f"humanizer: {name} refused (it adds {len(added)} claim(s) about Cole's systems)", flush=True)
+        new, old = _claims(trial), _claims(best)
+        added = sum((new - old).values()) or _unshippable(new) - _unshippable(old)
+        if added > 0:
+            print(f"humanizer: {name} refused (it adds {added} claim(s) about Cole's systems)", flush=True)
             continue
         before, after = _score(best), _score(trial)
         if after >= before:
