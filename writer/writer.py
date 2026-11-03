@@ -913,28 +913,38 @@ def humanizer_problems(post):
 # it. drop_high_risk() cuts any that are still there after the revisions, from the art's
 # labels and the alt text too. Checks run clause by clause, so a trailing "so I would
 # check..." never excuses the clause before it.
-SYSTEMS = [(name, re.compile(rx, re.I)) for name, rx in (
-    ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\bthe construction ERP\b|\b(?:my|our|his) (?:construction )?ERP\b|"
+# Each system by brand or domain, then by the plain name a post gives it ("the flight planner").
+# A plain name is his when the post names that system by brand, or its block is his: first
+# person, one of his brands or a second system (_his). Otherwise it gets soft labels only.
+# "The flight planner in ForeFlight" and "the Twilio dialer in most CRMs" are someone else's.
+_THEIRS = (r"(?!\s+(?:in|at|from|by|inside|of)\s+(?:(?-i:(?!(?:January|February|March|April|May|June|July|August|"
+           r"September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b)[A-Z])|"
+           r"(?:most|many|other|every|their|its|some)\b))")
+_NAMES = (
+    ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\bthe construction ERP\b|\b(?:my|our|his) (?:construction )?ERP\b",
                  r"\bthe Twilio dialer\b|\bthe snow(?:[- ]operations)? module\b|\bthe crew apps?\b"),
-    ("estimate.pro", r"\bestimate\.pro\b|\b(?:the|my) estimating (?:SaaS|tool|suite|platform|app|system|agent|interface)\b"),
-    ("CurbScript", r"\bcurbscript\b"),
-    ("The Punchlist", r"(?-i:\bPunchlist\b|\bPUNCHLIST\b)|\bthepunchlist\b"),
-    ("JetDesk", r"\bjetdesk\b|\bthe flight[- ]plann(?:er|ing (?:PWA|app|desk|tool))\b"),
-    ("North Point", r"\bNorth Point Construction\b|\bnorth\.construction\b|\bthe contractor site\b"),
-    ("Valhalla K9", r"(?-i:\bValhalla\b|\bVALHALLA\b)|\bvalhalla-k9\b|\bthe dog[- ]training (?:site|platform|company|business)\b|"
-                    r"\bthe K9 (?:site|business|company)\b"),
-    ("Hire Mariaelena", r"\bhire ?mariaelena\b|\bthe (?:freelancer|résumé|resume) (?:portfolio|site|page)\b"),
-    ("Show It With Words", r"(?-i:Show It With Words|SHOW IT WITH WORDS)|\bshowitwithwords\b|"
+    ("estimate.pro", r"\bestimate\.pro\b|\bmy estimating (?:SaaS|tool|suite|platform|app|system|agent|interface)\b",
+                     r"\bthe estimating (?:SaaS|tool|suite|platform|app|system|agent|interface)\b"),
+    ("CurbScript", r"\bcurbscript\b", ""),
+    ("The Punchlist", r"(?-i:\bPunchlist\b|\bPUNCHLIST\b)|\bthepunchlist\b", ""),
+    ("JetDesk", r"\bjetdesk\b", r"\bthe flight[- ]plann(?:er|ing (?:PWA|app|desk|tool))\b"),
+    ("North Point", r"\bNorth Point Construction\b|\bnorth\.construction\b", r"\bthe contractor site\b"),
+    ("Valhalla K9", r"(?-i:\bValhalla\b|\bVALHALLA\b)|\bvalhalla-k9\b",
+                    r"\bthe dog[- ]training (?:site|platform|company|business)\b|\bthe K9 (?:site|business|company)\b"),
+    ("Hire Mariaelena", r"\bhire ?mariaelena\b", r"\bthe (?:freelancer|résumé|resume) (?:portfolio|site|page)\b"),
+    ("Show It With Words", r"(?-i:Show It With Words|SHOW IT WITH WORDS)|\bshowitwithwords\b",
                            r"\bthe (?:jewelry|bead) (?:site|storefront|store|shop)\b"),
-    ("PermitSketch", r"\bpermitsketch\b|\bthe permit(?:[- ](?:drawing|sketching))? (?:app|tool|platform)\b|"
-                     r"\bthe permit sketcher\b"),
-    ("Atelier", r"(?-i:\bAtelier\b|\bATELIER\b)|\batelier\.ciprari\.ai\b|\bmy (?:AI )?studio\b"),
-    ("Keep Fix Cut", r"\bkeep ?fix ?cut\b|\bthe dating[- ]profile (?:teardown|tool|app|site)\b"),
+    ("PermitSketch", r"\bpermitsketch\b",
+                     r"\bthe permit(?:[- ](?:drawing|sketching))? (?:app|tool|platform)\b|\bthe permit sketcher\b"),
+    ("Atelier", r"(?-i:\bAtelier\b|\bATELIER\b)|\batelier\.ciprari\.ai\b|\bmy (?:AI )?studio\b", ""),
+    ("Keep Fix Cut", r"\bkeep ?fix ?cut\b", r"\bthe dating[- ]profile (?:teardown|tool|app|site)\b"),
     ("Base44 apps", r"(?-i:(?<!Amazon )(?<!AWS )\bAurora\b(?! (?:DB|Serverless|PostgreSQL|MySQL|Innovation))|\bAURORA\b)|"
-                    r"\bthe (?:smart-home|IPTV) (?:platform|app)\b|"
-                    r"\bNorthern Hardy Honey\b|\bMari' Cosmetics\b|\bthe (?:three )?Base44 (?:apps|stack)\b|"
+                    r"\bNorthern Hardy Honey\b|\bMari' Cosmetics\b",
+                    r"\bthe (?:smart-home|IPTV) (?:platform|app)\b|\bthe (?:three )?Base44 (?:apps|stack)\b|"
                     r"\bthe (?:honey|cosmetics) (?:shop|store|storefront|site)\b"),
-)]
+)
+SYSTEMS = [(name, re.compile(f"{brand}|(?:{plain}){_THEIRS}" if plain else brand, re.I)) for name, brand, plain in _NAMES]
+BRANDS = [(name, re.compile(brand, re.I)) for name, brand, _ in _NAMES]
 NO_AI = {"Valhalla K9", "Hire Mariaelena", "Show It With Words"}
 # A bare "the ERP" is Cole's only when the post names his ERP and no vendor's. Otherwise it
 # counts for the soft labels alone: a news line about SAP's ERP is never cut.
@@ -1080,7 +1090,10 @@ TERMS = [(key, re.compile(rx, re.I)) for key, rx in (
     ("php", r"(?-i:\bPHP\b)"), ("python", r"(?-i:\bPython\b)"), ("node", r"(?-i:\bNode(?:\.js)?\b)|\bnode\.js\b"),
     ("rails", r"(?-i:\bRails\b)"), ("next.js", r"\bNext\.?js\b"), ("react", r"(?-i:\bReact\b)"),
     ("typescript", r"\bTypeScript\b"), ("site builder", r"\b(?:WordPress|Shopify|Wix|Squarespace|Webflow)\b"),
-    ("vercel", r"\bVercel\b"), ("cloudflare", r"\bCloudflare\b"), ("worker", r"(?-i:\bWorkers?\b)"),
+    ("vercel", r"\bVercel\b"), ("cloudflare", r"\bCloudflare\b"),
+    # "runs on a Worker", not "Workers at the site found asbestos"
+    ("worker", r"(?-i:\bCloudflare Workers?\b)|(?<=[^\s.?!] )(?:a|an|another|one|the|its|their|each|a separate)\s+"
+               r"(?-i:Workers?\b)|(?<=\bon )(?-i:Workers\b)"),
     ("base44", r"\bBase44\b"), ("pwa", r"(?-i:\bPWAs?\b)|\bprogressive web apps?\b"),
     ("durable objects", r"\bDurable Objects?\b"), ("kv", r"(?-i:\bKV\b)"), ("r2", r"(?-i:\bR2\b)"),
     ("d1", r"(?-i:\bD1\b)"), ("s3", r"(?-i:\bS3\b)"), ("vps", r"(?-i:\bVPS(?:es)?\b)|\bvirtual private servers?\b"),
@@ -1182,6 +1195,9 @@ LOCAL_ONLY = re.compile(rf"\bonly\b[^.;:]{{0,30}}?(?:{LOCAL_HERE.pattern})|(?:\b
 OFF_DEVICE = re.compile(r"\bsync(?:s|ed|ing)?\b|\bcloud\b|\bupload(?:s|ed|ing)?\b|\b(?:servers?|buckets?|databases?|"
                         r"tables?)\b|(?-i:\bR2\b|\bD1\b|\bKV\b|\bS3\b)", re.I)
 NEG_WORDS = {"no", "not", "never", "without", "zero", "neither", "nor", "none", "nothing"}
+# "pilots need another source for NOTAMs": the system has none
+ELSEWHERE = re.compile(r"\b(?:another|separate|second|outside|other|different)\s+(?:sources?|apps?|tools?|services?|"
+                       r"providers?)\s+(?:for|of)\s+(?:[\w-]+\s+){0,2}$", re.I)
 CLAUSE_NEG = re.compile(r"\s*[\"'“‘(]?\s*(?:None|No|Not|Nothing|Neither|Never)\b", re.I)
 LEADS = re.compile(r"(?:^\s*[\"'“‘(]?\s*|\b(?:When|If|As|After|Before|Since|While|Once|Until|Because|Though|"
                    r"Although|Unless|Whether)\s+)(?:the\s+)?$", re.I)
@@ -1201,6 +1217,10 @@ because since though although unless until once after before not""".split())
 
 def _systems(text):
     return {name for name, rx in SYSTEMS if rx.search(text or "")}
+
+
+def _brands(text):
+    return {name for name, rx in BRANDS if rx.search(text or "")}
 
 
 def _people(text):
@@ -1272,10 +1292,11 @@ def _owners(m, pos, here):
 
 def _negated(m, a, b):
     """True when the term at m[a:b] is denied: a negation in the three words before it (and
-    after any comma), "logs nothing", "D1 is not used", or a clause that opens with No, None,
-    Nothing or Never."""
+    after any comma), "logs nothing", "D1 is not used", "another source for NOTAMs", or a
+    clause that opens with No, None, Nothing or Never."""
     before = re.findall(r"[\w'’]+", re.split(r"[,;:(]", m[:a])[-1])[-3:]
     return bool(CLAUSE_NEG.match(m) or any(w.lower() in NEG_WORDS or w.lower().endswith(("n't", "n’t")) for w in before)
+                or ELSEWHERE.search(m[:a])
                 or re.match(r"\s+(?:no|none|nothing|neither|zero)\b", m[b:], re.I)
                 or re.match(r"[^,;.]{0,20}?(?<!\band )(?<!\bbut )(?<!\bor )(?<!\bthen )"  # "stores X and never deletes"
                             r"\b(?:(?:is|are|was|were|has|have|had|does|do|did)(?: not|n't)|never)\b", m[b:], re.I))
@@ -1386,11 +1407,11 @@ def _support():
 SUPPORT = _support()
 
 
-def _here(c, sep, first, own, named, prev):
-    """The systems clause c is about: the ones it names; the sentence's carried subject for a
-    first clause that names none ("It logs..."); the previous clause's after a colon or when c
-    goes on with a verb or "it" ("..., and keeps threads on the device")."""
-    mine = _systems(c) | ({"Coen ERP"} if "Coen ERP" in named and BARE_ERP.search(c) else set())
+def _here(c, sep, first, own, named, prev, loose=frozenset()):
+    """The systems clause c is about: the ones it names (not the loose ones); the sentence's
+    carried subject for a first clause that names none ("It logs..."); the previous clause's
+    after a colon or when c goes on with a verb or "it" ("..., and keeps threads on the device")."""
+    mine = (_systems(c) - loose) | ({"Coen ERP"} if "Coen ERP" in named and BARE_ERP.search(c) else set())
     t = c.strip()
     if mine or not t:
         return mine
@@ -1466,10 +1487,10 @@ def _claim(s, named, story, people, loose=frozenset(), context=frozenset()):
     high = soft = None
     told = False
     why = []
-    parts, own, prev = re.split(f"({CLAUSE.pattern})", s, flags=re.I), _systems(s), set()
+    parts, own, prev = re.split(f"({CLAUSE.pattern})", s, flags=re.I), _systems(s) - loose, set()
     for i in range(0, len(parts), 2):
         c = parts[i]
-        prev = _here(c, parts[i - 1] if i else "", i == 0, own, named, prev)
+        prev = _here(c, parts[i - 1] if i else "", i == 0, own, named, prev, loose)
         if c.strip() and not WOULD.search(c):
             h, so, t, w = _clause(c, named, story or told, people, loose, context, prev)
             why = why if high else w
@@ -1546,39 +1567,72 @@ def _tidy(h):
 
 
 def _context(text):
-    """Post-wide context for _scan(): the named-person pattern, and whether a bare "the ERP"
-    is Cole's (the post names his ERP and no vendor's)."""
-    return _people(text), bool(SYSTEMS[0][1].search(text or "")) and not ERP_VENDOR.search(text or "")
+    """Post-wide context for _scan(): the named-person pattern, whether a bare "the ERP" is
+    Cole's (the post names his ERP and no vendor's), and the systems it names by brand."""
+    return (_people(text), bool(SYSTEMS[0][1].search(text or "")) and not ERP_VENDOR.search(text or ""),
+            frozenset(_brands(text)))
 
 
 _CUT = set()  # every sentence a must-not-ship rule matched this run, at any step; never logged
 _ECHO = set()  # slug_words and keywords that came with a title that lost a sentence; they echo it
 
 
-def _scan(fragment, people=None, strip=None, erp=False):
+def _his(parts, lines):
+    """For each text piece of a split fragment: whether its block is Cole's (first person
+    outside an "I would" line, one of his brands, or two of his systems). A heading shares a
+    block with the paragraph under it, and a list with the paragraph before it."""
+    block, depth, heading, blocks = 0, 0, False, {}
+    for i, part in enumerate(parts):
+        t = part.lower()
+        if i % 2 == 0:
+            blocks[i] = block
+        elif t.startswith(("<ul", "<ol")):
+            depth += 1
+        elif t.startswith(("</ul", "</ol")):
+            depth = max(depth - 1, 0)
+        elif re.match(r"<(?:p|h[1-6]|blockquote|div)\b", t) and not depth:
+            block, heading = block + (not heading), t.startswith("<h")
+    text = {}
+    for i, b in blocks.items():
+        text.setdefault(b, []).extend(lines[i])
+    his = {b: bool(_brands(" ".join(ls)) or len(_systems(" ".join(ls))) > 1
+                   or any(FIRST.search(s) and not WOULD.search(s) for s in ls)) for b, ls in text.items()}
+    return {i: his[b] for i, b in blocks.items()}
+
+
+def _scan(fragment, people=None, strip=None, erp=False, known=frozenset()):
     """Read an HTML fragment sentence by sentence. Returns (fragment, rows), one row per
     sentence: text, named and loose (Cole systems), soft and high (claim labels or None). A
-    sentence for which strip(row) is true is cut from the fragment; its tags stay, emptied, then
-    tidied. Once a paragraph tells a first-person story about his logs, keys or stack, a later
-    sentence there that reads like more of it (first person, "It", a system, logs, keys) is
-    must-not-ship too, unless it says what he would check or carries a source link."""
+    system named only by its plain name ("the permit app") is loose unless known (the post
+    names it by brand) or its block is his (_his). A sentence for which strip(row) is true is
+    cut from the fragment; its tags stay, emptied, then tidied. Once a paragraph tells a
+    first-person story about his logs, keys or stack, a later sentence there that reads like
+    more of it (first person, "It", a system, logs, keys) is must-not-ship too, unless it says
+    what he would check or carries a source link."""
     out, rows, cut = [], [], False
-    for i, piece in enumerate(_BLOCK_TAG.split(fragment or "")):
+    parts = _BLOCK_TAG.split(fragment or "")
+    sents = {i: _split(piece) for i, piece in enumerate(parts) if i % 2 == 0}
+    lines = {i: [" ".join("".join(p for _, p in sent).split()) for sent in s] for i, s in sents.items()}
+    mine = _his(parts, lines)
+    for i, piece in enumerate(parts):
         if i % 2:
             out.append(piece)
             continue
-        prev, story, context, tale = set(), False, set(), False
-        for sent in _split(piece):
-            text = " ".join("".join(p for _, p in sent).split())
+        his = mine[i]
+        prev, prev_loose, story, context, tale = set(), set(), False, set(), False
+        for sent, text in zip(sents[i], lines[i]):
             if not text:
                 out.append("".join(t for t, _ in sent))
                 continue
-            named, loose = _systems(text) or (set(prev) if CARRY.match(text) else set()), set()
+            named = _systems(text)
+            loose = set() if his else named - _brands(text) - known
+            named, loose = (named - loose, loose) if named else (
+                (set(prev), set(prev_loose)) if CARRY.match(text) else (set(), set()))
             if "Coen ERP" not in named and BARE_ERP.search(text) and not ERP_VENDOR.search(text):
                 if erp or "Coen ERP" in context:
                     named = named | {"Coen ERP"}
                 else:
-                    loose = {"Coen ERP"}
+                    loose = loose | {"Coen ERP"}
             soft, high, story, why = _claim(text, named, story, people, loose, context)
             linked = any(re.match(r"(?i)<a\s", t) for t, _ in sent)
             if tale and not high and not linked and not WOULD.search(text) and (
@@ -1592,7 +1646,7 @@ def _scan(fragment, people=None, strip=None, erp=False):
             if high:
                 _CUT.add(text)
             rows.append(row)
-            prev, context = named, context | named
+            prev, prev_loose, context = named, loose, context | named
             if strip and strip(row):
                 cut = True
                 out.append("".join(t for t, p in sent if t[0] == "<" and not p))
@@ -1621,10 +1675,10 @@ def claim_problems(post):
     alt = post.get("svg_alt")
     art = [("svg_inner", "".join(p for _, p in _labels(post.get("svg_inner")))),
            ("svg_alt", alt if isinstance(alt, str) else "")]
-    people, erp = _claim_context(post)
+    people, erp, known = _claim_context(post)
     probs = []
     for name, raw in fields + art:
-        for r in _scan(raw, people, erp=erp)[1]:
+        for r in _scan(raw, people, erp=erp, known=known)[1]:
             if r["high"]:
                 fix = (CRIME_FIX if r["high"] == CRIME_LABEL else HIGH_FIX) + (f"; {LINK_FIX}" if r["linked"] else "")
                 why = f' ({"; ".join(r["why"])})' if r["why"] else ""
@@ -1645,11 +1699,11 @@ def drop_high_risk(post):
     to cut. A cut title gets new slug_words, so the URL never carries the cut words. Runs after
     the revisions; returns (post, [(field, sentence, label)])."""
     fields = ("title", "desc", "svg_caption", "body_html")
-    people, erp = _claim_context(post)
+    people, erp, known = _claim_context(post)
     out, cut = dict(post), []
     for k in fields:
         while isinstance(out.get(k), str):  # each pass removes a sentence, so this ends
-            out[k], rows = _scan(out[k], people, strip=lambda r: r["high"], erp=erp)
+            out[k], rows = _scan(out[k], people, strip=lambda r: r["high"], erp=erp, known=known)
             bad = [(k, r["text"], r["high"]) for r in rows if r["high"]]
             if not bad:
                 break
@@ -1660,12 +1714,12 @@ def drop_high_risk(post):
         out["slug_words"] = " ".join(slugify(re.sub(r"^Rollout Report:\s*", "", out["title"])).split("-")[:6])
     if isinstance(out.get("svg_inner"), str):
         for element, para in _labels(out["svg_inner"]):
-            bad = [r for r in _scan(para, people, erp=erp)[1] if r["high"]]
+            bad = [r for r in _scan(para, people, erp=erp, known=known)[1] if r["high"]]
             if bad:
                 out["svg_inner"] = out["svg_inner"].replace(element, "", 1)
                 cut += [("svg_inner", r["text"], r["high"]) for r in bad]
     if isinstance(out.get("svg_alt"), str):
-        bad = [r for r in _scan(out["svg_alt"], people, erp=erp)[1] if r["high"]]
+        bad = [r for r in _scan(out["svg_alt"], people, erp=erp, known=known)[1] if r["high"]]
         if bad:
             cap = " ".join(_plain(out.get("svg_caption") or "").split())
             out["svg_alt"] = f"A CRT terminal showing the caption: {cap}" if cap else "A CRT terminal drawing in green."
@@ -1720,8 +1774,8 @@ def _public(key, value):
     if key in ("post", "revision") and isinstance(value, dict):
         return _public_post(value)
     if key == "raw" and isinstance(value, str):
-        people, erp = _context(_plain(value))
-        out = _scan(value, people, strip=lambda r: r["high"] or r["text"] in _CUT, erp=erp)[0]
+        people, erp, known = _context(_plain(value))
+        out = _scan(value, people, strip=lambda r: r["high"] or r["text"] in _CUT, erp=erp, known=known)[0]
         for s in _CUT:
             out = out.replace(s, "").replace(json.dumps(s, ensure_ascii=False)[1:-1], "")
         return out
@@ -1737,10 +1791,10 @@ def _public_post(post):
     """A post without any sentence, art label or alt text in _CUT. When the title lost a
     sentence, its slug_words and keywords go too, in this row and every other: they echo it."""
     out = drop_high_risk(post)[0]
-    people, erp = _claim_context(out)
+    people, erp, known = _claim_context(out)
     for k in ("title", "desc", "svg_caption", "body_html"):
         if isinstance(out.get(k), str):
-            out[k] = _scan(out[k], people, strip=lambda r: r["text"] in _CUT, erp=erp)[0]
+            out[k] = _scan(out[k], people, strip=lambda r: r["text"] in _CUT, erp=erp, known=known)[0]
     echoes = [post.get(k) for k in ("slug_words", "keywords") if isinstance(post.get(k), str) and post[k].strip()]
     if isinstance(post.get("title"), str) and out.get("title") != post["title"]:
         _ECHO.update(echoes)
@@ -1748,9 +1802,10 @@ def _public_post(post):
                 if isinstance(out.get(k), str) and out[k] in _ECHO})
     if isinstance(out.get("svg_inner"), str):
         for element, para in _labels(out["svg_inner"]):
-            if any(r["text"] in _CUT for r in _scan(para, people, erp=erp)[1]):
+            if any(r["text"] in _CUT for r in _scan(para, people, erp=erp, known=known)[1]):
                 out["svg_inner"] = out["svg_inner"].replace(element, "", 1)
-    if isinstance(out.get("svg_alt"), str) and any(r["text"] in _CUT for r in _scan(out["svg_alt"], people, erp=erp)[1]):
+    if isinstance(out.get("svg_alt"), str) and any(
+            r["text"] in _CUT for r in _scan(out["svg_alt"], people, erp=erp, known=known)[1]):
         out["svg_alt"] = "[kept out of the trace]"
     return out
 

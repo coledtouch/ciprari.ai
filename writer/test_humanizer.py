@@ -363,13 +363,13 @@ class ClaimTests(unittest.TestCase):
         "I monitor nothing.": "all of them: no monitoring",
         "My apps all log to D1.": "all of them: d1",
         "My systems all run on Vercel.": "all of them: vercel",
-        "The permit app writes drawings to R2 and logs sessions to D1.": "PermitSketch: r2; PermitSketch: d1",
-        "The permit app runs on Cloudflare Workers.": "PermitSketch: cloudflare",
+        "PermitSketch writes drawings to R2 and logs sessions to D1.": "PermitSketch: r2; PermitSketch: d1",
+        "PermitSketch runs on Cloudflare Workers.": "PermitSketch: cloudflare",
+        "PermitSketch runs on a Worker.": "PermitSketch: worker",
         "The construction ERP runs payroll for 40 people.": "Coen ERP: person 40",
         "The construction ERP stores every timesheet in a database.": "Coen ERP: database",
         "Curbscript generates service routes through an API.": "CurbScript: api",
         "CurbScript generates service routes for agents.": "CurbScript: service route",
-        "The flight planner checks NOTAMs before every leg.": "JetDesk: notam",
         "JetDesk shows NOTAMs on the route.": "JetDesk: notam",
         "Valhalla K9 uses a small model to write SMS reminders.": "Valhalla K9: ai",
         "Atelier offers models from OpenAI, Anthropic, Google, Mistral, Perplexity, Cohere and xAI.": "Atelier: mistral",
@@ -410,6 +410,35 @@ class ClaimTests(unittest.TestCase):
             self.assertTrue(any("must not ship" in p and why in p for p in found), (s, found))
             out, cut = writer.drop_high_risk(post(f"<p>Fine.</p><p>{s}</p>"))
             self.assertEqual((out["body_html"], len(cut)), ("<p>Fine.</p>", 1), s)
+
+    # a plain name, then the system and the terms the problem names once the post backs it
+    PLAIN = (("The permit app writes drawings to R2 and logs sessions to D1.", "PermitSketch", "PermitSketch: r2"),
+             ("The permit app runs on Cloudflare Workers.", "PermitSketch", "PermitSketch: cloudflare"),
+             ("The flight planner checks NOTAMs before every leg.", "JetDesk", "JetDesk: notam"),
+             ("The dating-profile tool stores photos for 90 days.", "Keep Fix Cut", "Keep Fix Cut: keeps photo"))
+
+    def test_a_plain_name_is_his_when_the_post_backs_it(self):
+        for s, brand, why in self.PLAIN:
+            for p in (post(f"<p>{s}</p>", title=f"What {brand} does now"), post(f"<p>I shipped a fix this week. {s}</p>"),
+                      post(f"<p>Atelier got a fix this week. {s}</p>"), post(f"<h3>{s}</h3><p>I shipped a fix.</p>"),
+                      post(f"<p>I changed two things.</p><ul><li>{s}</li><li>Fine.</li></ul>")):
+                found = writer.claim_problems(p)
+                self.assertTrue(any("must not ship" in x and why in x for x in found), (s, found))
+            found = writer.claim_problems(post(f"<p>{s}</p>"))  # nothing says it is his: soft labels only
+            self.assertTrue(found and not any("must not ship" in x for x in found), (s, found))
+        found = writer.claim_problems(post("<p>I fly it weekly. The flight planner in March showed NOTAMs.</p>"))
+        self.assertTrue(any("must not ship" in x and "JetDesk: notam" in x for x in found), found)  # a month is no vendor
+
+    def test_someone_elses_product_stays(self):
+        for s in ("The flight planner in ForeFlight now filters NOTAMs by route.",
+                  "Hinge launched a new photo coach. The dating-profile tool stores photos for 90 days.",
+                  "Procore shipped an estimating assistant. The estimating tool calls OpenAI for every takeoff.",
+                  "The permit platform runs on Azure.", "The Twilio dialer in most CRMs logs every call.",
+                  "Workers at the contractor site found asbestos.",
+                  "Pilots using JetDesk still need another source for NOTAMs."):
+            found = writer.claim_problems(post(f"<p>{s}</p>"))
+            self.assertFalse(any("must not ship" in p for p in found), (s, found))
+            self.assertEqual(len(writer.drop_high_risk(post(f"<p>{s}</p>"))[1]), 0, s)
 
     def test_lines_the_sheet_holds_stay(self):
         for s in ("Keep Fix Cut runs on one Cloudflare Worker.", "Atelier keeps threads in IndexedDB on the device.",
