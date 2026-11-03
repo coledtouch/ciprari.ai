@@ -1091,8 +1091,12 @@ GAP_STOP = re.compile(r"\bthat\b|,\s*(?:and|but)\b|\b(?:found|finds|said|says|sh
                       r"revealed|reveals|argued|argues|added|adds|explained|described|tested|tests|asked|asks|"
                       r"claimed|alleged|is|was|are|were|has|had|have|does|did|will|would|can|could|may|might)\b", re.I)
 # soft: back to the model
-# a denial of PHP, Python, a VPS or S3: "None of my systems run PHP", "Atelier doesn't run PHP"
-_NO_STACK = r"(?:\b(?:no|not|never|none)\b|n't\b)[^.?!]{0,30}?(?-i:\bPHP\b|\bPython\b|\bVPS\b|\bS3\b)"
+# a denial of PHP, Python, a VPS or S3: "None of my systems run PHP", "Atelier has never run on
+# a VPS", and the list after it ("doesn't use PHP or Python"); "does not log prompts and runs on
+# a VPS" denies no VPS
+_STACK_WORD = r"(?-i:\bPHP\b|\bPython\b|\bVPS(?:es)?\b|\bS3\b)"
+_NO_STACK = (r"(?:\b(?:no|not|never|none)\b|n't\b)(?:(?!\b(?:and|but|yet|so|then|while|though)\b)[^.?!;:]){0,30}?"
+             + _STACK_WORD + r"(?:(?:\s*,\s*(?:(?:or|and|nor)\s+)?|\s+(?:or|and|nor)\s+)(?:an?\s+)?" + _STACK_WORD + ")*")
 FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a single) Cloudflare Worker\b|"
                      r"\b(?:runs? on |on )?Cloudflare Pages(?: Functions)?\b|\b(?:runs? on |on |built on |is a )?(?:Base44|Vercel)\b|"
                      r"\b(?:in )?local[ -]?storage\b|"
@@ -1531,10 +1535,12 @@ def _terms(m):
     """(key, negated, leads, position) for each sheet term in masked clause m: TERMS keys,
     providers ("@openai"), counts ("tester 25"), "store" for keeping data and "ai" for AI words.
     leads: the term opens the clause or a "when"/"if" part of it, as a news subject does. A
-    provider listed after a denied one is denied too: "can't use Grok or Runway"."""
-    out = []
+    provider listed after a denied one is denied too: "can't use Grok or Runway". PHP, Python, a
+    VPS or S3 is denied anywhere in a denial of them (STACK_DENIED): "has never run on a VPS"."""
+    out, denied = [], [x.span() for x in STACK_DENIED.finditer(m)]
     for key, rx in TERMS:
-        out += [(key, _negated(m, t.start(), t.end()), bool(LEADS.search(m[:t.start()])), t.start())
+        out += [(key, _negated(m, t.start(), t.end()) or (key in GLOBAL_NEG and any(
+                    a <= t.start() and t.end() <= b for a, b in denied)), bool(LEADS.search(m[:t.start()])), t.start())
                 for t in rx.finditer(m)]
     labs, neg = sorted((t.start(), t.end(), key) for key, rx in PROVIDERS for t in rx.finditer(m)), False
     for i, (a, b, key) in enumerate(labs):

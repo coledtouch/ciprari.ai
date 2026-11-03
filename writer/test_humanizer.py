@@ -643,9 +643,18 @@ class ClaimTests(unittest.TestCase):
                   "Cloudflare Pages had an outage on Tuesday, and Atelier stayed up.",
                   # a stack denial with "n't" holds like one with "not"
                   "My systems don't run PHP.", "Atelier doesn't run PHP.", "The construction ERP doesn't use PHP.",
-                  "None of my systems run PHP. Those systems weren't exposed."):
+                  "None of my systems run PHP. Those systems weren't exposed.",
+                  # however far the denial sits from it, and the list after it
+                  "Atelier does not run on a VPS.", "Atelier doesn't run on a VPS.", "Atelier won't run on a VPS.",
+                  "Atelier has never run on a VPS.", "Atelier doesn't use PHP or Python.",
+                  "My stack doesn't include Python or PHP.", "No Cole system uses PHP, Python, a VPS or S3.",
+                  "None of my systems run PHP, Python, a VPS or S3."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
+        # a denial that ends before the stack word denies none of it
+        for s in ("Atelier does not log prompts and runs on a VPS.", "Atelier runs on a VPS, not on Python.",
+                  "Atelier does not log prompts, and it runs on a VPS."):
+            self.assertTrue(any("must not ship" in p for p in writer.claim_problems(post(f"<p>{s}</p>"))), s)
         # lines from Cole's correction (37f0c70) that are true by ColeOS PRODUCTS and Atelier's privacy page
         for version, line in (("v1.72.0", "The flight-planning PWA runs on Cloudflare Pages, and the permit app runs on Base44."),
                               ("v1.65.0", "The flight planner calls a weather API."),
@@ -1044,6 +1053,8 @@ class HumanizePassTests(unittest.TestCase):
                              ("Atelier runs on Python.", "Atelier keeps threads in IndexedDB on the device."),
                              ("The construction ERP runs on PHP.", "The construction ERP doesn't run PHP."),
                              ("Atelier runs on Python.", "Atelier doesn't run Python."),
+                             ("estimate.pro runs on a VPS.", "estimate.pro does not run on a VPS."),
+                             ("The estimating SaaS runs on a VPS.", "The estimating SaaS has never run on a VPS."),
                              ("The construction ERP runs on PHP. The permit app runs on PHP.",
                               "My systems don't run PHP.")):
             draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + f"<p>{wrong}</p>")
