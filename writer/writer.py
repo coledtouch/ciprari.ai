@@ -1217,13 +1217,17 @@ LEADS = re.compile(r"(?:^\s*[\"'“‘(]?\s*|\b(?:When|If|As|After|Before|Since|
                    r"Although|Unless|Whether)\s+)(?:the\s+)?$", re.I)
 PASSIVE = re.compile(r"\b(?:is|are|was|were|be|been|being|gets?|got)\s+(?:(?:not|never|also|only|still|all|"
                      r"then|now)\s+)?$|\b(?:is|are|was|were|has|have|had)n't\s+(?:been\s+)?$", re.I)  # "doesn't keep" is active
-# "my apps", "every one of those systems", "I monitor": a claim about all of them
+# "my apps", "every one of those systems": a claim about all of them
 GENERAL = re.compile(rf"{GENERIC.pattern}|\bmy (?:own )?(?:systems?|platforms?|apps?|sites?|stack|servers?)\b|"
                      r"(?-i:\bI) (?:run|host|operate|ship|built|build|maintain) (?:[\w-]+ ){0,3}?(?:systems|platforms|"
                      r"apps|sites|servers|integrations|products)\b|\b(?:systems?|platforms?|apps?|sites?) I "
-                     r"(?:run|host|operate|ship|built|maintain)\b|(?-i:\bI) (?:(?:do not|don't|never|also|only) )?"
-                     rf"(?:log|store|keep{_GOING}|retain|monitor|track|record|save|back up|encrypt|host|patch|"
-                     r"rotate|scope|audit)\b", re.I)
+                     r"(?:run|host|operate|ship|built|maintain)\b", re.I)
+# "I log every prompt", "I monitor nothing": about his systems only when what follows the verb
+# is a system thing (OBJECT). "I monitor the news" and "I store my receipts in a shoebox" are not.
+I_KEEP = re.compile(r"(?-i:\bI) (?:(?:do not|don't|never|also|only) )?"
+                    rf"(?:log|store|keep{_GOING}|retain|monitor|track|record|save|back up|encrypt|host|patch|"
+                    r"rotate|scope|audit)\b", re.I)
+OBJECT = re.compile(r"\b(?:nothing|everything|anything|data|logs?)\b", re.I)
 DETERMINERS = set("""the a an my our your his her their i we you he she some any no every each all either neither
 nothing none someone everyone anyone nobody there here what which who when where while if as so then but and or
 because since though although unless until once after before not""".split())
@@ -1503,11 +1507,12 @@ def _unsupported(c, here):
     return list(dict.fromkeys(why))
 
 
-def _claim(s, named, story, people, loose=frozenset(), context=frozenset()):
+def _claim(s, named, story, people, loose=frozenset(), context=frozenset(), keeping=False):
     """(soft label, must-not-ship label, story, why) for one sentence. named: the Cole systems
     it is about; loose: ones it may be about (soft labels only); story: an earlier sentence in
     this paragraph told a first-person story about them; context: systems the paragraph named
-    before it; why: the sheet terms it states without support. Each clause answers for itself:
+    before it; keeping: an earlier sentence there was a first-person keeping claim about them
+    (_general); why: the sheet terms it states without support. Each clause answers for itself:
     only a clause that says "I would" is let off."""
     if s.endswith("?"):
         return None, None, story, []
@@ -1519,13 +1524,30 @@ def _claim(s, named, story, people, loose=frozenset(), context=frozenset()):
         c = parts[i]
         prev = _here(c, parts[i - 1] if i else "", i == 0, own, named, prev, loose)
         if c.strip() and not WOULD.search(c):
-            h, so, t, w = _clause(c, named, story or told, people, loose, context, prev)
+            h, so, t, w = _clause(c, named, story or told, people, loose, context, prev, keeping)
             why = why if high else w
             high, soft, told = high or h, soft or so, told or t
     return soft, high, story or told, why
 
 
-def _clause(c, named, story, people, loose, context, here=frozenset()):
+def _general(c, keeping=False):
+    """"all" when clause c speaks of all of Cole's systems at once (GENERAL). "me" when it is
+    first person keeping, monitoring or patching a system thing (I_KEEP, then logs, keys,
+    prompts, servers, data, nothing or a sheet term): "I log every prompt", "I monitor nothing",
+    or any such clause once its paragraph has had one (keeping). None for "I monitor the news"
+    or "I save every invoice as a PDF"."""
+    if GENERAL.search(c):
+        return "all"
+    for m in I_KEEP.finditer(c):
+        rest = c[m.end():]
+        if (keeping or any(not x.group(0).lower().startswith("last ") for x in INFRA.finditer(rest))
+                or any(rx.search(rest) for rx in (KEY, CONTENT, SERVER, OBJECT))
+                or any(rx.search(rest) for key, rx in TERMS if key not in ("tax", "deposit"))):
+            return "me"
+    return None
+
+
+def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=False):
     high = soft = None
     why = []
     rest = FACT_OK.sub(" ", c)
@@ -1541,9 +1563,12 @@ def _clause(c, named, story, people, loose, context, here=frozenset()):
     if told and not high and any(INFRA.search(c, m.end(), m.end() + 60) or KEY.search(c, m.end(), m.end() + 60)
                                  for m in STORY.finditer(c)):
         high = STORY_LABEL  # the prompt bans these outright: "I checked the logs", "I rotated the keys"
-    if not high and (here or GENERAL.search(c)):
-        why = _unsupported(c, here)
-        high = (SHEET_LABEL if here else GENERAL_LABEL) if why else None
+    general = None if high or here else _general(c, keeping)
+    if not high and (here or general):
+        # "I do not log the prompt content." after two Atelier lines is said of Atelier
+        scope = set(here) or (set(context) if general == "me" and len(context) == 1 else set())
+        why = _unsupported(c, scope)
+        high = (SHEET_LABEL if scope else GENERAL_LABEL) if why else None
     about = named or loose or ME.search(c) or GENERIC.search(c)
     if "Atelier" in named and NOT_ATELIER_PROVIDER.search(c):
         soft = "a provider Atelier does not use (its nine are in SYSTEM FACTS)"
@@ -1621,7 +1646,7 @@ def _scan(fragment, people=None, strip=None, erp=False):
                 last, heading = (last if heading else ""), piece[1:2].lower() == "h"
             out.append(piece)
             continue
-        prev, prev_loose, story, context, tale = set(), set(), False, set(), False
+        prev, prev_loose, story, context, tale, keeping = set(), set(), False, set(), False, False
         for sent in _split(piece):
             text = " ".join("".join(p for _, p in sent).split())
             if not text:
@@ -1636,7 +1661,8 @@ def _scan(fragment, people=None, strip=None, erp=False):
                     named = named | {"Coen ERP"}
                 else:
                     loose = loose | {"Coen ERP"}
-            soft, high, story, why = _claim(text, named, story, people, loose, context)
+            soft, high, story, why = _claim(text, named, story, people, loose, context, keeping)
+            keeping = keeping or bool(high in (SHEET_LABEL, GENERAL_LABEL) and I_KEEP.search(text))
             linked = any(re.match(r"(?i)<a\s", t) for t, _ in sent)
             if tale and not high and not linked and not WOULD.search(text) and (
                     named or loose or CARRY.match(text) or FIRST.search(text) or GENERIC.search(text)

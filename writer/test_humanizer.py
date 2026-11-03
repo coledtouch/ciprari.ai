@@ -481,13 +481,32 @@ class ClaimTests(unittest.TestCase):
                   "Nothing in Atelier's ledger holds a prompt.", "Atelier keeps working offline."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
-        # two lines from Cole's correction (37f0c70) that are true by ColeOS PRODUCTS
+        # lines from Cole's correction (37f0c70) that are true by ColeOS PRODUCTS and Atelier's privacy page
         for version, line in (("v1.72.0", "The flight-planning PWA runs on Cloudflare Pages, and the permit app runs on Base44."),
-                              ("v1.65.0", "The flight planner calls a weather API.")):
+                              ("v1.65.0", "The flight planner calls a weather API."),
+                              ("v1.75.0", "I do not log the prompt content.")):
             p = stored(version)
             self.assertIn(line, writer._plain(p["body_html"]), version)
             self.assertFalse(any("must not ship" in x and line[:60] in x for x in writer.claim_problems(p)), version)
             self.assertNotIn(line, [t for _, t, _ in writer.drop_high_risk(p)[1]], version)
+
+    def test_a_first_person_line_is_about_his_systems_only_with_a_system_thing(self):
+        for s in ("I monitor the news for agent incidents.", "I monitor my inbox for client requests.",
+                  "I store my receipts in a shoebox.", "I record a short video for each release.",
+                  "I save every invoice as a PDF.", "I keep a printed copy of each permit set.",
+                  "I log every change in this changelog.", "I track my hours in a spreadsheet."):
+            self.assertFalse(any("must not ship" in p for p in writer.claim_problems(post(f"<p>{s}</p>"))), s)
+            self.assertEqual(writer.drop_high_risk(post(f"<p>{s}</p>"))[1], [], s)
+        # a denial the sheet holds for the one system the paragraph names
+        line = "<p>Atelier's ledger records cost and time. It keeps no prompts. I do not log the prompt content.</p>"
+        self.assertFalse(any("must not ship" in p for p in writer.claim_problems(post(line))))
+        for body in ("<p>I log every prompt.</p>", "<p>I keep the API keys in a text file.</p>", "<p>I monitor nothing.</p>",
+                     "<p>Atelier's ledger records cost and time. I log every prompt to D1.</p>"):
+            self.assertTrue(any("must not ship" in p for p in writer.claim_problems(post(body))), body)
+        # once a paragraph makes one such claim, the run of them that follows goes with it
+        run = ("<p>I don't log payroll amounts. I log whether the payroll run was inside bounds. "
+               "I log whether the total matched the estimate.</p>")
+        self.assertEqual(len(writer.drop_high_risk(post(run))[1]), 3)
 
     def test_only_a_person_commits_a_crime(self):
         for s in ('<a href="https://example.com/a">Palo Alto Networks</a> found the agent exfiltrated credentials '
