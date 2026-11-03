@@ -1504,6 +1504,9 @@ def _context(text):
     return _people(text), bool(SYSTEMS[0][1].search(text or "")) and not ERP_VENDOR.search(text or "")
 
 
+_CUT = set()  # every sentence a must-not-ship rule matched this run, at any step; never logged
+
+
 def _scan(fragment, people=None, strip=None, erp=False):
     """Read an HTML fragment sentence by sentence. Returns (fragment, rows), one row per
     sentence: text, named and loose (Cole systems), soft and high (claim labels or None). A
@@ -1538,6 +1541,8 @@ def _scan(fragment, people=None, strip=None, erp=False):
                 high in (TECH_LABEL, SHEET_LABEL, GENERAL_LABEL) and STORY.search(text))
             row = {"text": text, "named": named, "loose": loose, "soft": soft, "high": high, "why": why,
                    "linked": linked}
+            if high:
+                _CUT.add(text)
             rows.append(row)
             prev, context = named, context | named
             if strip and strip(row):
@@ -1632,30 +1637,40 @@ PASSES = 3  # revision calls at most; each one sees only the problems still left
 # A revision is merged field group by field group, so a good title survives a bad body.
 GROUPS = (("title", "slug_words"), ("desc",), ("svg_caption", "svg_inner"), ("body_html",))
 TRACE_PATH = os.environ.get("WRITER_TRACE")  # publish.yml uploads it as a run artifact
+_TRACE = {}  # trace path -> the rows as given; the file is rewritten from these on each call
 
 
 def trace(kind, **data):
-    """Append one JSON line to WRITER_TRACE (when set): drafts, revisions and what was kept.
-    The repo is public and so is the artifact, so no must-not-ship sentence goes in it."""
+    """Write WRITER_TRACE (when set), one JSON line per call: drafts, revisions and what was
+    kept. The repo is public and so is the artifact, so no sentence a must-not-ship rule
+    matched at any step goes in it. A sentence can match later (the rest of a story a
+    revision added), so every call rewrites the whole file without all of them."""
     if not TRACE_PATH:
         return
-    row = {"at": datetime.datetime.now(ET).isoformat(timespec="seconds"), "kind": kind,
-           **{k: _public(k, v) for k, v in data.items()}}
+    rows = _TRACE.setdefault(TRACE_PATH, [])
+    rows.append({"at": datetime.datetime.now(ET).isoformat(timespec="seconds"), "kind": kind,
+                 **json.loads(json.dumps(data, ensure_ascii=False, default=str))})
+    for k, v in rows[-1].items():  # its scan adds the sentences it cuts to _CUT
+        _public(k, v)
     try:
-        with open(TRACE_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        with open(TRACE_PATH, "w", encoding="utf-8") as f:
+            f.writelines(json.dumps({k: _public(k, v) for k, v in row.items()}, ensure_ascii=False) + "\n"
+                         for row in rows)
     except OSError as e:
         print(f"trace: could not write {TRACE_PATH} ({e})", flush=True)
 
 
 def _public(key, value):
-    """A trace value without its must-not-ship text: cut from drafts and raw output, a word
-    count in place of the quote in a problem, a short hash in place of a cut sentence."""
+    """A trace value without must-not-ship text: cut from drafts and raw output, a word count
+    in place of the quote in a problem, a short hash in place of a cut sentence."""
     if key in ("post", "revision") and isinstance(value, dict):
-        return drop_high_risk(value)[0]
+        return _public_post(value)
     if key == "raw" and isinstance(value, str):
         people, erp = _context(_plain(value))
-        return _scan(value, people, strip=lambda r: r["high"], erp=erp)[0]
+        out = _scan(value, people, strip=lambda r: r["high"] or r["text"] in _CUT, erp=erp)[0]
+        for s in _CUT:
+            out = out.replace(s, "").replace(json.dumps(s, ensure_ascii=False)[1:-1], "")
+        return out
     if key == "problems" and isinstance(value, list):
         return [_public_problem(p) for p in value]
     if key == "cut":
@@ -1664,11 +1679,28 @@ def _public(key, value):
     return value
 
 
+def _public_post(post):
+    """A post without any sentence, art label or alt text in _CUT."""
+    out = drop_high_risk(post)[0]
+    people, erp = _claim_context(out)
+    for k in ("title", "desc", "svg_caption", "body_html"):
+        if isinstance(out.get(k), str):
+            out[k] = _scan(out[k], people, strip=lambda r: r["text"] in _CUT, erp=erp)[0]
+    if isinstance(out.get("svg_inner"), str):
+        for element, para in _labels(out["svg_inner"]):
+            if any(r["text"] in _CUT for r in _scan(para, people, erp=erp)[1]):
+                out["svg_inner"] = out["svg_inner"].replace(element, "", 1)
+    if isinstance(out.get("svg_alt"), str) and any(r["text"] in _CUT for r in _scan(out["svg_alt"], people, erp=erp)[1]):
+        out["svg_alt"] = "[kept out of the trace]"
+    return out
+
+
 def _public_problem(p):
-    if "must not ship" not in p:
-        return p
     head, _, quote = p.partition(': "')  # labels and fixes hold no ': "', so this is the quote
-    return f"{head}: [{_words(quote.rpartition(chr(34))[0] or quote)} words, kept out of the trace]"
+    q = (quote.rpartition(chr(34))[0] or quote).rstrip("…")
+    if "must not ship" not in p and not (q and any(q == s or s[:60] in q or (len(q) >= 20 and q in s) for s in _CUT)):
+        return p
+    return f"{head}: [{_words(q)} words, kept out of the trace]"
 
 
 def _body_words(p):
@@ -1768,7 +1800,8 @@ def _first_sentence(post, mode):
         out["svg_caption"], out["svg_inner"] = first, out["svg_inner"].replace(cap, first)
     if out == post or validate(out, mode):
         return post
-    print(f'humanizer: kept the first sentence: "{out["title"]}" / "{out["svg_caption"]}"', flush=True)
+    kept = [f"{k} ({_words(out[k])} words)" for k in ("title", "svg_caption") if out[k] != post[k]]
+    print(f"humanizer: kept the first sentence of the {' and the '.join(kept)}", flush=True)  # the log is public
     return out
 
 
@@ -1894,6 +1927,8 @@ STUB = {
 
 # ---------------------------------------------------------------- main
 def main():
+    _CUT.clear()
+    _TRACE.clear()
     args = sys.argv[1:]
     stub = "--stub" in args
     mode = pick_mode(next((a for a in args if not a.startswith("--")), "auto"))

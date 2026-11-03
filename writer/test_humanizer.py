@@ -740,6 +740,44 @@ class HumanizePassTests(unittest.TestCase):
         self.assertTrue(any(p.endswith("[8 words, kept out of the trace]") for p in rows[0]["problems"]), rows[0]["problems"])
         self.assertEqual([(c["field"], c["words"]) for c in rows[-1]["cut"]], [("body_html", 8)])
 
+    def run_main(self, replies):
+        """main() on stubbed replies: (stdout, trace text, trace rows, exit message or None)."""
+        out_buf, stop = io.StringIO(), None
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "trace.jsonl")
+            with patch.object(writer, "TRACE_PATH", path), patch.object(writer, "call_claude", side_effect=replies), \
+                    patch.object(writer, "already_published", return_value=False), patch.object(writer, "append_post"), \
+                    patch.object(writer, "try_build", return_value=(True, "")), patch.object(writer.sys, "argv", ["writer.py", "post"]), \
+                    patch.dict(os.environ, {"GITHUB_OUTPUT": ""}), contextlib.redirect_stdout(out_buf):
+                try:
+                    writer.main()
+                except SystemExit as e:
+                    stop = str(e)
+            with open(path, encoding="utf-8") as f:
+                logged = f.read()
+        return out_buf.getvalue(), logged, [json.loads(line) for line in logged.splitlines()], stop
+
+    def test_no_step_logs_or_traces_a_must_not_ship_sentence(self):
+        # the last resort keeps a first sentence that is must-not-ship; the cut empties the title and the run exits
+        title = dict(writer.STUB, title="Atelier logs every prompt to a D1 table. The ledger said so.")
+        printed, logged, rows, stop = self.run_main([self.js(title)] * 4)
+        self.assertIn("humanizer: kept the first sentence of the title (8 words)", printed)
+        self.assertTrue(stop and stop.startswith("claims: cutting must-not-ship sentences broke the post"), stop)
+        for text in (printed, logged, stop):
+            self.assertNotIn("every prompt to a D1", text)
+        # a revision makes the draft's next line the rest of a story: refused, and the line leaves every row
+        tail = "<p>It was quiet that week. You can check it.</p>"
+        draft = dict(writer.STUB, body_html=writer.STUB["body_html"] + "<p>This is crucial.</p>" + tail)
+        rev = dict(writer.STUB, body_html=writer.STUB["body_html"] + tail.replace(
+            "<p>", "<p>I checked the firewall logs on the ERP. "))
+        printed, logged, rows, stop = self.run_main([self.js(draft)] + [self.js(rev)] * 3)
+        self.assertIsNone(stop)
+        self.assertEqual([r["kind"] for r in rows], ["draft", "revision", "revision", "revision", "final"])
+        self.assertIn("You can check it.", rows[0]["post"]["body_html"])
+        for text in (printed, logged):
+            self.assertNotIn("quiet that week", text)
+            self.assertNotIn("firewall logs", text)
+
     def test_revision_keeps_related_and_strips_cite(self):
         fixed = dict(writer.STUB, related=["something-else"],
                      body_html=writer.STUB["body_html"].replace("<p>End.</p>", "<p><cite index='1'>End.</cite></p>"))
