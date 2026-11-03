@@ -206,13 +206,22 @@ class ClaimTests(unittest.TestCase):
     # sentences that shipped and are false (SYSTEM FACTS) or state a crime as fact
     MUST_NOT_SHIP = {
         "v1.70.0": ["The construction ERP runs on PHP.", "Atelier runs on Python.",
-                    "I patched all three to the fixed builds on October 21.", "The others sat exposed for 72 days."],
+                    "I patched all three to the fixed builds on October 21.", "The others sat exposed for 72 days.",
+                    # left behind by the first cut: a generic subject, "sat on", a paragraph's later lines
+                    "The review forms and the email collector run on some version of PHP in production.",
+                    "Every one of those systems sat on two memory-corruption bugs for 72 days.",
+                    "I checked the firewall logs and the access logs.", "My systems did not appear in their scan.",
+                    "The ERP runs PHP 8.3.34."],
         "v1.71.0": ["The estimating SaaS runs on a VPS in a data center in New Jersey."],
         "v1.72.0": ["Atelier routes user prompts to seven providers and logs the full exchange.",
                     "The D1 table stores what the user asked and what the model returned."],
         "v1.74.0": ["Atelier logs each prompt to a D1 table with the timestamp and model name."],
         "v1.65.0": ["API keys for Twilio and Stripe lived in both the old .env file and the new secret manager.",
-                    "Anyone with access to that branch could read the keys."],
+                    "Anyone with access to that branch could read the keys.",
+                    "I ran a migration for the dog-training platform last year.",
+                    "User credentials moved from a Rails session store to encrypted JWTs.",
+                    "The old file sat in the repo.", "I deleted the .env file the same day.",
+                    "The keys existed in two places for six hours."],
         "v1.61.0": ["Abdulrahman Alfozan planted a recording device in an executive conference room."],
     }
 
@@ -230,8 +239,45 @@ class ClaimTests(unittest.TestCase):
             for s in sentences:
                 self.assertNotIn(s[:60], plain, (version, s))
             self.assertFalse(any("must not ship" in p for p in writer.claim_problems(out)), version)
-            self.assertGreater(writer._body_words(out), 0.8 * writer._body_words(draft), version)
             self.assertEqual(out["body_html"].count("<blockquote>"), 1, version)
+            self.assertEqual(writer._sources(out), writer._sources(draft), version)  # linked lines stay
+            if version == "v1.70.0":  # a third of it was made up: too short to ship, so the run exits and retries
+                self.assertTrue(any(e.startswith("body too short") for e in writer.validate(
+                    dict(writer.STUB, body_html=out["body_html"]), "post")))
+            else:
+                self.assertGreater(writer._body_words(out), 0.8 * writer._body_words(draft), version)
+
+    def test_a_would_clause_excuses_only_itself(self):
+        for s in ("Atelier logs every prompt to D1, so I would check the retention.",
+                  "Abdulrahman Alfozan planted a recording device, and I would check my own rooms.",
+                  "The construction ERP runs on PHP 8.3, so I would patch it.",
+                  "Atelier logs each prompt to a D1 table, not the answer.",
+                  "Atelier stores every prompt and never deletes them.",
+                  "Atelier logs every prompt to a D1 table and offers opt-in sync.",
+                  "I rotated the keys on the ERP last week."):
+            found = writer.claim_problems(post(f"<p>{s}</p>"))
+            self.assertTrue(any("must not ship" in p for p in found), (s, found))
+            out, cut = writer.drop_high_risk(post(f"<p>Fine.</p><p>{s}</p>"))
+            self.assertEqual((out["body_html"], len(cut)), ("<p>Fine.</p>", 1), s)
+
+    def test_the_rest_of_a_story_goes_with_it(self):
+        body = ('<p>The FTC opened a case Monday. I checked the firewall logs on the ERP. The keys sat there. '
+                '<a href="https://example.com/a">The FTC</a> named two vendors. I would check the repo first. '
+                'It was quiet.</p><p>The court meets Friday.</p>')
+        out, cut = writer.drop_high_risk(post(body))
+        self.assertEqual(out["body_html"], '<p>The FTC opened a case Monday. <a href="https://example.com/a">The FTC</a> '
+                                           'named two vendors. I would check the repo first.</p><p>The court meets Friday.</p>')
+        self.assertEqual([c[2] for c in cut], [writer.STORY_LABEL, writer.TALE_LABEL, writer.TALE_LABEL])
+
+    def test_a_bare_erp_is_cut_only_when_it_is_coles(self):
+        for s in ("The ERP flaw left 10,000 SAP systems exposed.", "The ERP vendor patched CVE-2026-1234 on Tuesday."):
+            self.assertFalse(any("must not ship" in p for p in writer.claim_problems(post(f"<p>{s}</p>"))), s)
+            ours = post(f"<p>The construction ERP has a review gate.</p><p>{s}</p>")
+            self.assertFalse(any("must not ship" in p for p in writer.claim_problems(ours)), s)
+        alone = writer.claim_problems(post("<p>The ERP runs PHP 8.3.34.</p>"))
+        self.assertTrue(alone and not any("must not ship" in p for p in alone), alone)
+        ours = writer.claim_problems(post("<p>The construction ERP has a review gate.</p><p>The ERP runs PHP 8.3.34.</p>"))
+        self.assertTrue(any("must not ship" in p for p in ours), ours)
 
     def test_cut_tidies_the_tags_it_empties(self):
         body = ('<p>I read <a href="https://example.com/a">the filing</a> today. '
@@ -253,7 +299,7 @@ class ClaimTests(unittest.TestCase):
                  "Atelier expires each session after an hour.": "an Atelier detail",
                  "Valhalla K9 uses a small model to write SMS reminders.": "says it does not do",
                  "JetDesk shows NOTAMs on the route.": "says it does not do",
-                 "I rotated the keys on the ERP last week.": "a first-person story",
+                 "I reviewed the CurbScript listing copy on Tuesday.": "a first-person story",
                  "The construction ERP stores every timesheet in a database.": "outside SYSTEM FACTS",
                  "Atelier, JetDesk, PermitSketch and CurbScript all shipped.": "names 4 of Cole's systems"}
         for text, label in cases.items():
@@ -266,7 +312,10 @@ class ClaimTests(unittest.TestCase):
                   "Keep Fix Cut does not save uploads or reports.", "PermitSketch is a Base44 app.",
                   "The dating-profile tool runs on one Cloudflare Worker with no PHP anywhere in the stack.",
                   "I would check which keys that branch could read.",
-                  "If it leaked, anyone with access to the repo could read the key."):
+                  "If it leaked, anyone with access to the repo could read the key.",
+                  "Atelier logs no prompts or answers.", "The ledger doesn't hold prompts or answers.",
+                  "Atelier's ledger records what each request cost and when; it never holds prompts or answers.",
+                  "I wrote on October 9 about the filing."):
             self.assertEqual(writer.claim_problems(post(f"<p>{s}</p>")), [], s)
 
 

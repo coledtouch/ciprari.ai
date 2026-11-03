@@ -113,7 +113,7 @@ def _no_system_lines(fragment):
     """Old copy shown to the model (catalog and last-week descs), minus every sentence about
     Cole's systems or in his first person, so a slip in one post can't teach the next one a
     fact SYSTEM_FACTS lacks."""
-    return _scan(fragment, strip=lambda r: r["named"] or r["soft"] or r["high"] or
+    return _scan(fragment, strip=lambda r: r["named"] or r["loose"] or r["soft"] or r["high"] or
                  GENERIC.search(r["text"]) or ME.search(r["text"]) or FIRST.search(r["text"]))[0]
 
 
@@ -779,10 +779,12 @@ def humanizer_problems(post):
 # (or follows one with "It"/"The table"/...) and states a stack, host, storage, logging,
 # headcount, permission or past action goes back for revision. A few claims must never ship
 # at all: Atelier keeping prompts or answers, a stack/version/exposure/patch claim, a
-# first-person leaked-credentials story, a crime stated as fact. drop_high_risk() cuts any
-# that are still there after the revisions.
+# first-person leaked-credentials story or story about his logs, keys or infrastructure (and
+# the rest of its paragraph), a crime stated as fact. drop_high_risk() cuts any that are
+# still there after the revisions. Checks run clause by clause, so a trailing "so I would
+# check..." never excuses the clause before it.
 SYSTEMS = [(name, re.compile(rx, re.I)) for name, rx in (
-    ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\b(?:the|my|our|his) (?:construction )?ERP\b"),
+    ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\bthe construction ERP\b|\b(?:my|our|his) (?:construction )?ERP\b"),
     ("estimate.pro", r"\bestimate\.pro\b|\bthe estimating (?:SaaS|tool|suite|platform|app)\b"),
     ("CurbScript", r"\bcurbscript\b"),
     ("The Punchlist", r"(?-i:\bPunchlist\b)|\bthepunchlist\b"),
@@ -799,6 +801,11 @@ SYSTEMS = [(name, re.compile(rx, re.I)) for name, rx in (
                     r"\bthe (?:honey|cosmetics) (?:shop|store|storefront|site)\b"),
 )]
 NO_AI = {"Valhalla K9", "Hire Mariaelena", "Show It With Words"}
+# A bare "the ERP" is Cole's only when the post names his ERP and no vendor's. Otherwise it
+# counts for the soft labels alone: a news line about SAP's ERP is never cut.
+BARE_ERP = re.compile(r"\bthe ERP\b(?! (?:vendors?|makers?|market|industry|sector)\b)", re.I)
+ERP_VENDOR = re.compile(r"\b(?:SAP|Oracle|NetSuite|Workday|Dynamics|Infor|Epicor|Sage|Odoo|Acumatica|Dolibarr|"
+                        r"Deltek|Syspro|Unit4|IFS|JD Edwards|PeopleSoft|Procore|Viewpoint)\b")
 # "It" or "The table" right after a sentence about a system is still about that system.
 CARRY = re.compile(r"^(?:It|Its|They|Their|This|That|These|Those|Both|All three|The others|The (?:D1 )?(?:table|"
                    r"log|logs|ledger|database|router|worker|app|studio|tool|platform|session|token|cookie|codebase|"
@@ -822,8 +829,20 @@ CONTENT = re.compile(r"\b(?:prompts?|answers?|responses?|conversations?|exchange
                      r"what the model (?:returned|said|answered|wrote))\b", re.I)
 LOCAL = re.compile(r"\b(?:browser|IndexedDB|on (?:the|your|my) (?:device|phone|laptop)|locally|local-first|"
                    r"opt-in|sync)\b", re.I)
+SERVER = re.compile(r"(?-i:\bD1\b)|\b(?:tables?|databases?|servers?)\b", re.I)
+# The negation has to govern the keeping: "does not log", "never stores", "logs no prompts".
+# "logs each prompt, not the answer" and "stores every prompt and never deletes it" keep them.
+KEEPS_NONE = re.compile(r"(?:\b(?:not|never|no)\b|n't\b)[^,.;]{0,20}?\b(?:log|stor|keep|kept|sav|record|hold|held|"
+                        r"retain|writ)\w*|\b(?:log|stor|keep|kept|sav|record|hold|held|retain|writ)\w*\s+"
+                        r"(?:no|none|nothing|neither)\b", re.I)
+# A sentence's clauses. Each is checked on its own, so "X, so I would check Y" still answers for X.
+CLAUSE = re.compile(r",\s*(?:so|and|but|then|because)\b|;|:(?!\d)", re.I)
+RUNS_ON = re.compile(r"\b(?:runs?|running|ran) on\b|\b(?:sits?|sat) (?:on|behind|exposed)\b|\b(?:hosted|deployed) on\b",
+                     re.I)
+_BUG = r"(?:bugs?|flaws?|CVEs?|vulnerabilit(?:y|ies)|exploits?|holes?)"
 TECH = re.compile(r"(?-i:\bPHP\b|\bPython\b|\bVPS\b)|\bv?\d+\.\d+\.\d+\b|\bversion \d+(?:\.\d+)*\b|\bexposed\b|"
-                  r"\b(?:un)?patched\b|\bvulnerable\b", re.I)
+                  rf"\b(?:un)?patched\b|\bvulnerable\b|\bsat (?:on|exposed)\b|\b{_BUG}\b[^.?!]{{0,40}}\bfor \d+ days\b|"
+                  rf"\bfor \d+ days\b[^.?!]{{0,40}}\b{_BUG}\b", re.I)
 MY_SYSTEMS = re.compile(r"\bmy (?:own )?(?:systems?|platforms?|apps?|sites?|stack|servers?|code(?:base)?)\b|"
                         r"(?-i:\bI) (?:patched|upgraded|updated|run|ran|host|hosted|migrated|deployed|left)\b", re.I)
 KEY = re.compile(r"\b(?:API keys?|keys?|credentials?|secrets?|passwords?|(?:API|access|bearer|auth) tokens?)\b", re.I)
@@ -851,8 +870,8 @@ Act Street Journal Times Post News Wall Silicon Valley White Washington York Bay
 FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a single) Cloudflare Worker\b|"
                      r"\bCloudflare Pages(?: Functions)?\b|\b(?:runs? on |on |built on |is a )?(?:Base44|Vercel)\b|"
                      r"\brole-based (?:team )?permissions\b|\bhealth monitoring\b|\bhuman review gate\b|"
-                     r"\b(?:never|not|no)\b[^.?!]{0,30}?\b(?:prompts?|answers?|uploads?|reports?|frames?)\b|"
-                     r"n't\b[^.?!]{0,30}?\b(?:prompts?|answers?|uploads?|reports?|frames?)\b|"
+                     r"(?:\b(?:logs?|stores?|keeps?|saves?|holds?|records?)\s+)?(?:\b(?:never|not|no)\b|n't\b)"
+                     r"[^.?!]{0,30}?\b(?:prompts?|answers?|uploads?|reports?|frames?)\b|"
                      r"\b(?:opt-in|private) (?:thread )?sync\b|\b(?:expires? (?:after|in) )?(?:30|thirty)[- ]days?\b|"
                      r"\bIndexedDB\b|\bin (?:the|your) browser\b|\bon (?:the|your) device\b|"
                      r"\busage (?:ledger|analytics)\b|\bhashed session id\b|\bpage memory\b|"
@@ -865,7 +884,7 @@ CLAIM = re.compile(
     r"staff|users|customers|clients|routes|crews)\b|\blog(?:s|ged|ging)?\b(?! ?(?:in|into|on|out)\b)|"
     r"\bstor(?:e|es|ed|ing|age)\b|\bretain(?:s|ed|ing)?\b|\bretention\b|\bmonitor(?:s|ed|ing)?\b|"
     r"\bpermissions?\b|\bdatabases?\b|\btables?\b|\bcron\b|\bwebhooks?\b|\bsecret manager\b|\.env\b|"
-    r"\bhundreds of times\b", re.I)
+    r"\bhundreds of times\b|\bAPI keys?\b|\bcredentials\b", re.I)
 DOES_NOT = re.compile(r"\bservice routes?\b|\bzoning\b|(?-i:\bS3\b|\bPHP\b|\bPython\b|\bVPS\b)|"
                       r"\btax (?:filings?|returns?|tables?|forms?)\b|\bfiles? taxes\b|\bNOTAMs?\b", re.I)
 AI_WORDS = re.compile(r"(?-i:\bAI\b|\bLLM\b|\bAPI\b|\bGPT)|\b(?:models?|agents?|Claude|inference|prompts?|"
@@ -880,13 +899,18 @@ NOT_ATELIER_PROVIDER = re.compile(r"\b(?:Mistral|Perplexity|Cohere|Azure|AWS|Ama
 STORY = re.compile(r"(?-i:\bI) (?:ran|migrated|patched|checked|logged|found|reviewed|audited|rotated|traced|caught|"
                    r"grepped|discovered|upgraded|pulled|counted|measured|tested|deleted|restored|rebuilt|replaced|"
                    r"noticed|fixed|deployed|disabled|enabled|moved|switched|kept|stored|saw|spent|set up|added|"
-                   r"removed|turned|wrote|pinned|installed)\b", re.I)
+                   r"removed|turned|wrote(?![^.?!]{0,25}\babout\b)|pinned|installed)\b", re.I)
 INFRA = re.compile(r"\b(?:logs?|keys?|firewall|servers?|database|tables?|cron|repo|repository|branch|builds?|"
                    r"credentials|secrets?|migrations?|deploys?|deployments?|endpoints?|webhooks?|stack|codebase|"
                    r"session store|tickets?|patch(?:es)?|backups?|alerts?|dashboards?|dependenc(?:y|ies)|"
                    r"package\.json|tests?|versions?)\b|\.env\b|\blast (?:year|month|week|spring|summer|fall|winter|"
                    r"quarter)\b", re.I)
 CRIME_LABEL = "a crime stated as fact"
+ATELIER_LABEL = "Atelier logs no prompts or answers (SYSTEM FACTS)"
+TECH_LABEL = "a stack, version, exposure or patch claim about Cole's systems"
+LEAK_LABEL = "a first-person leaked-credentials story"
+STORY_LABEL = "a first-person story about Cole's logs, keys or infrastructure"
+TALE_LABEL = "the rest of a first-person story about Cole's systems"
 HIGH_FIX = "cut it, or say what you would check instead"
 CRIME_FIX = 'attribute it ("prosecutors say", "the complaint alleges") or cut it'
 CLAIM_FIX = "say only what SYSTEM FACTS says, or what you would check, or cut it"
@@ -908,34 +932,50 @@ def _people(text):
     return re.compile(rf"\b(?:{alt})\b(?:[\s,]+[\w'’.-]+){{0,6}}?[\s,]+{CRIME}")
 
 
-def _claim(s, named, story, people):
+def _claim(s, named, story, people, loose=frozenset(), context=frozenset()):
     """(soft label, must-not-ship label, story) for one sentence. named: the Cole systems it is
-    about; story: an earlier sentence in this paragraph told a first-person story about them."""
-    if WOULD.search(s) or s.endswith("?"):
+    about; loose: ones it may be about (soft labels only); story: an earlier sentence in this
+    paragraph told a first-person story about them; context: systems the paragraph named before
+    it. Each clause answers for itself: only a clause that says "I would" is let off."""
+    if s.endswith("?"):
         return None, None, story
     high = soft = None
-    rest = FACT_OK.sub(" ", s)
-    if people and people.search(s) and not ATTRIBUTED.search(s):
+    told = False
+    for c in CLAUSE.split(s):
+        if c.strip() and not WOULD.search(c):
+            h, so, t = _clause(c, named, story or told, people, loose, context)
+            high, soft, told = high or h, soft or so, told or t
+    return soft, high, story or told
+
+
+def _clause(c, named, story, people, loose, context):
+    high = soft = None
+    rest = FACT_OK.sub(" ", c)
+    if people and people.search(c) and not ATTRIBUTED.search(c):
         high = CRIME_LABEL
-    elif "Atelier" in named and STORE.search(s) and CONTENT.search(s) and not NEG.search(s) and not LOCAL.search(s):
-        high = "Atelier logs no prompts or answers (SYSTEM FACTS)"
-    elif (named or MY_SYSTEMS.search(s)) and TECH.search(rest):
-        high = "a stack, version, exposure or patch claim about Cole's systems"
-    elif KEY.search(s) and LEAK.search(s) and not HYPO.search(s) and (named or FIRST.search(s) or story):
-        high = "a first-person leaked-credentials story"
-    told = bool(STORY.search(s) and (named or GENERIC.search(s) or INFRA.search(s)))
-    about = named or ME.search(s) or GENERIC.search(s)
-    if "Atelier" in named and NOT_ATELIER_PROVIDER.search(s):
+    elif ("Atelier" in named and STORE.search(c) and CONTENT.search(c) and not KEEPS_NONE.search(c)
+          and not (LOCAL.search(c) and not SERVER.search(c))):
+        high = ATELIER_LABEL
+    elif (named or MY_SYSTEMS.search(c) or GENERIC.search(c) or (context and RUNS_ON.search(c))) and TECH.search(rest):
+        high = TECH_LABEL
+    elif KEY.search(c) and LEAK.search(c) and not HYPO.search(c) and (named or FIRST.search(c) or story):
+        high = LEAK_LABEL
+    told = bool(STORY.search(c) and (named or loose or GENERIC.search(c) or INFRA.search(c)))
+    if told and not high and any(INFRA.search(c, m.end(), m.end() + 60) or KEY.search(c, m.end(), m.end() + 60)
+                                 for m in STORY.finditer(c)):
+        high = STORY_LABEL  # the prompt bans these outright: "I checked the logs", "I rotated the keys"
+    about = named or loose or ME.search(c) or GENERIC.search(c)
+    if "Atelier" in named and NOT_ATELIER_PROVIDER.search(c):
         soft = "a provider Atelier does not use (its nine are in SYSTEM FACTS)"
     elif "Atelier" in named and ATELIER_DETAIL.search(rest):
         soft = "an Atelier detail outside SYSTEM FACTS"
-    elif about and (DOES_NOT.search(rest) or (named & NO_AI and AI_WORDS.search(s))):
+    elif about and (DOES_NOT.search(rest) or (named & NO_AI and AI_WORDS.search(c))):
         soft = "something SYSTEM FACTS says it does not do"
     elif told:
         soft = "a first-person story about Cole's systems"
     elif about and CLAIM.search(rest):
         soft = "a claim about Cole's systems outside SYSTEM FACTS"
-    return soft, high, story or told
+    return high, soft, told
 
 
 _BLOCK_TAG = re.compile(r"(?is)(</?(?:p|h[1-6]|li|ul|ol|blockquote|div)\b[^>]*>|<br\s*/?>)")
@@ -973,26 +1013,46 @@ def _tidy(h):
     return re.sub(r"(?i)(<(?:p|h[1-6]|li|blockquote)\b[^>]*>)[ \t]+", r"\1", h)
 
 
-def _scan(fragment, people=None, strip=None):
+def _context(text):
+    """Post-wide context for _scan(): the named-person pattern, and whether a bare "the ERP"
+    is Cole's (the post names his ERP and no vendor's)."""
+    return _people(text), bool(SYSTEMS[0][1].search(text or "")) and not ERP_VENDOR.search(text or "")
+
+
+def _scan(fragment, people=None, strip=None, erp=False):
     """Read an HTML fragment sentence by sentence. Returns (fragment, rows), one row per
-    sentence: text, named (Cole systems), soft and high (claim labels or None). A sentence for
-    which strip(row) is true is cut from the fragment; its tags stay, emptied, then tidied."""
+    sentence: text, named and loose (Cole systems), soft and high (claim labels or None). A
+    sentence for which strip(row) is true is cut from the fragment; its tags stay, emptied, then
+    tidied. Once a paragraph tells a first-person story about his logs, keys or stack, a later
+    sentence there that reads like more of it (first person, "It", a system, logs, keys) is
+    must-not-ship too, unless it says what he would check or carries a source link."""
     out, rows, cut = [], [], False
     for i, piece in enumerate(_BLOCK_TAG.split(fragment or "")):
         if i % 2:
             out.append(piece)
             continue
-        prev, story = set(), False
+        prev, story, context, tale = set(), False, set(), False
         for sent in _split(piece):
             text = " ".join("".join(p for _, p in sent).split())
             if not text:
                 out.append("".join(t for t, _ in sent))
                 continue
-            named = _systems(text) or (set(prev) if CARRY.match(text) else set())
-            soft, high, story = _claim(text, named, story, people)
-            row = {"text": text, "named": named, "soft": soft, "high": high}
+            named, loose = _systems(text) or (set(prev) if CARRY.match(text) else set()), set()
+            if "Coen ERP" not in named and BARE_ERP.search(text) and not ERP_VENDOR.search(text):
+                if erp or "Coen ERP" in context:
+                    named = named | {"Coen ERP"}
+                else:
+                    loose = {"Coen ERP"}
+            soft, high, story = _claim(text, named, story, people, loose, context)
+            linked = any(re.match(r"(?i)<a\s", t) for t, _ in sent)
+            if tale and not high and not linked and not WOULD.search(text) and (
+                    named or loose or CARRY.match(text) or FIRST.search(text) or GENERIC.search(text)
+                    or INFRA.search(text) or KEY.search(text) or LEAK.search(text) or CLAIM.search(text)):
+                high = TALE_LABEL
+            tale = tale or high in (STORY_LABEL, LEAK_LABEL) or bool(high == TECH_LABEL and STORY.search(text))
+            row = {"text": text, "named": named, "loose": loose, "soft": soft, "high": high}
             rows.append(row)
-            prev = named
+            prev, context = named, context | named
             if strip and strip(row):
                 cut = True
                 out.append("".join(t for t, p in sent if t[0] == "<" and not p))
@@ -1004,10 +1064,10 @@ def _scan(fragment, people=None, strip=None):
 def claim_problems(post):
     """Claims about Cole's systems (and named people) for the revision to fix."""
     fields = [(k, post.get(k) or "") for k in ("title", "desc", "svg_caption", "body_html")]
-    people = _people(" ".join(_plain(v) for _, v in fields))
+    people, erp = _context(" ".join(_plain(v) for _, v in fields))
     probs = []
     for name, raw in fields:
-        for r in _scan(raw, people)[1]:
+        for r in _scan(raw, people, erp=erp)[1]:
             if r["high"]:
                 fix = CRIME_FIX if r["high"] == CRIME_LABEL else HIGH_FIX
                 probs.append(f'{name}: must not ship, {r["high"]}; {fix}: "{_clip(r["text"])}"')
@@ -1024,11 +1084,11 @@ def drop_high_risk(post):
     """Cut every must-not-ship sentence still in the title, desc, caption or body. Runs after the
     revisions; returns (post, [(field, sentence, label)])."""
     fields = ("title", "desc", "svg_caption", "body_html")
-    people = _people(" ".join(_plain(post.get(k)) for k in fields))
+    people, erp = _context(" ".join(_plain(post.get(k)) for k in fields if isinstance(post.get(k), str)))
     out, cut = dict(post), []
     for k in fields:
         if isinstance(out.get(k), str):
-            out[k], rows = _scan(out[k], people, strip=lambda r: r["high"])
+            out[k], rows = _scan(out[k], people, strip=lambda r: r["high"], erp=erp)
             cut += [(k, r["text"], r["high"]) for r in rows if r["high"]]
     return out, cut
 
