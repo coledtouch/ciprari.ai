@@ -428,6 +428,18 @@ class ClaimTests(unittest.TestCase):
         "Atelier is fully local.": "Atelier: keeps data only on the device",
         "Everything in Atelier lives in your browser.": "Atelier: keeps data only on the device",
         "Atelier stores everything on your device.": "Atelier: keeps data only on the device",
+        # who may use what, how they sign in, where it runs: xAI and Runway are owner-only, testers
+        # sign in with LinkedIn, Atelier and Keep Fix Cut run on Workers (JetDesk is the Pages app)
+        "Testers can use Grok in Atelier.": "Atelier: xai for testers",
+        "Testers can make Runway videos in Atelier.": "Atelier: runway for testers",
+        "Atelier gives testers access to xAI and Runway.": "Atelier: runway for testers",
+        "Atelier signs testers in with Google.": "Atelier: sign-in with google",
+        "Testers sign in to Atelier with Google.": "Atelier: sign-in with google",
+        "Atelier uses Google sign-in for testers.": "Atelier: sign-in with google",
+        "Atelier runs on Cloudflare Pages.": "Atelier: pages",
+        "Keep Fix Cut runs on Cloudflare Pages.": "Keep Fix Cut: pages",
+        "Atelier and Keep Fix Cut run on Cloudflare Pages.": "Keep Fix Cut: pages",
+        "JetDesk logs every weather query.": "JetDesk: keeps query",
     }
 
     def test_unsupported_system_lines_are_must_not_ship(self):
@@ -447,7 +459,8 @@ class ClaimTests(unittest.TestCase):
              ("The K9 site uses AI to answer leads.", "Valhalla K9", "Valhalla K9: ai"),
              ("Last week the permit app moved to AWS.", "PermitSketch", "PermitSketch: aws"),
              ("The flight-planning PWA syncs trips to a server.", "JetDesk", "JetDesk: keeps trip"),
-             ("The permit platform runs on Azure.", "PermitSketch", "PermitSketch: azure"))
+             ("The permit platform runs on Azure.", "PermitSketch", "PermitSketch: azure"),
+             ("The flight planner logs every weather query.", "JetDesk", "JetDesk: keeps query"))
 
     def test_a_plain_name_is_his(self):
         for s, brand, why in self.PLAIN:
@@ -511,7 +524,13 @@ class ClaimTests(unittest.TestCase):
                   "Up to 25 LinkedIn testers sign in to Atelier with a 30-day cookie.",
                   "Keep Fix Cut collects nothing you upload.", "Keep Fix Cut doesn't collect your photos.",
                   "Atelier removes a tester after 90 days of inactivity.", "I spent 90 days building Keep Fix Cut.",
-                  "Keep Fix Cut took a week to build.", "JetDesk doesn't track you.", "JetDesk works fully offline."):
+                  "Keep Fix Cut took a week to build.", "JetDesk doesn't track you.", "JetDesk works fully offline.",
+                  # the owner's models, the ways in, and a host outage that is news
+                  "The owner can use Grok and Runway in Atelier.", "Grok and Runway are owner-only in Atelier.",
+                  "Testers can't use Grok in Atelier.", "Testers can use Claude, GPT and Gemini in Atelier.",
+                  "The owner signs in to Atelier with a passcode.", "Atelier testers sign in with LinkedIn, not Google.",
+                  "Atelier calls Google's Gemini API directly.",
+                  "Cloudflare Pages had an outage on Tuesday, and Atelier stayed up."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
         # lines from Cole's correction (37f0c70) that are true by ColeOS PRODUCTS and Atelier's privacy page

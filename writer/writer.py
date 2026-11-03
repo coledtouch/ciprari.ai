@@ -1105,6 +1105,8 @@ TERMS = [(key, re.compile(rx, re.I)) for key, rx in (
     ("rails", r"(?-i:\bRails\b)"), ("next.js", r"\bNext\.?js\b"), ("react", r"(?-i:\bReact\b)"),
     ("typescript", r"\bTypeScript\b"), ("site builder", r"\b(?:WordPress|Shopify|Wix|Squarespace|Webflow)\b"),
     ("vercel", r"\bVercel\b"), ("cloudflare", r"\bCloudflare\b"),
+    # JetDesk runs on Cloudflare Pages; Atelier and Keep Fix Cut each run on a Worker
+    ("pages", r"\bCloudflare Pages\b|(?<=\bon )(?-i:Pages\b)|(?-i:\bPages Functions?\b)"),
     # "runs on a Worker", not "Workers at the site found asbestos"
     ("worker", r"(?-i:\bCloudflare Workers?\b)|(?<=[^\s.?!] )(?:a|an|another|one|the|its|their|each|a separate)\s+"
                r"(?-i:Workers?\b)|(?<=\bon )(?-i:Workers\b)"),
@@ -1113,7 +1115,7 @@ TERMS = [(key, re.compile(rx, re.I)) for key, rx in (
     ("d1", r"(?-i:\bD1\b)"), ("s3", r"(?-i:\bS3\b)"), ("vps", r"(?-i:\bVPS(?:es)?\b)|\bvirtual private servers?\b"),
     ("aws", r"(?-i:\bAWS\b|\bEC2\b)|\bAmazon Web Services\b"), ("azure", r"\bAzure\b"),
     ("gcp", r"(?-i:\bGCP\b)|\bGoogle Cloud\b"),
-    ("other host", r"(?-i:\b(?:Heroku|Netlify|Fly\.io|DigitalOcean|Linode|Hetzner|GoDaddy|Bluehost)\b)"),
+    ("other host", r"(?-i:\b(?:Heroku|Netlify|Fly\.io|DigitalOcean|Linode|Hetzner|GoDaddy|Bluehost|GitHub Pages)\b)"),
     ("database", r"\b(?:databases?|Postgres(?:QL)?|MySQL|SQLite|MongoDB|Redis|DynamoDB|Supabase|Firebase|schemas?|"
                  r"(?<!on the )(?<!at the )(?<!off the )tables?)\b"),
     ("indexeddb", r"\bIndexedDB\b"), ("localstorage", r"\blocalStorage\b|\blocal storage\b"),
@@ -1147,7 +1149,7 @@ PROVIDERS = [(key, re.compile(rx)) for key, rx in (
                          r"\bElevenLabs\b|\bAI21\b|\bOpenRouter\b|\bInflection\b|\bStability AI\b"),
 )]
 # vendors read as news when they lead a clause: "When Cloudflare went down, ..."
-VENDORS = {"cloudflare", "vercel", "aws", "azure", "gcp", "other host", "base44", "stripe", "twilio", "adp",
+VENDORS = {"cloudflare", "pages", "vercel", "aws", "azure", "gcp", "other host", "base44", "stripe", "twilio", "adp",
            "linkedin", "site builder"}
 GLOBAL_NEG = {"php", "python", "vps", "s3"}  # "No Cole system uses PHP, Python, a VPS or S3."
 GLOBAL_POS = {"platform 15", "system 15"}  # "15 production platforms"
@@ -1190,6 +1192,7 @@ DATA = [(key, re.compile(rx, re.I)) for key, rx in (
     ("request", r"\brequests?\b"), ("analytics", r"\banalytics\b|\busage\b"), ("scan", r"\bscans?\b"),
     ("ip", r"(?-i:\bIPs?\b)|\bIP address(?:es)?\b"), ("location", r"\blocations?\b|\baddress(?:es)?\b"),
     ("trip", r"\btrips?\b"), ("price", r"\bprices?\b"),
+    ("query", r"\bquer(?:y|ies)\b|\bsearch(?:es| history| terms?)\b|\blook-?ups\b"),  # "logs every weather query"
     ("drawing", r"\bdrawings?\b|\bplans?\b"), ("estimate", r"\bestimates?\b|\bbids?\b"),
     ("timesheet", r"\btimesheets?\b|\binvoices?\b|\breceipts?\b|\bpay stubs?\b"),
     ("listing", r"\blistings?\b|\bdescriptions?\b|\bvideos?\b|\bscripts?\b"),
@@ -1228,6 +1231,19 @@ EXPIRES = re.compile(r"\b(?:delet(?:e|es|ed|ing)|purg(?:e|es|ed|ing)|eras(?:e|es
                      r"expir(?:e|es|ed|ing|y)|clear(?:s|ed|ing)?|remov(?:e|es|ed|ing)|drop(?:s|ped|ping)?|"
                      r"last(?:s|ed|ing)?|li(?:ve|ves|ved|ving)|stay(?:s|ed|ing)?)\b|\bages? out\b|\brolls? off\b", re.I)
 COOKIE = re.compile(r"\bcookies?\b|\bHttpOnly\b|\bsign(?:ed|s)?[- ]in\b|\blogged[- ]in\b", re.I)
+# who may do what: "xAI and Runway are owner-only", "LinkedIn testers sign in with LinkedIn"
+TESTERS = re.compile(r"\btesters?\b|\banyone\b|\beveryone\b|\b(?:every|all|any) (?:users?|members?|visitors?)\b|"
+                     r"\bthe public\b", re.I)
+OWNER = re.compile(r"(?-i:\bI\b)|\b(?:owner|owner-only|me|Cole)\b", re.I)
+SIGN_IN = re.compile(r"\bsign(?:s|ed|ing)?(?:[- ](?:\w+\s+){0,2}?)?(?:in|on|up)\b|\blog(?:s|ged|ging)?[- ]?in\b|"
+                     r"\blogins?\b|\bauthenticat\w*", re.I)
+IDPS = [(key, re.compile(rx, re.I)) for key, rx in (
+    ("linkedin", r"\bLinkedIn\b"), ("passcode", r"\bpasscodes?\b"), ("google", r"\bGoogle\b"), ("github", r"\bGitHub\b"),
+    ("apple", r"\bApple\b"), ("microsoft", r"\bMicrosoft\b|\bEntra\b|\bAzure AD\b"), ("facebook", r"\bFacebook\b|\bMeta\b"),
+    ("x", r"\bTwitter\b|(?-i:\bX\b)"), ("okta", r"\bOkta\b"), ("auth0", r"\bAuth0\b"), ("clerk", r"(?-i:\bClerk\b)"),
+    ("magic link", r"\bmagic links?\b|\bone-time (?:codes?|links?)\b|\bemail(?:ed)? (?:links?|codes?)\b"),
+    ("password", r"\bpasswords?\b"), ("passkey", r"\bpasskeys?\b"), ("sso", r"(?-i:\bSSO\b|\bSAML\b)"),
+)]
 # data the sheet keeps on the device only ("Trips are saved in local storage") leaves it here
 OFF_DEVICE = re.compile(r"\bsync(?:s|ed|ing)?\b|\bcloud\b|\bupload(?:s|ed|ing)?\b|\b(?:servers?|buckets?|databases?|"
                         r"tables?)\b|(?-i:\bR2\b|\bD1\b|\bKV\b|\bS3\b)", re.I)
@@ -1450,10 +1466,33 @@ def _periods(m):
     return out
 
 
+def _ways_in(m):
+    """(way, position, denied) for each way of signing in masked clause m names (IDPS): "signs
+    testers in with Google", "Google sign-in", "log in via a passkey". Denied when a negation
+    comes before it in the clause: "sign in with LinkedIn, not Google"."""
+    out = []
+    for s in SIGN_IN.finditer(m):
+        after = {s.end() + w.end() for w in re.finditer(r"\b(?:with|via|through|using|by)\s+(?:(?:a|an|the|their|"
+                                                          r"your|his|its)\s+)?", m[s.end():s.end() + 40])}
+        for key, rx in IDPS:
+            for x in rx.finditer(m):
+                if x.start() in after or (x.end() <= s.start() and re.fullmatch(r"(?:['’]s)?(?:\s+[\w-]+)?\s*",
+                                                                                 m[x.end():s.start()])):
+                    out.append((key, x.start(), bool(re.search(r"\b(?:not|never|no|cannot)\b|n't\b", m[:x.start()],
+                                                               re.I))))
+    return out
+
+
+def _roles(m):
+    """Who masked clause m speaks of: testers, the owner, or (naming neither) both."""
+    return {r for r, rx in (("tester", TESTERS), ("owner", OWNER)) if rx.search(m)} or {"tester", "owner"}
+
+
 def _support():
     """What SYSTEM_FACTS states (pos) and denies (neg) for each system, the data its storage
     lines say it keeps (posdata), keeps on the device only (localdata) or does not (negdata),
-    and how long it keeps each kind (periods: kind -> days)."""
+    how long it keeps each kind (periods: kind -> days), the providers it keeps for the owner
+    (owner_only) and who signs in how (signin: (role, way))."""
     facts, denials = SYSTEM_FACTS.split("\nDOES NOT")
     units = []
     for entry in re.split(r"\n- ", facts)[1:]:
@@ -1466,15 +1505,19 @@ def _support():
             prev = _systems(sent) or (prev if CARRY.match(sent) else set())
             units += [(prev, c) for c in CLAUSE.split(sent)]
     sup = {name: {"pos": set(), "neg": set(), "posdata": set(), "localdata": set(), "negdata": set(),
-                  "periods": {}} for name, _ in SYSTEMS}
+                  "periods": {}, "owner_only": set(), "signin": set()} for name, _ in SYSTEMS}
     for named, c in units:
+        m = _mask(c)
         for name in named:
-            for key, neg, _, _ in _terms(_mask(c)):
+            for key, neg, _, _ in _terms(m):
                 sup[name]["neg" if neg else "pos"].add(key)
-            for key, neg, _ in _data(_mask(c), sheet=True):
+                if key.startswith("@") and not neg and re.search(r"\bowner-only\b", c):
+                    sup[name]["owner_only"].add(key)
+            for key, neg, _ in _data(m, sheet=True):
                 sup[name]["negdata" if neg else "localdata" if LOCAL_HERE.search(c) else "posdata"].add(key)
-            for key, days, _ in _periods(_mask(c)):
+            for key, days, _ in _periods(m):
                 sup[name]["periods"].setdefault(key, set()).add(days)
+            sup[name]["signin"] |= {(r, way) for way, _, denied in _ways_in(m) if not denied for r in _roles(m)}
     for name in NO_AI:
         sup[name]["neg"] |= {"ai", "api"}  # no AI: no model API to call
     for s in sup.values():
@@ -1518,8 +1561,9 @@ def _unsupported(c, here):
             if sup is None:  # every one of his systems at once
                 ok = (key.startswith("@") or key == "ai" or (neg and key in GLOBAL_NEG)
                       or (not neg and key in GLOBAL_POS) or (key == "store" and not neg and local))
-            elif key.startswith("@"):
-                ok = leads or (key not in sup["pos"] if neg else key in sup["pos"])
+            elif key.startswith("@"):  # "testers can't use Grok", "LinkedIn, not Google" deny no provider it calls
+                ok = leads or (key not in sup["pos"] if neg else key in sup["pos"]) or (neg and bool(
+                    SIGN_IN.search(m) or (key in sup["owner_only"] and TESTERS.search(m))))
             elif key == "ai":
                 ok = neg or name not in NO_AI
             elif leads and key in VENDORS:
@@ -1561,6 +1605,13 @@ def _unsupported(c, here):
                     *(v for k, v in sup["periods"].items() if k != "cookie")))
                 if held and days not in held and name in _owners(m, at, here):
                     why.append(f"{name}: {key} kept {'forever' if days == float('inf') else f'{days:g} days'}")
+            tester = TESTERS.search(m) and not OWNER.search(m)
+            for key, neg, _, pos in found:  # "testers can use Grok": a provider the sheet keeps for the owner
+                if key in sup["owner_only"] and tester and not neg and name in _owners(m, pos, here):
+                    why.append(f"{name}: {key.lstrip('@')} for testers")
+            for way, at, denied in _ways_in(m) if sup["signin"] else ():  # "signs testers in with Google"
+                if not denied and name in _owners(m, at, here) and not any((r, way) in sup["signin"] for r in _roles(m)):
+                    why.append(f"{name}: sign-in with {way}")
     return list(dict.fromkeys(why))
 
 
