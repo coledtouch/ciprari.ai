@@ -40,6 +40,9 @@ No desktop app, no laptop. The machine can be off.
 - Cost: roughly a few cents per post (Claude Sonnet + a handful of web searches).
 - Facts about Cole's systems come only from `SYSTEM_FACTS` in `writer/writer.py`. When a
   product changes, change that sheet first.
+- A line about his systems that the sheet does not hold is cut before publishing.
+  When the cuts break the post, the writer asks the model for one more draft. If that
+  draft fails too, the run fails and nothing is published.
 - Every run uploads a `writer-trace` artifact: the draft, each humanizer pass and the final
   post. GitHub keeps it 14 days. The repo is public, so the artifact and the run log are too.
   Neither holds the words of a sentence a must-not-ship rule matched at any step. When the

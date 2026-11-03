@@ -2076,6 +2076,14 @@ HUMANIZE_ASK = (
     "its anchor text if needed), every source link, the headings, the related list and the art. "
     "If you change svg_caption, change the caption <text> in svg_inner to the same words. If you "
     "change the title, update slug_words to match. Return ONLY the corrected ```json block.")
+# When the cuts leave the post failing validate(), the first attempt gets one more draft.
+REFILL_ASK = (
+    "The post above is your draft with its false lines cut. Each one stated something about "
+    "Cole's systems that SYSTEM FACTS does not hold. Without them the post fails the checks "
+    "below. Write it again. Bring body_html back over 450 words with what your sources say, "
+    "what SYSTEM FACTS says, or what Cole would check. Never restate a cut line. Keep every "
+    "source link and crosslink you can, the headings, the blockquote and the art. Return ONLY "
+    "the corrected ```json block. The checks it fails:")
 PASSES = 3  # revision calls at most; each one sees only the problems still left
 # A revision is merged field group by field group, so a good title survives a bad body.
 GROUPS = (("title", "slug_words"), ("desc",), ("svg_caption", "svg_inner"), ("body_html",))
@@ -2480,8 +2488,14 @@ def main():
             post, cut = drop_high_risk(post)
             for field, text, label in cut:  # the run log is public: the label and length, never the words
                 print(f"claims: cut a {_words(text)}-word sentence from {field} ({label})", flush=True)
-            trace("final", post=post, cut=cut, problems=humanizer_problems(post))
+            trace("final", attempt=attempt, post=post, cut=cut, problems=humanizer_problems(post))
             errs = validate(post, mode) if cut else []
+            if errs and attempt == 1:  # one more draft, told what was cut; the checks stay the same
+                print(f"claims: the cuts broke the post ({len(errs)} problem(s)); asking for one more draft", flush=True)
+                messages += [{"role": "assistant", "content": "```json\n" + json.dumps(post, ensure_ascii=False) + "\n```"},
+                             {"role": "user", "content": REFILL_ASK + "\n- " + "\n- ".join(errs) + "\nThe cut lines:\n- "
+                              + "\n- ".join(f"{field}: {text}" for field, text, _ in cut)}]
+                continue
             if errs:  # exit non-zero: nothing is appended, and the next scheduled run writes again
                 raise SystemExit("claims: cutting must-not-ship sentences broke the post: " + "; ".join(errs))
 

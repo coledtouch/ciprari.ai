@@ -1114,11 +1114,14 @@ class HumanizePassTests(unittest.TestCase):
         return out_buf.getvalue(), logged, [json.loads(line) for line in logged.splitlines()], stop
 
     def test_no_step_logs_or_traces_a_must_not_ship_sentence(self):
-        # the last resort keeps a first sentence that is must-not-ship; the cut empties the title and the run exits
+        # the last resort keeps a first sentence that is must-not-ship; the cut empties the title, the
+        # one more draft has the same title, and the run exits
         title = dict(writer.STUB, title="Atelier logs every prompt to a D1 table. The ledger said so.",
                      slug_words="atelier logs every prompt to a d1 table", keywords="atelier prompt logging, d1 table")
-        printed, logged, rows, stop = self.run_main([self.js(title)] * 4)
+        again = dict(title, title="Atelier logs every prompt to a D1 table.")
+        printed, logged, rows, stop = self.run_main([self.js(title)] * 4 + [self.js(again)])
         self.assertIn("humanizer: kept the first sentence of the title (8 words)", printed)
+        self.assertIn("asking for one more draft", printed)
         self.assertTrue(stop and stop.startswith("claims: cutting must-not-ship sentences broke the post"), stop)
         for text in (printed, logged, stop):
             self.assertNotIn("every prompt to a d1", text.lower())  # the title, and slug_words that echo it
@@ -1149,6 +1152,36 @@ class HumanizePassTests(unittest.TestCase):
         for text in (printed, logged):
             self.assertNotIn("quiet that week", text)
             self.assertNotIn("firewall logs", text)
+
+    def test_a_post_the_cuts_broke_gets_one_more_draft(self):
+        """The cuts take the body under 450 words: the model is told what was cut and why the post
+        fails, and writes once more with search on. The floor holds for that draft too."""
+        pad = "This sentence pads the stub to a plausible length. "
+        short = dict(writer.STUB, body_html=writer.STUB["body_html"].replace(
+            pad * 60, pad * 47 + "Atelier logs every prompt to a D1 table. Atelier runs on Python. "))
+        self.assertEqual((writer.validate(short, "post"), writer._body_words(short)), ([], 454))
+        for refill, published in ((writer.STUB, True), (short, False)):
+            calls = []
+
+            def fake_call(msgs, system, search=True):
+                calls.append((list(msgs), search))
+                return self.js(refill if len(calls) == 5 else short)
+            printed, logged, rows, stop = self.run_main(fake_call)
+            self.assertEqual([search for _, search in calls], [True, False, False, False, True])
+            self.assertIn("claims: the cuts broke the post (1 problem(s)); asking for one more draft", printed)
+            ask = calls[4][0][-1]["content"]
+            self.assertTrue(ask.startswith(writer.REFILL_ASK), ask)
+            self.assertIn("- body too short (442 words)", ask)
+            self.assertIn("- body_html: Atelier logs every prompt to a D1 table.", ask)  # the model sees it; the log does not
+            self.assertNotIn("Atelier logs every prompt", calls[4][0][-2]["content"])
+            for text in (printed, logged):
+                self.assertNotIn("every prompt to a D1", text)
+            self.assertEqual([r["kind"] for r in rows], ["draft", "revision", "revision", "revision", "final", "final"])
+            if published:
+                self.assertIsNone(stop, printed)
+                self.assertEqual((rows[-1]["attempt"], rows[-1]["cut"]), (2, []))
+            else:
+                self.assertEqual(stop, "claims: cutting must-not-ship sentences broke the post: body too short (442 words)")
 
     def test_revision_keeps_related_and_strips_cite(self):
         fixed = dict(writer.STUB, related=["something-else"],
