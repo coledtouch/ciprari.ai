@@ -520,6 +520,16 @@ class ClaimTests(unittest.TestCase):
                      "<p>GitHub keeps Copilot sessions for the life of the account. The session never expires. "
                      "The table holds every prompt. One stores it in S3.</p>",
                      "<p>Atelier calls nine providers. OpenAI hides the chain of thought. It stores it in a table.</p>",
+                     # so does a line whose subject is another party, named or not
+                     "<p>Atelier calls nine providers. The vendor in the breach ran its backend on a VPS. "
+                     "The system logged every prompt in plain text.</p>",
+                     "<p>Atelier calls nine providers. The attackers used a stolen key. The logs showed every prompt they sent.</p>",
+                     "<p>Atelier calls nine providers. In the incident, the startup kept prompts in a D1 table. "
+                     "The table held every prompt for a year.</p>",
+                     "<p>Keep Fix Cut grades photos. A rival teardown app launched this week. It stores every upload for 90 days.</p>",
+                     # a paragraph that speaks of Cole by name has another narrator, whose "I" is not his
+                     "<p>The root console on the résumé site used to be a place Cole looked things up. Now the delegate is me. "
+                     "I can query the live D1 database for traffic and messages.</p>",
                      "<p>I would check whether the permit app runs PHP.</p>", "<p>Suppose I ran Python.</p>",
                      "<p>I don't run PHP anywhere.</p>", "<p>Rasmus Lerdorf told me PHP still runs most of the web.</p>",
                      # a language he knows is not his stack until the line puts it to work, and the pilot
@@ -531,6 +541,8 @@ class ClaimTests(unittest.TestCase):
             self.assertFalse(any("must not ship" in x for x in writer.claim_problems(post(body))), body)
         for body in ("<p>I check the PHP error logs by hand.</p>", "<p>My cron job runs on a VPS.</p>",
                      "<p>Atelier calls nine providers. GitHub moved. I keep every prompt in a D1 table.</p>",
+                     "<p>Atelier calls nine providers. The attackers used a stolen key. I log every prompt. "
+                     "The logs keep each prompt for a year.</p>",
                      "<p>My backend is Python.</p>", "<p>I host the ERP on a VPS.</p>", "<p>I keep the backups in S3.</p>",
                      "<p>I deploy everything to a VPS.</p>", "<p>My apps are written in PHP.</p>",
                      "<p>Atelier is plain JavaScript. I host it on a VPS.</p>"):

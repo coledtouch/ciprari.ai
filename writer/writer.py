@@ -1012,6 +1012,17 @@ CARRY = re.compile(r"^(?:It|Its|They|Their|This|That|These|Those|Both|All three|
 REF = re.compile(r"^(?:The (?:system|manager|secret manager|proposals?|drawings?|keys?|transcripts?|records?|rows?|"
                  r"data|bucket|backend|service|integration|sync|schema|cron(?: job)?|logger|logging)|"
                  r"One(?= [a-z]+s\b)|Each (?:key|one)|Neither (?:system|one|app)|Every (?:key|row|request|prompt))\b")
+# "The vendor in the breach ran its backend on a VPS.", "A rival teardown app launched this week.",
+# "In the incident, the startup kept prompts in a D1 table.": a line about another party, so "The
+# system" or "It" after it is theirs, not the paragraph's system
+THEIR_LINE = re.compile(r"^(?:(?:In|During|After) (?:the|that|this|an?) (?:incident|breach|attack|hack|leak|outage|"
+                        r"lawsuit)\b|(?:(?:The|A|An|That|This|Their|One|Another|Most|Many|Some|Several|Two|Three|"
+                        r"Four|Five)\s+)?(?:[\w'’-]+\s+)?(?:vendors?|attackers?|startups?|compan(?:y|ies)|hackers?|"
+                        r"researchers?|rivals?|competitors?|competing|banks?|third[- ]part(?:y|ies)|outside|outsiders?|"
+                        r"intruders?)\b|Other\b)", re.I)
+# a paragraph that speaks of Cole by name ("a place Cole looked things up") has another narrator:
+# its "I" is not Cole, so a first-person line there is not read against his system
+COLE = re.compile(r"(?-i:\bCole\b)")
 WOULD = re.compile(r"(?-i:\bI)(?:'d|'ll| would| will| might| could| should| want to| plan to| need)\b|\bif I\b|"
                    r"\bwould (?:check|look|ask|want|test)\b|^Suppos(?:e|ing)\b", re.I)
 GENERIC = re.compile(r"\b(?:my|our) (?:own )?(?:platforms?|systems?|apps?|sites?|stack|servers?|products?|"
@@ -1970,12 +1981,15 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False, topics=True
         # another company stops it, a first-person line takes it back); head: the line that last
         # named them was must-not-ship; from_topic: this line's systems are the topic's
         topic, live, head, prev_topic, said = set(), False, False, False, []
+        narrated = False  # the paragraph speaks of Cole by name (COLE)
         for sent in _split(piece):
             text = " ".join("".join(p for _, p in sent).split())
             if not text:
                 out.append("".join(t for t, _ in sent))
                 continue
             denied = denied or bool(STACK_DENIED.search(text))
+            narrated = narrated or bool(COLE.search(text))
+            theirs = bool(THEIR_LINE.match(text))
             named, before = _systems(text), last
             loose, last = _theirs(text, before), text
             own, from_topic = bool(named - loose), False
@@ -1983,8 +1997,8 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False, topics=True
                 named, loose = named - loose, loose
             elif carry or (CARRY.match(text) and (prev or prev_loose)):
                 named, loose, from_topic = set(prev), set(prev_loose), prev_topic
-            elif topics and live and (CARRY.match(text) or REF.match(text) or (
-                    FIRST.search(text) and _states(text)  # "I store my receipts" is not about the system
+            elif topics and live and not theirs and (CARRY.match(text) or REF.match(text) or (
+                    FIRST.search(text) and not narrated and _states(text)  # "I store my receipts" is not about it
                     and not any(re.match(r"\s+(?:my|our)\b", text[k.end():], re.I) for k in I_KEEP.finditer(text)))):
                 # "The logs tell me what a user asked": the one system the paragraph is about; with
                 # more than one, "The proposal ... the drawing" is each whose line said "proposals"
@@ -2006,6 +2020,8 @@ def _scan(fragment, people=None, strip=None, erp=False, carry=False, topics=True
             if own:
                 topic, live, head = topic | named, True, bool(high)
                 said.append((set(named), _content(text)))
+            elif theirs:
+                live = False
             elif FIRST.search(text):
                 live = bool(topic)
             elif _foreign(text):
