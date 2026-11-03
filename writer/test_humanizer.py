@@ -411,34 +411,50 @@ class ClaimTests(unittest.TestCase):
             out, cut = writer.drop_high_risk(post(f"<p>Fine.</p><p>{s}</p>"))
             self.assertEqual((out["body_html"], len(cut)), ("<p>Fine.</p>", 1), s)
 
-    # a plain name, then the system and the terms the problem names once the post backs it
+    # a plain name, the system it is and a term the problem names: his with or without backing
     PLAIN = (("The permit app writes drawings to R2 and logs sessions to D1.", "PermitSketch", "PermitSketch: r2"),
              ("The permit app runs on Cloudflare Workers.", "PermitSketch", "PermitSketch: cloudflare"),
              ("The flight planner checks NOTAMs before every leg.", "JetDesk", "JetDesk: notam"),
-             ("The dating-profile tool stores photos for 90 days.", "Keep Fix Cut", "Keep Fix Cut: keeps photo"))
+             ("The flight planner runs on a VPS.", "JetDesk", "a stack, version"),
+             ("The dating-profile tool stores photos for 90 days.", "Keep Fix Cut", "Keep Fix Cut: keeps photo"),
+             ("The permit tool calls Gemini.", "PermitSketch", "PermitSketch: google"),
+             ("The K9 site uses AI to answer leads.", "Valhalla K9", "Valhalla K9: ai"),
+             ("Last week the permit app moved to AWS.", "PermitSketch", "PermitSketch: aws"),
+             ("The flight-planning PWA syncs trips to a server.", "JetDesk", "JetDesk: keeps trip"),
+             ("The permit platform runs on Azure.", "PermitSketch", "PermitSketch: azure"))
 
-    def test_a_plain_name_is_his_when_the_post_backs_it(self):
+    def test_a_plain_name_is_his(self):
         for s, brand, why in self.PLAIN:
-            for p in (post(f"<p>{s}</p>", title=f"What {brand} does now"), post(f"<p>I shipped a fix this week. {s}</p>"),
-                      post(f"<p>Atelier got a fix this week. {s}</p>"), post(f"<h3>{s}</h3><p>I shipped a fix.</p>"),
-                      post(f"<p>I changed two things.</p><ul><li>{s}</li><li>Fine.</li></ul>")):
+            for p in (post(f"<p>{s}</p>"), post(f"<p>{s}</p>", title=f"What {brand} does now"),
+                      post(f"<p>I shipped a fix this week. {s}</p>"), post(f"<p>Atelier got a fix this week. {s}</p>"),
+                      post(f"<h3>{s}</h3><p>I shipped a fix.</p>"),
+                      post(f"<p>I changed two things.</p><ul><li>{s}</li><li>Fine.</li></ul>"),
+                      post(f"<p>Google cut its API prices on Tuesday. {s}</p>")):
                 found = writer.claim_problems(p)
                 self.assertTrue(any("must not ship" in x and why in x for x in found), (s, found))
-            found = writer.claim_problems(post(f"<p>{s}</p>"))  # nothing says it is his: soft labels only
-            self.assertTrue(found and not any("must not ship" in x for x in found), (s, found))
-        found = writer.claim_problems(post("<p>I fly it weekly. The flight planner in March showed NOTAMs.</p>"))
+            out, cut = writer.drop_high_risk(post(f"<p>Fine.</p><p>{s}</p>"))
+            self.assertEqual((out["body_html"], len(cut)), ("<p>Fine.</p>", 1), s)
+        found = writer.claim_problems(post("<p>The flight planner in March showed NOTAMs.</p>"))
         self.assertTrue(any("must not ship" in x and "JetDesk: notam" in x for x in found), found)  # a month is no vendor
 
     def test_someone_elses_product_stays(self):
+        """A plain name is another company's product only when the post says so: "in ForeFlight",
+        "in most CRMs", or that company's product news in the sentence or the one before it."""
         for s in ("The flight planner in ForeFlight now filters NOTAMs by route.",
                   "Hinge launched a new photo coach. The dating-profile tool stores photos for 90 days.",
                   "Procore shipped an estimating assistant. The estimating tool calls OpenAI for every takeoff.",
-                  "The permit platform runs on Azure.", "The Twilio dialer in most CRMs logs every call.",
+                  "Hinge launched a new photo coach, and the dating-profile tool stores photos for 90 days.",
+                  "ForeFlight added NOTAM filters on Monday. The flight planner now checks NOTAMs before every leg.",
+                  "The Twilio dialer in most CRMs logs every call.",
                   "Workers at the contractor site found asbestos.",
                   "Pilots using JetDesk still need another source for NOTAMs."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
             self.assertEqual(len(writer.drop_high_risk(post(f"<p>{s}</p>"))[1]), 0, s)
+        heading = post("<h3>Procore shipped an estimating assistant</h3><p>The estimating tool calls OpenAI.</p>")
+        self.assertEqual(writer.drop_high_risk(heading)[1], [])  # a heading shares a block with its paragraph
+        apart = post("<p>Procore shipped an estimating assistant.</p><p>The estimating tool calls OpenAI.</p>")
+        self.assertEqual(len(writer.drop_high_risk(apart)[1]), 1)  # the next paragraph is his again
 
     def test_lines_the_sheet_holds_stay(self):
         for s in ("Keep Fix Cut runs on one Cloudflare Worker.", "Atelier keeps threads in IndexedDB on the device.",

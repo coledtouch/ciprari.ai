@@ -918,12 +918,22 @@ def humanizer_problems(post):
 # labels and the alt text too. Checks run clause by clause, so a trailing "so I would
 # check..." never excuses the clause before it.
 # Each system by brand or domain, then by the plain name a post gives it ("the flight planner").
-# A plain name is his when the post names that system by brand, or its block is his: first
-# person, one of his brands or a second system (_his). Otherwise it gets soft labels only.
-# "The flight planner in ForeFlight" and "the Twilio dialer in most CRMs" are someone else's.
+# A plain name is his: across the posts it almost always is. It is someone else's product only
+# when the post says so: "the flight planner in ForeFlight", "the Twilio dialer in most CRMs",
+# or a company's product news in that sentence or the one before it (NEWS). Then it is loose
+# and gets soft labels only.
 _THEIRS = (r"(?!\s+(?:in|at|from|by|inside|of)\s+(?:(?-i:(?!(?:January|February|March|April|May|June|July|August|"
            r"September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b)[A-Z])|"
            r"(?:most|many|other|every|their|its|some)\b))")
+# "Hinge launched a photo coach.", "Procore shipped an estimating assistant": a named company's
+# product news, so "the dating-profile tool" right after it is that product
+NEWS = re.compile(
+    r"(?-i:(?<![\w'’-])((?!(?:I|A|An|The|This|That|These|Those|It|Its|We|Our|My|On|In|At|By|For|Last|Next|Every|Each|"
+    r"When|After|Before|If|Then|Now|Today|And|But|So|Cole)\b)[A-Z][\w.&-]*(?:\s+[A-Z0-9][\w.&-]*){0,3}))"
+    r"\s+(?:(?:has|have|had|just|now|also|quietly|finally)\s+)*"
+    r"(?:launch(?:ed|es)|ship(?:ped|s)|releas(?:ed|es)|announc(?:ed|es)|unveil(?:ed|s)|introduc(?:ed|es)|"
+    r"roll(?:ed|s) out|debut(?:ed|s)|add(?:ed|s)|buil(?:t|ds)|open(?:ed|s)|acquir(?:ed|es)|bought|buys|"
+    r"updat(?:ed|es)|upgrad(?:ed|es)|demo(?:ed|s)|preview(?:ed|s)|offers|puts? out)\b", re.I)
 _NAMES = (
     ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\bthe construction ERP\b|\b(?:my|our|his) (?:construction )?ERP\b",
                  r"\bthe Twilio dialer\b|\bthe snow(?:[- ]operations)? module\b|\bthe crew apps?\b"),
@@ -1225,6 +1235,19 @@ def _systems(text):
 
 def _brands(text):
     return {name for name, rx in BRANDS if rx.search(text or "")}
+
+
+def _theirs(text, before=""):
+    """The systems text names only by a plain name that are another company's product: a
+    named company's product news (NEWS) comes earlier in the sentence or in the one before it.
+    "Procore shipped an estimating assistant. The estimating tool calls OpenAI." is Procore's."""
+    brands, out = _brands(text), set()
+    for name, rx in SYSTEMS:
+        m = rx.search(text or "")
+        if m and name not in brands and any(not _systems(n.group(1))
+                                            for n in NEWS.finditer(f"{before} {text[:m.start()]}")):
+            out.add(name)
+    return out
 
 
 def _people(text):
@@ -1571,65 +1594,41 @@ def _tidy(h):
 
 
 def _context(text):
-    """Post-wide context for _scan(): the named-person pattern, whether a bare "the ERP" is
-    Cole's (the post names his ERP and no vendor's), and the systems it names by brand."""
-    return (_people(text), bool(SYSTEMS[0][1].search(text or "")) and not ERP_VENDOR.search(text or ""),
-            frozenset(_brands(text)))
+    """Post-wide context for _scan(): the named-person pattern, and whether a bare "the ERP" is
+    Cole's (the post names his ERP and no vendor's)."""
+    return _people(text), bool(SYSTEMS[0][1].search(text or "")) and not ERP_VENDOR.search(text or "")
 
 
 _CUT = set()  # every sentence a must-not-ship rule matched this run, at any step; never logged
 _ECHO = set()  # slug_words and keywords that came with a title that lost a sentence; they echo it
 
 
-def _his(parts, lines):
-    """For each text piece of a split fragment: whether its block is Cole's (first person
-    outside an "I would" line, one of his brands, or two of his systems). A heading shares a
-    block with the paragraph under it, and a list with the paragraph before it."""
-    block, depth, heading, blocks = 0, 0, False, {}
-    for i, part in enumerate(parts):
-        t = part.lower()
-        if i % 2 == 0:
-            blocks[i] = block
-        elif t.startswith(("<ul", "<ol")):
-            depth += 1
-        elif t.startswith(("</ul", "</ol")):
-            depth = max(depth - 1, 0)
-        elif re.match(r"<(?:p|h[1-6]|blockquote|div)\b", t) and not depth:
-            block, heading = block + (not heading), t.startswith("<h")
-    text = {}
-    for i, b in blocks.items():
-        text.setdefault(b, []).extend(lines[i])
-    his = {b: bool(_brands(" ".join(ls)) or len(_systems(" ".join(ls))) > 1
-                   or any(FIRST.search(s) and not WOULD.search(s) for s in ls)) for b, ls in text.items()}
-    return {i: his[b] for i, b in blocks.items()}
-
-
-def _scan(fragment, people=None, strip=None, erp=False, known=frozenset()):
+def _scan(fragment, people=None, strip=None, erp=False):
     """Read an HTML fragment sentence by sentence. Returns (fragment, rows), one row per
     sentence: text, named and loose (Cole systems), soft and high (claim labels or None). A
-    system named only by its plain name ("the permit app") is loose unless known (the post
-    names it by brand) or its block is his (_his). A sentence for which strip(row) is true is
-    cut from the fragment; its tags stay, emptied, then tidied. Once a paragraph tells a
-    first-person story about his logs, keys or stack, a later sentence there that reads like
-    more of it (first person, "It", a system, logs, keys) is must-not-ship too, unless it says
-    what he would check or carries a source link."""
+    system named only by its plain name ("the permit app") is his, and loose only when it is
+    another company's product (_theirs: product news in that sentence or the one before it in
+    the block; a heading shares a block with the paragraph under it). A sentence for which
+    strip(row) is true is cut from the fragment; its tags stay, emptied, then tidied. Once a
+    paragraph tells a first-person story about his logs, keys or stack, a later sentence there
+    that reads like more of it (first person, "It", a system, logs, keys) is must-not-ship too,
+    unless it says what he would check or carries a source link."""
     out, rows, cut = [], [], False
-    parts = _BLOCK_TAG.split(fragment or "")
-    sents = {i: _split(piece) for i, piece in enumerate(parts) if i % 2 == 0}
-    lines = {i: [" ".join("".join(p for _, p in sent).split()) for sent in s] for i, s in sents.items()}
-    mine = _his(parts, lines)
-    for i, piece in enumerate(parts):
+    last, heading = "", False
+    for i, piece in enumerate(_BLOCK_TAG.split(fragment or "")):
         if i % 2:
+            if re.match(r"(?i)<(?:p|li|h[1-6]|blockquote|div)\b", piece):
+                last, heading = (last if heading else ""), piece[1:2].lower() == "h"
             out.append(piece)
             continue
-        his = mine[i]
         prev, prev_loose, story, context, tale = set(), set(), False, set(), False
-        for sent, text in zip(sents[i], lines[i]):
+        for sent in _split(piece):
+            text = " ".join("".join(p for _, p in sent).split())
             if not text:
                 out.append("".join(t for t, _ in sent))
                 continue
             named = _systems(text)
-            loose = set() if his else named - _brands(text) - known
+            loose, last = _theirs(text, last), text
             named, loose = (named - loose, loose) if named else (
                 (set(prev), set(prev_loose)) if CARRY.match(text) else (set(), set()))
             if "Coen ERP" not in named and BARE_ERP.search(text) and not ERP_VENDOR.search(text):
@@ -1677,8 +1676,8 @@ def _claim_rows(post):
     alt = post.get("svg_alt")
     art = [("svg_inner", "".join(p for _, p in _labels(post.get("svg_inner")))),
            ("svg_alt", alt if isinstance(alt, str) else "")]
-    people, erp, known = _claim_context(post)
-    return [(name, r) for name, raw in fields + art for r in _scan(raw, people, erp=erp, known=known)[1]]
+    people, erp = _claim_context(post)
+    return [(name, r) for name, raw in fields + art for r in _scan(raw, people, erp=erp)[1]]
 
 
 def claim_problems(post):
@@ -1707,11 +1706,11 @@ def drop_high_risk(post):
     to cut. A cut title gets new slug_words, so the URL never carries the cut words. Runs after
     the revisions; returns (post, [(field, sentence, label)])."""
     fields = ("title", "desc", "svg_caption", "body_html")
-    people, erp, known = _claim_context(post)
+    people, erp = _claim_context(post)
     out, cut = dict(post), []
     for k in fields:
         while isinstance(out.get(k), str):  # each pass removes a sentence, so this ends
-            out[k], rows = _scan(out[k], people, strip=lambda r: r["high"], erp=erp, known=known)
+            out[k], rows = _scan(out[k], people, strip=lambda r: r["high"], erp=erp)
             bad = [(k, r["text"], r["high"]) for r in rows if r["high"]]
             if not bad:
                 break
@@ -1722,12 +1721,12 @@ def drop_high_risk(post):
         out["slug_words"] = " ".join(slugify(re.sub(r"^Rollout Report:\s*", "", out["title"])).split("-")[:6])
     if isinstance(out.get("svg_inner"), str):
         for element, para in _labels(out["svg_inner"]):
-            bad = [r for r in _scan(para, people, erp=erp, known=known)[1] if r["high"]]
+            bad = [r for r in _scan(para, people, erp=erp)[1] if r["high"]]
             if bad:
                 out["svg_inner"] = out["svg_inner"].replace(element, "", 1)
                 cut += [("svg_inner", r["text"], r["high"]) for r in bad]
     if isinstance(out.get("svg_alt"), str):
-        bad = [r for r in _scan(out["svg_alt"], people, erp=erp, known=known)[1] if r["high"]]
+        bad = [r for r in _scan(out["svg_alt"], people, erp=erp)[1] if r["high"]]
         if bad:
             cap = " ".join(_plain(out.get("svg_caption") or "").split())
             out["svg_alt"] = f"A CRT terminal showing the caption: {cap}" if cap else "A CRT terminal drawing in green."
@@ -1782,8 +1781,8 @@ def _public(key, value):
     if key in ("post", "revision") and isinstance(value, dict):
         return _public_post(value)
     if key == "raw" and isinstance(value, str):
-        people, erp, known = _context(_plain(value))
-        out = _scan(value, people, strip=lambda r: r["high"] or r["text"] in _CUT, erp=erp, known=known)[0]
+        people, erp = _context(_plain(value))
+        out = _scan(value, people, strip=lambda r: r["high"] or r["text"] in _CUT, erp=erp)[0]
         for s in _CUT:
             out = out.replace(s, "").replace(json.dumps(s, ensure_ascii=False)[1:-1], "")
         return out
@@ -1799,10 +1798,10 @@ def _public_post(post):
     """A post without any sentence, art label or alt text in _CUT. When the title lost a
     sentence, its slug_words and keywords go too, in this row and every other: they echo it."""
     out = drop_high_risk(post)[0]
-    people, erp, known = _claim_context(out)
+    people, erp = _claim_context(out)
     for k in ("title", "desc", "svg_caption", "body_html"):
         if isinstance(out.get(k), str):
-            out[k] = _scan(out[k], people, strip=lambda r: r["text"] in _CUT, erp=erp, known=known)[0]
+            out[k] = _scan(out[k], people, strip=lambda r: r["text"] in _CUT, erp=erp)[0]
     echoes = [post.get(k) for k in ("slug_words", "keywords") if isinstance(post.get(k), str) and post[k].strip()]
     if isinstance(post.get("title"), str) and out.get("title") != post["title"]:
         _ECHO.update(echoes)
@@ -1810,10 +1809,10 @@ def _public_post(post):
                 if isinstance(out.get(k), str) and out[k] in _ECHO})
     if isinstance(out.get("svg_inner"), str):
         for element, para in _labels(out["svg_inner"]):
-            if any(r["text"] in _CUT for r in _scan(para, people, erp=erp, known=known)[1]):
+            if any(r["text"] in _CUT for r in _scan(para, people, erp=erp)[1]):
                 out["svg_inner"] = out["svg_inner"].replace(element, "", 1)
     if isinstance(out.get("svg_alt"), str) and any(
-            r["text"] in _CUT for r in _scan(out["svg_alt"], people, erp=erp, known=known)[1]):
+            r["text"] in _CUT for r in _scan(out["svg_alt"], people, erp=erp)[1]):
         out["svg_alt"] = "[kept out of the trace]"
     return out
 
