@@ -361,6 +361,9 @@ class ClaimTests(unittest.TestCase):
     UNSUPPORTED = {
         "None of my platforms have scoped permissions.": "all of them: no permissions",
         "I monitor nothing.": "all of them: no monitoring",
+        # "keeps no logs" says it keeps nothing, as "logs nothing" does
+        "Keep Fix Cut keeps no logs.": "Keep Fix Cut: keeps no data", "Atelier stores no logs.": "Atelier: keeps no data",
+        "Keep Fix Cut has no logs.": "Keep Fix Cut: keeps no data",
         "My apps all log to D1.": "all of them: d1",
         "My systems all run on Vercel.": "all of them: vercel",
         "PermitSketch writes drawings to R2 and logs sessions to D1.": "PermitSketch: r2; PermitSketch: d1",

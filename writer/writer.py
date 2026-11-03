@@ -1233,8 +1233,10 @@ COUNT = re.compile(rf"(?<![\w.$#-])((?!(?:19|20)\d\d\b)\d[\d,]*\+?|(?:an? )?(?:{
                    rf"(?![\s-]+(?:{COUNT_NOUN}|IDs?|names?|versions?|families|tiers?|keys?|errors?)\b)", re.I)
 VAGUE = re.compile(r"\b(?:couple|few|several)\s+(?:of\s+)?$", re.I)  # "a couple dozen trades" counts nothing
 NOT_HIS = re.compile(r"\b(?:vendor|third-party|other|outside|competing|rival)\b", re.I)  # "six vendor apps"
-# keeping data: these verbs always; keep/hold/record/write only with data, a store or a period
-STRONG = re.compile(r"\blog(?:s|ged|ging)?\b(?! ?(?:in|into|on|out)\b)|\bstor(?:e|es|ed|ing|age)\b|"
+# keeping data: these verbs always; keep/hold/record/write only with data, a store or a period.
+# "keeps no logs" keeps no data: there "logs" is what is kept, not the verb
+STRONG = re.compile(r"(?<!\bno )(?<!\bany )(?<!\bzero )\blog(?:s|ged|ging)?\b(?! ?(?:in|into|on|out)\b)|"
+                    r"\bstor(?:e|es|ed|ing|age)\b|"
                     r"\bsav(?:e|es|ed|ing)\b(?! (?:time|money|hours?|minutes?|days?|weeks?|effort|steps?|clicks?|"
                     r"you|me|us|a trip)\b)|\bretain(?:s|ed|ing)?\b|\bretention\b|\bpersist(?:s|ed|ing|ence)?\b|"
                     r"\bcach(?:es|ed|ing)\b|\bback(?:s|ed)? up\b|\bbackups?\b|\barchiv(?:e|es|ed|ing)\b|"
@@ -1724,7 +1726,7 @@ def _unsupported(c, here):
                     why.append(f"{name}: keeps {key}")
         if sup:
             for h in HAS_NO.finditer(m):
-                for key, _ in _nouns(m[h.end():h.end() + 40])[:1]:
+                for key, _ in _nouns(m[h.start():h.end() + 40])[:1]:  # "has no logs": the logs are data
                     if name in _owners(m, h.start(), here) and (key in sup["posdata"] or (
                             key in GENERIC_DATA and sup["posdata"])):
                         why.append(f"{name}: keeps no {key}")
