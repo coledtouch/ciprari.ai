@@ -496,6 +496,8 @@ def validate(post, mode):
 
 
 INK = r"(?<![\w-])(?:fill|stroke|stop-color)"
+# a fill here shows as text: a label's own, or one its children inherit
+INHERITED_FILL = ("text", "tspan", "textpath", "g", "svg", "symbol", "use", "a", "switch")
 
 
 def _colors(svg):
@@ -506,8 +508,8 @@ def _colors(svg):
 
 
 def _nearest_ink(rgb, visible=False):
-    """The palette ink nearest rgb. A stroke or a <text> fill is visible: it never gets the
-    background #04120a, or a dark green label would vanish."""
+    """The palette ink nearest rgb. A stroke, a <text> fill or a fill its children inherit is
+    visible: it never gets the background #04120a, or a dark green label would vanish."""
     hexrgb = lambda h: [int(h[i:i + 2], 16) for i in (1, 3, 5)]
     inks = (G, D, A, M) if visible else (G, D, A, M, "#04120a")
     return min(inks, key=lambda ink: sum((x - y) ** 2 for x, y in zip(rgb, hexrgb(ink))))
@@ -569,7 +571,7 @@ def _ink(value, visible=False):
     """The palette value for one fill, stroke or stop-color: kept when it is one, else the
     nearest ink. none for transparent or empty, #000 for black, a bare url(#id) for a
     gradient, and the main ink G for currentColor, inherit or anything unknown. A visible
-    value (a stroke or a <text> fill) never becomes #000 or #04120a."""
+    value (a stroke, a <text> fill or an inherited fill) never becomes #000 or #04120a."""
     v = re.sub(r"(?i)\s*!\s*important\s*$", "", value).strip()
     c = v.lower()
     url = re.fullmatch(r"""(?i)url\(\s*(["']?)\s*(#[^"'()\s]+)\s*\1\s*\)""", v)
@@ -585,8 +587,9 @@ def repair_svg(svg):
     staged posts, so validate() never refuses art this could fix. A <line> drawn with x/y gets
     x1/y1, and a missing end defaults to 0 as SVG draws it. Every fill, stroke and stop-color
     (attribute or inline style, with or without !important) gets a palette value from _ink();
-    a stroke or a <text> fill gets one that shows on the background. Only tags change, never
-    the text."""
+    a stroke, a <text> fill or a fill on a container its children inherit (<g>, <svg>,
+    <symbol>, <use>, <a>) gets one that shows on the background. Only tags change, never the
+    text."""
     def line(m):
         t = m.group(0)
         for a in ("x", "y"):
@@ -598,7 +601,7 @@ def repair_svg(svg):
 
     def ink(m, element):
         attr = re.match(r"[\w-]+", m.group(1) or m.group(4)).group(0).lower()
-        visible = attr == "stroke" or (attr == "fill" and element in ("text", "tspan", "textpath"))
+        visible = attr == "stroke" or (attr == "fill" and element in INHERITED_FILL)
         if m.group(1):
             return m.group(1) + m.group(2) + _ink(m.group(3), visible) + m.group(2)
         return m.group(4) + _ink(m.group(5), visible)

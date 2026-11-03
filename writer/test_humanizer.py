@@ -592,12 +592,18 @@ class ArtTests(unittest.TestCase):
                 ("<text style='fill: rgb(1,2,3)'>A</text>", "<text style='fill: #2d6b4a'>A</text>"),
                 ("<text><tspan fill='navy'>A</tspan></text>", "<text><tspan fill='#2d6b4a'>A</tspan></text>"),
                 ('<line x1="0" y1="0" x2="9" y2="9" stroke="navy"/>', '<line x1="0" y1="0" x2="9" y2="9" stroke="#2d6b4a"/>'),
-                ("<rect style='stroke: black; fill: darkgreen'/>", "<rect style='stroke: #2d6b4a; fill: #04120a'/>")):
+                ("<rect style='stroke: black; fill: darkgreen'/>", "<rect style='stroke: #2d6b4a; fill: #04120a'/>"),
+                # a container's fill is the fill its labels inherit
+                ('<g fill="darkgreen"><text x="9" y="9">LOG</text></g>', '<g fill="#2d6b4a"><text x="9" y="9">LOG</text></g>'),
+                ("<g style='fill: black'><text x='9' y='9'>A</text></g>", "<g style='fill: #2d6b4a'><text x='9' y='9'>A</text></g>"),
+                ("<use href='#t' fill='navy'/>", "<use href='#t' fill='#2d6b4a'/>")):
             with self.subTest(art=art):
                 self.assertEqual(writer.repair_svg(art), fixed)
                 self.assertEqual(writer.validate(dict(writer.STUB, svg_inner=writer.STUB["svg_inner"] + fixed), "post"), [])
         self.assertEqual(writer.repair_svg("<text fill='#04120a' stroke='#000'>A</text>"),
                          "<text fill='#04120a' stroke='#000'>A</text>")  # palette values are kept as drawn
+        group = f'<g fill="{writer.G}"><text x="9" y="9">LOG</text></g>'  # posts_b.py draws labels this way
+        self.assertEqual(writer.repair_svg(group), group)
 
     def test_art_text_must_fit_the_frame(self):
         def overflow(art):
