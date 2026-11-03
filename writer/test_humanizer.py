@@ -591,8 +591,19 @@ class ClaimTests(unittest.TestCase):
         line = "<p>Atelier's ledger records cost and time. It keeps no prompts. I do not log the prompt content.</p>"
         self.assertFalse(any("must not ship" in p for p in writer.claim_problems(post(line))))
         for body in ("<p>I log every prompt.</p>", "<p>I keep the API keys in a text file.</p>", "<p>I monitor nothing.</p>",
-                     "<p>Atelier's ledger records cost and time. I log every prompt to D1.</p>"):
+                     "<p>Atelier's ledger records cost and time. I log every prompt to D1.</p>",
+                     # the kinds of data a sheet line keeps or denies, and any keeping line in a one-system paragraph
+                     "<p>I keep the photos for a week.</p>", "<p>Keep Fix Cut grades photos. I keep the photos for a week.</p>",
+                     "<p>Keep Fix Cut grades photos. I save every report.</p>",
+                     "<p>Keep Fix Cut grades photos. I keep the reports for a month.</p>",
+                     "<p>Atelier picks the model. I store every upload.</p>"):
             self.assertTrue(any("must not ship" in p for p in writer.claim_problems(post(body))), body)
+        # there it answers to that system's storage line only: his own things and the news stay
+        for body in ("<p>Atelier picks the model. I monitor the news for agent incidents.</p>",
+                     "<p>Keep Fix Cut grades photos. I store my receipts in a shoebox.</p>",
+                     "<p>Keep Fix Cut grades photos. I keep the analytics for 30 days.</p>",
+                     "<p>JetDesk plans the leg. I keep trips in local storage.</p>", "<p>I save my photos on a laptop.</p>"):
+            self.assertFalse(any("must not ship" in p for p in writer.claim_problems(post(body))), body)
         # once a paragraph makes one such claim, the run of them that follows goes with it
         run = ("<p>I don't log payroll amounts. I log whether the payroll run was inside bounds. "
                "I log whether the total matched the estimate.</p>")

@@ -1293,7 +1293,13 @@ GENERAL = re.compile(rf"{GENERIC.pattern}|\bmy (?:own )?(?:systems?|platforms?|a
 I_KEEP = re.compile(r"(?-i:\bI) (?:(?:do not|don't|never|also|only) )?"
                     rf"(?:log|store|keep{_GOING}|retain|monitor|track|record|save|back up|encrypt|host|patch|"
                     r"rotate|scope|audit)\b", re.I)
-OBJECT = re.compile(r"\b(?:nothing|everything|anything|data|logs?)\b", re.I)
+# and the kinds of data a sheet line keeps or denies keeping, when they are not his own ("my
+# photos"); never "receipts", "invoices" or "videos"
+OBJECT = re.compile(r"\b(?:nothing|everything|anything|data|logs?)\b|(?<!\bmy )(?<!\bour )\b(?:photos?|images?|"
+                    r"pictures?|selfies?|uploads?|reports?|threads?|trips?|analytics)\b", re.I)
+# what a first-person keeping line that names no system thing says of the one system its
+# paragraph is about: "Keep Fix Cut grades photos. I save every report."
+KEEP_WHY = re.compile(r": (?:no )?store$|: keeps |\bkept ")
 DETERMINERS = set("""the a an my our your his her their i we you he she some any no every each all either neither
 nothing none someone everyone anyone nobody there here what which who when where while if as so then but and or
 because since though although unless until once after before not""".split())
@@ -1742,10 +1748,15 @@ def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=F
                                  for m in STORY.finditer(c)):
         high = STORY_LABEL  # the prompt bans these outright: "I checked the logs", "I rotated the keys"
     general = None if high or here else _general(c, keeping)
-    if not high and (here or general):
+    # "Keep Fix Cut grades photos. I save every report.": a keeping line in a paragraph about one
+    # system answers to that system's storage line, whatever it keeps; "I store my receipts" does not
+    kept = not (high or here or general) and len(context) == 1 and any(
+        not re.match(r"\s+(?:my|our)\b", c[k.end():], re.I) for k in I_KEEP.finditer(c))
+    if not high and (here or general or kept):
         # "I do not log the prompt content." after two Atelier lines is said of Atelier
-        scope = set(here) or (set(context) if general == "me" and len(context) == 1 else set())
+        scope = set(here) or (set(context) if (general == "me" or kept) and len(context) == 1 else set())
         why = _unsupported(c, scope)
+        why = [w for w in why if KEEP_WHY.search(w)] if kept else why
         high = (SHEET_LABEL if scope else GENERAL_LABEL) if why else None
     about = named or loose or ME.search(c) or GENERIC.search(c)
     if "Atelier" in named and NOT_ATELIER_PROVIDER.search(c):
