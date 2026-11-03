@@ -1202,9 +1202,32 @@ LOCAL_HERE = re.compile(r"\bIndexedDB\b|\blocal[ -]?storage\b|\bin (?:the|your|a
                         r"\blocally\b|\bon-device\b|\bCache Storage\b", re.I)
 # "has no analytics", "doesn't have a profile": keeps none of it
 HAS_NO = re.compile(r"\b(?:has|have|had)\s+no\b|\b(?:does|do|did)(?:\s+not|n't)\s+have\b(?:\s+(?:an?|any)\b)?", re.I)
-# "keeps threads only on your device", "never leave your browser": kept nowhere else
+# "keeps threads only on your device", "never leave your browser", "is fully local": kept nowhere else
 LOCAL_ONLY = re.compile(rf"\bonly\b[^.;:]{{0,30}}?(?:{LOCAL_HERE.pattern})|(?:\bnever|\bnot|n't)\s+leaves?\s+"
-                        r"(?:the|your|a|each|their)\s+(?:device|phone|laptop|iPad|tablet|browser)\b", re.I)
+                        r"(?:the|your|a|each|their)\s+(?:device|phone|laptop|iPad|tablet|browser)\b|"
+                        r"\b(?:fully|entirely|completely|purely|totally|all)[ -]local\b|\b100% local\b|\blocal[- ]only\b|"
+                        rf"\b(?:everything|all (?:of )?(?:your |the |its )?data)\b[^.;:]{{0,40}}?(?:{LOCAL_HERE.pattern})",
+                        re.I)
+# "collects nothing", "doesn't track you": Atelier and Keep Fix Cut keep the data their pages list
+NONE_KEPT = re.compile(r"\b(?:collect|track|gather|harvest)(?:s|ed|ing)?\s+(?:no|zero|nothing)\b|"
+                       r"(?:\bnever|\bnot|n't)\s+(?:(?:even|really|actually)\s+)?(?:collect|track|gather|harvest)"
+                       r"(?:s|ed|ing)?\b(?=\s+(?:you|users?|testers?|visitors?|anyone|any|anything|data|information|"
+                       r"info|personal|analytics|usage)\b)", re.I)
+# how long it is kept: "kept 30 days", "a 30-day HttpOnly cookie", "for a year", "forever". A
+# period counts beside a keeping or expiring word (or a cookie), not "spent 90 days building it",
+# "the last 30 days", "30 days of inactivity" or "4 scans a minute".
+DAYS = {"hour": 1 / 24, "day": 1, "week": 7, "month": 30, "year": 365}
+PERIOD = re.compile(r"(?<!\blast )(?<!\bpast )(?<!\bnext )(?<!\bfirst )(?<!\bevery )(?<!\beach )(?<!\bper )"
+                    rf"\b(\d+|{'|'.join(NUMBERS)})[- ](hour|day|week|month|year)s?\b"
+                    r"(?![- ](?:of|ago|old|later|earlier|before|long)\b)|"
+                    r"\b(?:for|after|within|up to|over|than|about|around|nearly|almost|last(?:s|ed)?|kept|"
+                    r"expires? in) (?:a|an|one) "
+                    r"(hour|day|week|month|year)\b(?![- ](?:of|ago|old|later|earlier|before|long)\b)|"
+                    r"\b(forever|indefinitely|permanently|for good)\b", re.I)
+EXPIRES = re.compile(r"\b(?:delet(?:e|es|ed|ing)|purg(?:e|es|ed|ing)|eras(?:e|es|ed|ing)|wip(?:e|es|ed|ing)|"
+                     r"expir(?:e|es|ed|ing|y)|clear(?:s|ed|ing)?|remov(?:e|es|ed|ing)|drop(?:s|ped|ping)?|"
+                     r"last(?:s|ed|ing)?|li(?:ve|ves|ved|ving)|stay(?:s|ed|ing)?)\b|\bages? out\b|\brolls? off\b", re.I)
+COOKIE = re.compile(r"\bcookies?\b|\bHttpOnly\b|\bsign(?:ed|s)?[- ]in\b|\blogged[- ]in\b", re.I)
 # data the sheet keeps on the device only ("Trips are saved in local storage") leaves it here
 OFF_DEVICE = re.compile(r"\bsync(?:s|ed|ing)?\b|\bcloud\b|\bupload(?:s|ed|ing)?\b|\b(?:servers?|buckets?|databases?|"
                         r"tables?)\b|(?-i:\bR2\b|\bD1\b|\bKV\b|\bS3\b)", re.I)
@@ -1405,9 +1428,32 @@ def _data(m, sheet=False):
     return out
 
 
+def _periods(m):
+    """(kind, days, position) for each period masked clause m keeps something for (PERIOD):
+    the cookie when its stretch of the clause speaks of a cookie or of staying signed in, else
+    each kind of data it names, or data at large. "deletes analytics after a week" is
+    ("analytics", 7); forever is infinity."""
+    found = list(PERIOD.finditer(m))
+    keeps = any(not neg for _, _, neg, _ in _stores(m)) or EXPIRES.search(m)
+    out = []
+    for i, p in enumerate(found):
+        part = m[found[i - 1].end() if i else 0:found[i + 1].start() if i + 1 < len(found) else len(m)]
+        if p.group(4):
+            days = float("inf")
+        else:
+            n, unit = (p.group(1), p.group(2)) if p.group(1) else ("1", p.group(3))
+            days = int(n if n.isdigit() else NUMBERS[n.lower()]) * DAYS[unit.lower()]
+        if COOKIE.search(part):
+            out.append(("cookie", days, p.start()))
+        elif keeps:
+            out += [(key, days, p.start()) for key in dict.fromkeys(k for k, _ in _nouns(part)) or ["data"]]
+    return out
+
+
 def _support():
-    """What SYSTEM_FACTS states (pos) and denies (neg) for each system, and the data its storage
-    lines say it keeps (posdata), keeps on the device only (localdata) or does not (negdata)."""
+    """What SYSTEM_FACTS states (pos) and denies (neg) for each system, the data its storage
+    lines say it keeps (posdata), keeps on the device only (localdata) or does not (negdata),
+    and how long it keeps each kind (periods: kind -> days)."""
     facts, denials = SYSTEM_FACTS.split("\nDOES NOT")
     units = []
     for entry in re.split(r"\n- ", facts)[1:]:
@@ -1419,14 +1465,16 @@ def _support():
         for sent in _sentences(" ".join(line.split())):
             prev = _systems(sent) or (prev if CARRY.match(sent) else set())
             units += [(prev, c) for c in CLAUSE.split(sent)]
-    sup = {name: {"pos": set(), "neg": set(), "posdata": set(), "localdata": set(), "negdata": set()}
-           for name, _ in SYSTEMS}
+    sup = {name: {"pos": set(), "neg": set(), "posdata": set(), "localdata": set(), "negdata": set(),
+                  "periods": {}} for name, _ in SYSTEMS}
     for named, c in units:
         for name in named:
             for key, neg, _, _ in _terms(_mask(c)):
                 sup[name]["neg" if neg else "pos"].add(key)
             for key, neg, _ in _data(_mask(c), sheet=True):
                 sup[name]["negdata" if neg else "localdata" if LOCAL_HERE.search(c) else "posdata"].add(key)
+            for key, days, _ in _periods(_mask(c)):
+                sup[name]["periods"].setdefault(key, set()).add(days)
     for name in NO_AI:
         sup[name]["neg"] |= {"ai", "api"}  # no AI: no model API to call
     for s in sup.values():
@@ -1501,9 +1549,18 @@ def _unsupported(c, here):
                     if name in _owners(m, h.start(), here) and (key in sup["posdata"] or (
                             key in GENERIC_DATA and sup["posdata"])):
                         why.append(f"{name}: keeps no {key}")
+            for h in NONE_KEPT.finditer(m):  # "data" is in posdata only where the sheet says it keeps some
+                key = ([k for k, _ in _nouns(m[h.end():h.end() + 40])] or ["data"])[0]
+                if name in _owners(m, h.start(), here) and key in sup["posdata"]:
+                    why.append(f"{name}: keeps no {key}")
             if LOCAL_ONLY.search(m):
-                why += [f"{name}: keeps {key} only on the device" for key, at in _nouns(m)
+                why += [f"{name}: keeps {key} only on the device" for key, at in _nouns(m) or [("data", 0)]
                         if key in sup["posdata"] and name in _owners(m, at, here)]
+            for key, days, at in _periods(m):  # a kind the sheet gives a period, or data at large there
+                held = sup["periods"].get(key) or (key in GENERIC_DATA and set().union(
+                    *(v for k, v in sup["periods"].items() if k != "cookie")))
+                if held and days not in held and name in _owners(m, at, here):
+                    why.append(f"{name}: {key} kept {'forever' if days == float('inf') else f'{days:g} days'}")
     return list(dict.fromkeys(why))
 
 

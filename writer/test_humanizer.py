@@ -402,6 +402,32 @@ class ClaimTests(unittest.TestCase):
         "Atelier never stores your conversations on a server.": "Atelier: keeps no thread",
         "Atelier doesn't store feedback.": "Atelier: keeps no feedback",
         "Keep Fix Cut doesn't store anything.": "Keep Fix Cut: keeps no data",
+        # a period the sheet does not give: Keep Fix Cut's analytics are kept 30 days, Atelier's cookie is 30-day
+        "Keep Fix Cut keeps analytics for 90 days.": "Keep Fix Cut: analytics kept 90 days",
+        "Keep Fix Cut keeps usage analytics for a year.": "Keep Fix Cut: analytics kept 365 days",
+        "Keep Fix Cut keeps analytics forever.": "Keep Fix Cut: analytics kept forever",
+        "Keep Fix Cut deletes analytics after a week.": "Keep Fix Cut: analytics kept 7 days",
+        "Keep Fix Cut retains analytics for 90 days.": "Keep Fix Cut: analytics kept 90 days",
+        "Keep Fix Cut's analytics are kept for 90 days.": "Keep Fix Cut: analytics kept 90 days",
+        "Atelier's cookie lasts 90 days.": "Atelier: cookie kept 90 days",
+        "Atelier uses a 90-day cookie.": "Atelier: cookie kept 90 days",
+        "Atelier's tester cookie lasts a year.": "Atelier: cookie kept 365 days",
+        "Atelier keeps testers signed in for 90 days.": "Atelier: cookie kept 90 days",
+        # collects, tracks or gathers nothing; keeps, stores or saves nothing; lives only on the device
+        "Keep Fix Cut collects no data.": "Keep Fix Cut: keeps no data",
+        "Keep Fix Cut tracks nothing.": "Keep Fix Cut: keeps no data",
+        "Keep Fix Cut gathers no data.": "Keep Fix Cut: keeps no data",
+        "Keep Fix Cut doesn't track you.": "Keep Fix Cut: keeps no data",
+        "Atelier collects nothing.": "Atelier: keeps no data",
+        "Atelier doesn't collect any data.": "Atelier: keeps no data",
+        "Atelier gathers nothing.": "Atelier: keeps no data",
+        "Keep Fix Cut saves nothing.": "Keep Fix Cut: keeps no data",
+        "Atelier saves nothing.": "Atelier: keeps no data",
+        "Keep Fix Cut doesn't keep anything.": "Keep Fix Cut: keeps no data",
+        "Atelier doesn't store anything.": "Atelier: keeps no data",
+        "Atelier is fully local.": "Atelier: keeps data only on the device",
+        "Everything in Atelier lives in your browser.": "Atelier: keeps data only on the device",
+        "Atelier stores everything on your device.": "Atelier: keeps data only on the device",
     }
 
     def test_unsupported_system_lines_are_must_not_ship(self):
@@ -478,7 +504,14 @@ class ClaimTests(unittest.TestCase):
                   "Atelier syncs your conversations to R2 when you opt in.", "Keep Fix Cut keeps nothing you upload.",
                   "Keep Fix Cut does not keep your photos after the scan.", "Atelier doesn't log your chats.",
                   "Atelier's ledger records what each tester spent. It does not log the conversation.",
-                  "Nothing in Atelier's ledger holds a prompt.", "Atelier keeps working offline."):
+                  "Nothing in Atelier's ledger holds a prompt.", "Atelier keeps working offline.",
+                  # the sheet's periods, and periods that are not about keeping anything
+                  "Keep Fix Cut saves no uploads or reports.", "Keep Fix Cut deletes analytics after 30 days.",
+                  "Atelier's tester cookie lasts 30 days.", "Keep Fix Cut keeps analytics for a month.",
+                  "Up to 25 LinkedIn testers sign in to Atelier with a 30-day cookie.",
+                  "Keep Fix Cut collects nothing you upload.", "Keep Fix Cut doesn't collect your photos.",
+                  "Atelier removes a tester after 90 days of inactivity.", "I spent 90 days building Keep Fix Cut.",
+                  "Keep Fix Cut took a week to build.", "JetDesk doesn't track you.", "JetDesk works fully offline."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
         # lines from Cole's correction (37f0c70) that are true by ColeOS PRODUCTS and Atelier's privacy page
