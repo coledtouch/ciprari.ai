@@ -1055,8 +1055,15 @@ LEAK = re.compile(r"\.env\b|\b(?:in|to|into) (?:the|a|my|our|that) (?:repo|repos
 # "if it leaked", "unless the key sits in": a what-if, not a story
 HYPO = re.compile(r"\b(?:if|unless|in case|suppos(?:e|ing))\b|\bwould\b", re.I)
 # "I check the PHP error logs": a first-person line that states PHP, Python, a VPS or S3 says
-# his stack uses it, though it names no system ("No Cole system uses PHP, Python, a VPS or S3")
+# his stack uses it, though it names no system ("No Cole system uses PHP, Python, a VPS or S3"),
+# when it puts it to work (STACK_USE). "I learned Python in college" and "I read the Python SDK
+# docs" say nothing of his stack.
 STACK = re.compile(r"(?-i:\bPHP\b|\bPython\b|\bVPS(?:es)?\b|\bS3\b)|\bvirtual private servers?\b")
+STACK_USE = re.compile(r"\b(?:run(?:s|ning)?|ran|host(?:s|ed|ing)?|deploy(?:s|ed|ing|ments?)?|written in|"
+                       r"built (?:with|in|on)|back[- ]?ends?|servers?|stack|logs?|cron|production|codebase|"
+                       r"stor(?:e|es|ed|ing|age)|keep(?:s|ing)?|kept|sav(?:e|es|ed|ing)|backs? up|backups?|buckets?|"
+                       r"upload(?:s|ed|ing)?|rent(?:s|ed|ing)?|use|uses|using|migrat\w*|upgrad\w*|patch\w*)\b|"
+                       r"(?-i:\bVPS(?:es)?\b)|\bvirtual private servers?\b", re.I)
 QUOTED = re.compile(r"\b(?:said|says|told|tells|wrote|writes|according to)\b", re.I)
 CRIME = (r"(?:planted|plants|stole|steals|hacked|bugged|embezzled|defrauded|smuggled|laundered|bribed|murdered|"
          r"assaulted|kidnapped|extorted|blackmailed|stalked|wiretapped|spied on|sabotaged|forged|scammed|swindled|"
@@ -1816,7 +1823,7 @@ def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=F
         high = ATELIER_LABEL
     elif (named or MY_SYSTEMS.search(c) or GENERIC.search(c) or (context and RUNS_ON.search(c))) and TECH.search(rest):
         high = TECH_LABEL
-    elif FIRST.search(c) and STACK.search(rest) and not HYPO.search(c) and not QUOTED.search(c):
+    elif FIRST.search(c) and STACK.search(rest) and STACK_USE.search(rest) and not HYPO.search(c) and not QUOTED.search(c):
         high = TECH_LABEL  # "I check the PHP error logs": his stack, whichever system it is
     elif KEY.search(c) and LEAK.search(c) and not HYPO.search(c) and (named or FIRST.search(c) or story):
         high = LEAK_LABEL
@@ -1893,8 +1900,10 @@ def _context(text):
 def _states(text):
     """True when text states something the sheet speaks to: a TERMS or CLAIM term, data kept or
     not kept, or a period. "I can delete rows older than 90 days with a single cron job" does;
-    "I read the report twice" does not."""
+    "I read the report twice" does not, nor does "I learned Python in college": PHP, Python, a
+    VPS or S3 counts only put to work (STACK_USE)."""
     m = _mask(text)
+    m = m if STACK_USE.search(m) else STACK.sub(" ", m)
     return bool(CLAIM.search(m) or STACK.search(m) or any(rx.search(m) for _, rx in TERMS) or _data(m)
                 or _periods(m) or NONE_KEPT.search(m) or HAS_NO.search(m))
 
@@ -1907,10 +1916,11 @@ def _content(text):
 def _hard(why, text):
     """True when a line read against its paragraph's system states a kind that shipped false
     (HARD_WHY). In the first person ("I do not have a way to shut down GPT-4") a provider is not
-    one; keeping at all is one only for "I log", "I store" (I_KEEP), not "the time saved"; and a
+    one, nor NOTAMs ("I check NOTAMs on the FAA site": the pilot checks them, not the app);
+    keeping at all is one only for "I log", "I store" (I_KEEP), not "the time saved"; and a
     database is not when the line's only database word is "schema"."""
     first = not (CARRY.match(text) or REF.match(text))
-    labs = {k for k, _ in PROVIDERS}
+    labs = {k for k, _ in PROVIDERS} | {"notam"}
     schema = all(SCHEMA_ONLY.fullmatch(x.group(0)) for k, rx in TERMS if k == "database" for x in rx.finditer(text))
     return any(HARD_WHY.search(w) and not (first and re.sub(r"^no ", "", w.split(": ")[-1]) in labs)
                and not (w.split(": ")[-1] in ("store", "no store") and not I_KEEP.search(text))

@@ -521,10 +521,19 @@ class ClaimTests(unittest.TestCase):
                      "The table holds every prompt. One stores it in S3.</p>",
                      "<p>Atelier calls nine providers. OpenAI hides the chain of thought. It stores it in a table.</p>",
                      "<p>I would check whether the permit app runs PHP.</p>", "<p>Suppose I ran Python.</p>",
-                     "<p>I don't run PHP anywhere.</p>", "<p>Rasmus Lerdorf told me PHP still runs most of the web.</p>"):
+                     "<p>I don't run PHP anywhere.</p>", "<p>Rasmus Lerdorf told me PHP still runs most of the web.</p>",
+                     # a language he knows is not his stack until the line puts it to work, and the pilot
+                     # checks NOTAMs where the app has none
+                     "<p>I learned Python in college, and I still read it.</p>", "<p>I read the Python SDK docs to compare.</p>",
+                     "<p>I wrote my first scraper in Python years ago.</p>",
+                     "<p>Atelier is plain JavaScript. I learned Python in college.</p>",
+                     "<p>JetDesk ships every US airport inside the app. I check NOTAMs on the FAA site before every flight.</p>"):
             self.assertFalse(any("must not ship" in x for x in writer.claim_problems(post(body))), body)
         for body in ("<p>I check the PHP error logs by hand.</p>", "<p>My cron job runs on a VPS.</p>",
-                     "<p>Atelier calls nine providers. GitHub moved. I keep every prompt in a D1 table.</p>"):
+                     "<p>Atelier calls nine providers. GitHub moved. I keep every prompt in a D1 table.</p>",
+                     "<p>My backend is Python.</p>", "<p>I host the ERP on a VPS.</p>", "<p>I keep the backups in S3.</p>",
+                     "<p>I deploy everything to a VPS.</p>", "<p>My apps are written in PHP.</p>",
+                     "<p>Atelier is plain JavaScript. I host it on a VPS.</p>"):
             self.assertTrue(any("must not ship" in x for x in writer.claim_problems(post(body))), body)
 
     def test_a_plain_name_is_his(self):
