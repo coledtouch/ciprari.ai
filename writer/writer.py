@@ -1245,7 +1245,13 @@ LOCAL_ONLY = re.compile(rf"\bonly\b[^.;:]{{0,30}}?(?:{LOCAL_HERE.pattern})|(?:\b
 NONE_KEPT = re.compile(r"\b(?:collect|track|gather|harvest)(?:s|ed|ing)?\s+(?:no|zero|nothing)\b|"
                        r"(?:\bnever|\bnot|n't)\s+(?:(?:even|really|actually)\s+)?(?:collect|track|gather|harvest)"
                        r"(?:s|ed|ing)?\b(?=\s+(?:you|users?|testers?|visitors?|anyone|any|anything|data|information|"
-                       r"info|personal|analytics|usage)\b)", re.I)
+                       r"info|personal|analytics|usage)\b)|"
+                       r"\b(?:keep(?:s|ing)?|kept|hold(?:s|ing)?|held|has|have)\s+no\s+records?\b|"
+                       r"\bforg(?:et|ets|etting|ot)\s+(?:everything|it all|all of it|you)\b", re.I)
+# what a denial may leave out, though the app keeps some data: "personal data" where the sheet
+# calls what it keeps anonymous, and tracking "across sites"
+NOT_KEPT_OK = re.compile(r"\s+(?:any\s+|your\s+)?personal\s+(?:data|information|info|details)\b|"
+                         r"\s+(?:you|users?|visitors?|anyone)\s+(?:across|between|around)\b", re.I)
 # how long it is kept: "kept 30 days", "a 30-day HttpOnly cookie", "for a year", "forever". A
 # period counts beside a keeping or expiring word (or a cookie), not "spent 90 days building it",
 # "the last 30 days", "30 days of inactivity" or "4 scans a minute".
@@ -1260,6 +1266,9 @@ PERIOD = re.compile(r"(?<!\blast )(?<!\bpast )(?<!\bnext )(?<!\bfirst )(?<!\beve
 EXPIRES = re.compile(r"\b(?:delet(?:e|es|ed|ing)|purg(?:e|es|ed|ing)|eras(?:e|es|ed|ing)|wip(?:e|es|ed|ing)|"
                      r"expir(?:e|es|ed|ing|y)|clear(?:s|ed|ing)?|remov(?:e|es|ed|ing)|drop(?:s|ped|ping)?|"
                      r"last(?:s|ed|ing)?|li(?:ve|ves|ved|ving)|stay(?:s|ed|ing)?)\b|\bages? out\b|\brolls? off\b", re.I)
+# "purges analytics every 90 days": beside a purge, an "every" period is how long it is kept
+PURGE = re.compile(r"\b(?:delet|purg|eras|wip|clear|expir|remov|drop)\w*", re.I)
+EVERY = re.compile(rf"\bevery (?:(\d+|{'|'.join(NUMBERS)})[- ])?(hour|day|week|month|year)s?\b", re.I)
 COOKIE = re.compile(r"\bcookies?\b|\bHttpOnly\b|\bsign(?:ed|s)?[- ]in\b|\blogged[- ]in\b", re.I)
 # who may do what: "xAI and Runway are owner-only", "LinkedIn testers sign in with LinkedIn"
 TESTERS = re.compile(r"\btesters?\b|\banyone\b|\beveryone\b|\b(?:every|all|any) (?:users?|members?|visitors?)\b|"
@@ -1531,21 +1540,22 @@ def _periods(m):
     """(kind, days, position) for each period masked clause m keeps something for (PERIOD):
     the cookie when its stretch of the clause speaks of a cookie or of staying signed in, else
     each kind of data it names, or data at large. "deletes analytics after a week" is
-    ("analytics", 7); forever is infinity."""
-    found = list(PERIOD.finditer(m))
+    ("analytics", 7), and so is "purges analytics every week"; forever is infinity."""
+    def days(n, unit):
+        return int(n if n.isdigit() else NUMBERS[n.lower()]) * DAYS[unit.lower()]
+
+    found = [(p.start(), p.end(), float("inf") if p.group(4) else days(p.group(1), p.group(2)) if p.group(1)
+              else days("1", p.group(3))) for p in PERIOD.finditer(m)]
+    if PURGE.search(m):
+        found = sorted(found + [(p.start(), p.end(), days(p.group(1) or "1", p.group(2))) for p in EVERY.finditer(m)])
     keeps = any(not neg for _, _, neg, _ in _stores(m)) or EXPIRES.search(m)
     out = []
-    for i, p in enumerate(found):
-        part = m[found[i - 1].end() if i else 0:found[i + 1].start() if i + 1 < len(found) else len(m)]
-        if p.group(4):
-            days = float("inf")
-        else:
-            n, unit = (p.group(1), p.group(2)) if p.group(1) else ("1", p.group(3))
-            days = int(n if n.isdigit() else NUMBERS[n.lower()]) * DAYS[unit.lower()]
+    for i, (a, _, held) in enumerate(found):
+        part = m[found[i - 1][1] if i else 0:found[i + 1][0] if i + 1 < len(found) else len(m)]
         if COOKIE.search(part):
-            out.append(("cookie", days, p.start()))
+            out.append(("cookie", held, a))
         elif keeps:
-            out += [(key, days, p.start()) for key in dict.fromkeys(k for k, _ in _nouns(part)) or ["data"]]
+            out += [(key, held, a) for key in dict.fromkeys(k for k, _ in _nouns(part)) or ["data"]]
     return out
 
 
@@ -1588,10 +1598,11 @@ def _support():
             prev = _systems(sent) or (prev if CARRY.match(sent) else set())
             units += [(prev, c) for c in CLAUSE.split(sent)]
     sup = {name: {"pos": set(), "neg": set(), "posdata": set(), "localdata": set(), "negdata": set(),
-                  "periods": {}, "owner_only": set(), "signin": set()} for name, _ in SYSTEMS}
+                  "periods": {}, "owner_only": set(), "signin": set(), "anonymous": False} for name, _ in SYSTEMS}
     for named, c in units:
         m = _mask(c)
         for name in named:
+            sup[name]["anonymous"] |= bool(re.search(r"\banonymous\b", c, re.I))  # "Anonymous usage analytics"
             for key, neg, _, _ in _terms(m):
                 sup[name]["neg" if neg else "pos"].add(key)
                 if key.startswith("@") and not neg and re.search(r"\bowner-only\b", c):
@@ -1678,7 +1689,9 @@ def _unsupported(c, here):
                         why.append(f"{name}: keeps no {key}")
             for h in NONE_KEPT.finditer(m):  # "data" is in posdata only where the sheet says it keeps some
                 key = ([k for k, _ in _nouns(m[h.end():h.end() + 40])] or ["data"])[0]
-                if name in _owners(m, h.start(), here) and key in sup["posdata"]:
+                ok = NOT_KEPT_OK.match(m[h.end():]) and (sup["anonymous"] or "personal" not in NOT_KEPT_OK.match(
+                    m[h.end():]).group(0).lower())
+                if name in _owners(m, h.start(), here) and key in sup["posdata"] and not ok:
                     why.append(f"{name}: keeps no {key}")
             if LOCAL_ONLY.search(m):
                 why += [f"{name}: keeps {key} only on the device" for key, at in _nouns(m) or [("data", 0)]

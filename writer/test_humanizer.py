@@ -413,6 +413,11 @@ class ClaimTests(unittest.TestCase):
         "Atelier uses a 90-day cookie.": "Atelier: cookie kept 90 days",
         "Atelier's tester cookie lasts a year.": "Atelier: cookie kept 365 days",
         "Atelier keeps testers signed in for 90 days.": "Atelier: cookie kept 90 days",
+        "Keep Fix Cut purges analytics every 90 days.": "Keep Fix Cut: analytics kept 90 days",
+        "Keep Fix Cut deletes analytics every week.": "Keep Fix Cut: analytics kept 7 days",
+        "Keep Fix Cut keeps no record of you.": "Keep Fix Cut: keeps no data",
+        "Keep Fix Cut forgets everything when you close the tab.": "Keep Fix Cut: keeps no data",
+        "Atelier doesn't collect personal data.": "Atelier: keeps no data",
         # collects, tracks or gathers nothing; keeps, stores or saves nothing; lives only on the device
         "Keep Fix Cut collects no data.": "Keep Fix Cut: keeps no data",
         "Keep Fix Cut tracks nothing.": "Keep Fix Cut: keeps no data",
@@ -565,6 +570,11 @@ class ClaimTests(unittest.TestCase):
                   "Keep Fix Cut collects nothing you upload.", "Keep Fix Cut doesn't collect your photos.",
                   "Atelier removes a tester after 90 days of inactivity.", "I spent 90 days building Keep Fix Cut.",
                   "Keep Fix Cut took a week to build.", "JetDesk doesn't track you.", "JetDesk works fully offline.",
+                  "Keep Fix Cut deletes analytics every 30 days.", "Keep Fix Cut scans 4 photos every minute.",
+                  "Keep Fix Cut forgets your photos when you close the tab.",
+                  # its analytics are anonymous, and neither app tracks anyone across sites
+                  "Keep Fix Cut doesn't collect personal data.", "Keep Fix Cut doesn't track you across sites.",
+                  "Atelier doesn't track you across sites.",
                   # the owner's models, the ways in, and a host outage that is news
                   "The owner can use Grok and Runway in Atelier.", "Grok and Runway are owner-only in Atelier.",
                   "Testers can't use Grok in Atelier.", "Testers can use Claude, GPT and Gemini in Atelier.",
