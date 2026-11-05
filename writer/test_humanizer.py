@@ -727,7 +727,9 @@ class ClaimTests(unittest.TestCase):
         "AI Trader trades for me. I host it on a VPS.",
         "PocketPGP is an offline OpenPGP key manager for Android and Windows.", "PocketPGP has no network permission.",
         "PocketPGP keeps secret keys on the device.", "PocketPGP never uploads or syncs keys itself.",
-        "PocketPGP has no server, no account and no network access.", "The PGP app has no network permission.")
+        "PocketPGP has no server, no account and no network access.", "The PGP app has no network permission.",
+        "Tuner shows a QR code on the TV.", "AI Trader returns an error when the broker is down.",
+        "No family uses the TMA Family App yet.", "PocketPGP's Android app has no network permission.")
     NEW_FIVE_FALSE = (
         ("AI Trader runs on Cloudflare Workers.", "AI Trader: worker"),
         ("The trading assistant runs on Cloudflare Workers.", "AI Trader: worker"),
@@ -757,7 +759,18 @@ class ClaimTests(unittest.TestCase):
         ("AI Trader trades live money now.", "AI Trader's results"),
         ("AI Trader beat the market in October.", "AI Trader's results"),
         ("The trading assistant turned a profit this week.", "AI Trader's results"),
-        ("AI Trader runs on a paper account.", "AI Trader's results"))
+        ("AI Trader runs on a paper account.", "AI Trader's results"),
+        ("AI Trader trades on paper.", "AI Trader's results"),
+        ("AI Trader trades with real money.", "AI Trader's results"),
+        # Tuner and LumaNest TV are engineering only: nothing about what plays on them
+        ("Tuner streams live channels.", "what plays on Tuner"),
+        ("The TV app plays movies and series.", "what plays on Tuner"),
+        ("LumaNest TV sells IPTV subscriptions.", "what plays on Tuner"),
+        # the TMA Family App runs on test data; PocketPGP gets no security verdict
+        ("Families use the TMA Family App every week.", "the TMA Family App in use"),
+        ("The TMA Family App is live for the club.", "the TMA Family App in use"),
+        ("PocketPGP is secure.", "a security verdict on PocketPGP"),
+        ("PocketPGP was audited.", "a security verdict on PocketPGP"))
 
     def test_the_five_new_systems_keep_their_sheet_lines(self):
         for s in self.NEW_FIVE_TRUE:

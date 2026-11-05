@@ -1041,18 +1041,36 @@ _NAMES = (
                   r"\bthe (?:AI )?trading (?:assistant|bot|app|desk)\b"),
     ("PocketPGP", r"\bpocket ?pgp\b", r"\bthe (?:PGP|OpenPGP) (?:app|tool|key manager)\b"),
 )
-SYSTEMS =[(name, re.compile(f"{brand}|(?:{plain}){_THEIRS}" if plain else brand, re.I)) for name, brand, plain in _NAMES]
+SYSTEMS = [(name, re.compile(f"{brand}|(?:{plain}){_THEIRS}" if plain else brand, re.I)) for name, brand, plain in _NAMES]
 BRANDS = [(name, re.compile(brand, re.I)) for name, brand, _ in _NAMES]
 NO_AI = {"Valhalla K9", "Hire Mariaelena", "Show It With Words", "Tuner", "LumaNest TV"}
 # AI Trader is the only Cole system on Python or a VPS; every other system denies both
 ON_PYTHON = {"AI Trader"}
 PY_VPS = re.compile(r"(?-i:\bPython\b|\bVPS(?:es)?\b)|\bvirtual private servers?\b")
 # AI Trader's results, money or trading mode: the sheet says never state them
-TRADER_RESULT = re.compile(r"\b(?:returns?|profit\w*|P&L|PnL|gain(?:s|ed)?|(?<!stop-)(?<!stop )loss(?:es)?|lost|earn(?:s|ed|ings)?|"
+TRADER_RESULT = re.compile(r"\b(?:returns?(?! (?:an?|the|no|nothing)\b)|profit\w*|P&L|PnL|gain(?:s|ed)?|(?<!stop-)(?<!stop )loss(?:es)?|lost|earn(?:s|ed|ings)?|"
                            r"beat the market|outperform\w*|account size|balance|made \$|made money|"
-                           r"paper[- ]trad\w*|paper (?:account|mode)|live (?:account|mode|trading)|trades? live|"
-                           r"goes live|went live|win rate)\b|[$€£]\s?\d|\d(?:\.\d+)?\s?%", re.I)
+                           r"paper[- ]trad\w*|paper (?:account|mode|money)|on paper|live (?:account|mode|trading|money)|trades? live|"
+                           r"(?:trades?|trading) (?:with )?real money|(?:is|runs?|went|goes) (?:now )?live|win rate)\b|"
+                           r"[$€£]\s?\d|\d(?:\.\d+)?\s?%", re.I)
 TRADER_LABEL = "AI Trader's results, money or trading mode (SYSTEM FACTS: never state them)"
+# Tuner and LumaNest TV are engineering only: what a viewer watches on them is never stated
+TV_CONTENT = re.compile(r"\b(?:IPTV|channels?|line-?ups?|live TV|movies?|films?|series|episodes?|content|"
+                        r"stream(?:s|ed|ing)?|playlists?|M3U|Xtream|EPG|VOD|resell\w*|(?<!AI )providers?|subscribers?|"
+                        r"MyBunny|Torrentio|torrents?|debrid|TMDB|OpenSubtitles|catalog(?:ue)?s?|sports?)\b", re.I)
+TV_LABEL = "what plays on Tuner or LumaNest TV (SYSTEM FACTS: engineering only)"
+# the TMA Family App runs on test data: no one uses it yet
+TMA_LIVE = re.compile(r"\b(?:famil(?:y|ies)|parents?|households?|members|users)\b[^.;]*?\b(?:use[sd]?|using|rel(?:y|ies|ied)|"
+                      r"log(?:s|ged)? in|sign(?:s|ed)? in|pa(?:y|ys|id)|check(?:s|ed)?|open(?:s|ed)?)\b|"
+                      r"\b(?:is|went|goes|now) live\b|\blive for\b|\bin (?:production|use)\b|\breal (?:data|spreadsheet|sheet)\b", re.I)
+TMA_LABEL = "the TMA Family App in use (SYSTEM FACTS: it runs on test data)"
+# PocketPGP: only what the code does, never a security verdict
+PGP_CLAIM = re.compile(r"\b(?:secur(?:e|ed|ely)|unbreakable|uncrackable|hack-?proof|bullet-?proof|military-grade|"
+                       r"(?:security[- ])?audit(?:s|ed)?)\b", re.I)
+PGP_LABEL = "a security verdict on PocketPGP (SYSTEM FACTS: say only what it does)"
+TMA_NOT = re.compile(r"\b(?:not|never|no one|nobody|no famil(?:y|ies))\b|n't\b|\btest data\b", re.I)
+OFF_SHEET = (({"AI Trader"}, TRADER_RESULT, TRADER_LABEL), ({"Tuner", "LumaNest TV"}, TV_CONTENT, TV_LABEL),
+             ({"TMA Family App"}, TMA_LIVE, TMA_LABEL), ({"PocketPGP"}, PGP_CLAIM, PGP_LABEL))
 # A bare "the ERP" is Cole's only when the post names his ERP and no vendor's. Otherwise it
 # counts for the soft labels alone: a news line about SAP's ERP is never cut.
 BARE_ERP = re.compile(r"\bthe ERP\b(?! (?:vendors?|makers?|market|industry|sector)\b)|"
@@ -1906,8 +1924,9 @@ def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=F
         rest = PY_VPS.sub(" ", rest)
     if _crime(c, people) and not ATTRIBUTED.search(c):
         high = CRIME_LABEL
-    elif "AI Trader" in set(named) | set(here) and TRADER_RESULT.search(c):
-        high = TRADER_LABEL
+    elif any(names & (set(named) | set(here)) and rx.search(c) and not (rx is TMA_LIVE and TMA_NOT.search(c))
+             for names, rx, _ in OFF_SHEET):
+        high = next(label for names, rx, label in OFF_SHEET if names & (set(named) | set(here)) and rx.search(c))
     elif "Atelier" in named and _keeps_content(c) and not (LOCAL.search(c) and not SERVER.search(c)):
         high = ATELIER_LABEL
     elif (named or MY_SYSTEMS.search(c) or GENERIC.search(c) or (context and RUNS_ON.search(c))) and TECH.search(rest):
