@@ -283,9 +283,9 @@ SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may s
   balance and trip costs, and it takes payments through PayPal checkout. Sign-in is a 6-digit
   code sent by email, with no passwords. The treasurer verifies each household. Two Cloudflare
   Workers serve the site and send Web Push. It still runs on test data.
-- AI Trader (desk.kaxo.dev, a private sign-in page): Cole's own trading assistant for one
-  Interactive Brokers account. A Python FastAPI app in Docker Compose on his own DigitalOcean
-  server, a VPS, reached only through a Cloudflare Tunnel. Claude and Grok must agree by default
+- AI Trader (private, no public link): Cole's own trading assistant for one brokerage
+  account. A Python FastAPI app in Docker Compose on a VPS. Never name its host, broker,
+  hosting company or network setup. Claude and Grok must agree by default
   before it buys. Risk limits are hard caps in code, and every stock entry gets a stop-loss
   order held at the broker. Real-money orders need a server flag and a fresh 2FA code. Every AI
   decision is stored with its inputs, output and cost. It is personal software, not a product.
@@ -1037,7 +1037,7 @@ _NAMES = (
     ("LumaNest TV", r"\bluma ?nest(?: TV)?\b|\blumanest\.tv\b", ""),
     ("TMA Family App", r"\bTMA Family App\b|\bmytma\.org\b|(?-i:\bTMA\b)",
                        r"\bthe (?:music )?booster[- ]club (?:app|PWA|site)\b"),
-    ("AI Trader", r"(?-i:\bAI Trader\b|\bAI TRADER\b)|\bdesk\.kaxo\.dev\b",
+    ("AI Trader", r"(?-i:\bAI Trader\b|\bAI TRADER\b)",
                   r"\bthe (?:AI )?trading (?:assistant|bot|app|desk)\b"),
     ("PocketPGP", r"\bpocket ?pgp\b", r"\bthe (?:PGP|OpenPGP) (?:app|tool|key manager)\b"),
 )

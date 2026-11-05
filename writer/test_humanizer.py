@@ -717,9 +717,8 @@ class ClaimTests(unittest.TestCase):
         "The TMA Family App backend is TypeScript in Google Apps Script.",
         "The TMA Family App has no separate database and stores no card numbers.",
         "Two Cloudflare Workers serve the TMA Family App and send Web Push.", "The booster club app runs on test data.",
-        "AI Trader is a Python FastAPI app on a DigitalOcean VPS.", "AI Trader runs on a VPS.",
-        "AI Trader runs Python in Docker Compose on a DigitalOcean server.",
-        "AI Trader is reached only through a Cloudflare Tunnel.",
+        "AI Trader is a Python FastAPI app on a VPS.", "AI Trader runs on a VPS.",
+        "AI Trader runs Python in Docker Compose on a VPS.",
         "In AI Trader, Claude and Grok must agree by default before it buys.",
         "AI Trader stores every AI decision with its inputs, output and cost.",
         "Every stock entry in AI Trader gets a stop-loss order held at the broker.",
@@ -735,6 +734,9 @@ class ClaimTests(unittest.TestCase):
         ("The trading assistant runs on Cloudflare Workers.", "AI Trader: worker"),
         ("AI Trader doesn't use Python.", "AI Trader: no python"), ("AI Trader runs on PHP.", "a stack"),
         ("AI Trader stores data in S3.", "AI Trader: s3"),
+        # its hosting company and network setup are off the sheet now (the repo is public)
+        ("AI Trader is a Python FastAPI app on a DigitalOcean VPS.", "AI Trader: other host"),
+        ("AI Trader runs Python in Docker Compose on a DigitalOcean server.", "AI Trader: other host"),
         ("PocketPGP syncs keys to the cloud.", "PocketPGP: keeps key"),
         ("PocketPGP uploads keys to a server.", "PocketPGP: server"),
         ("PocketPGP keeps your keys on a server.", "PocketPGP"),
@@ -1490,8 +1492,10 @@ class PromptTests(unittest.TestCase):
             system, user = writer.build_prompt(mode, "v9.9.9", "2026-10-12")
             self.assertIn("shipped 20 production platforms", system)
             self.assertNotIn("15 production platforms", system)
-            for site in ("keepfixcut.com", "tunertv.app", "lumanest.tv", "mytma.org", "desk.kaxo.dev", "PocketPGP"):
+            for site in ("keepfixcut.com", "tunertv.app", "lumanest.tv", "mytma.org", "AI Trader", "PocketPGP"):
                 self.assertIn(site, system)
+            for private in ("kaxo", "DigitalOcean", "Cloudflare Tunnel", "Interactive Brokers"):
+                self.assertNotIn(private, system)
             self.assertIn("HUMANIZER", system)
             self.assertIn("Never paste", system)
             self.assertNotIn("retired two-sentence", user)
