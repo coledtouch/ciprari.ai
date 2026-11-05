@@ -265,15 +265,54 @@ SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may s
   Photos go to Claude, which grades each one keep, fix or cut. Uploads and reports are not
   saved; a report lives in page memory. Anonymous usage analytics (hashed session id, page
   views, scans, token cost) are kept 30 days. Each IP gets 4 scans a minute.
+- Tuner (tunertv.app): a TV app, a media player with a guide driven by the remote. The Android
+  TV, Google TV and Fire TV app is Kotlin, Jetpack Compose and Media3. The LG app is webOS and
+  the Roku app is SceneGraph; both install in developer mode. Samsung (Tizen) and Apple TV
+  (SwiftUI) versions are in progress. A phone pairs the TV by QR code, so no one types a login
+  with the remote. Multi View on Android splits the screen in two. Logins and settings stay on
+  the TV. It has no account, ads or analytics of its own. GitHub Actions builds the Android
+  app. The site at tunertv.app is a static Cloudflare Worker with no JavaScript, cookies or
+  analytics.
+- LumaNest TV (lumanest.tv): the web platform behind Tuner. One Cloudflare Worker serves the
+  site, PayPal checkout and renewals and an owner console, with a D1 database and an R2 bucket.
+  PayPal webhooks are verified and deduplicated by event ID. A TV pairs by a QR code approved
+  from a phone, and D1 stores only a hash of the device code.
+- TMA Family App (mytma.org): a free PWA built for the Timberlane Music Association, a school
+  music booster club. The front end is React. The backend is TypeScript in Google Apps Script,
+  and it reads and writes the treasurer's Google Sheet. It shows each student's activity-fund
+  balance and trip costs, and it takes payments through PayPal checkout. Sign-in is a 6-digit
+  code sent by email, with no passwords. The treasurer verifies each household. Two Cloudflare
+  Workers serve the site and send Web Push. It still runs on test data.
+- AI Trader (desk.kaxo.dev, a private sign-in page): Cole's own trading assistant for one
+  Interactive Brokers account. A Python FastAPI app in Docker Compose on his own DigitalOcean
+  server, a VPS, reached only through a Cloudflare Tunnel. Claude and Grok must agree by default
+  before it buys. Risk limits are hard caps in code, and every stock entry gets a stop-loss
+  order held at the broker. Real-money orders need a server flag and a fresh 2FA code. Every AI
+  decision is stored with its inputs, output and cost. It is personal software, not a product.
+- PocketPGP: an offline OpenPGP key manager for Android and Windows, from one codebase. It runs
+  as an Android app and as one HTML file in its own Edge window on Windows. Through OpenPGP.js
+  it encrypts, decrypts, signs and verifies text and files, and it works with GnuPG. The Android
+  app has no network permission. Secret keys are kept on the device, passphrase-protected, and
+  unlocked copies live only in memory. Phone and PC trade keys through one password-encrypted
+  file that the user's own cloud app moves.
 - Three Base44 apps: Aurora (IPTV and smart-home control), Northern Hardy Honey (an apiary
   storefront) and Mari' Cosmetics (a shade-matching storefront).
 DOES NOT — never write otherwise:
-- No Cole system uses PHP, Python, a VPS or S3. Atelier has no D1 database.
+- No Cole system uses PHP or S3. AI Trader is the only Cole system on Python or a VPS. Atelier
+  has no D1 database.
 - Atelier logs no prompts or answers. Its usage ledger records what each request cost and
   when. Keep Fix Cut saves no uploads or reports.
 - Atelier and Keep Fix Cut each keep the data listed above. Never write that either keeps nothing.
 - JetDesk has no NOTAMs. CurbScript has no service routes.
 - Valhalla K9, Hire Mariaelena and Show It With Words have no AI.
+- Tuner and LumaNest TV have no AI. Never write that Tuner encrypts saved logins or is in an
+  app store. LumaNest TV has no cron jobs.
+- AI Trader has no users but Cole. Never state its trades, results, returns, profit, account
+  size or whether it trades paper or live.
+- PocketPGP has no server, no account and no network access. It never uploads or syncs keys
+  itself.
+- The TMA Family App has no separate database and stores no card numbers. It runs on test
+  data. Never write that families use it or that it is live for the club.
 Beyond this sheet, never state a stack, version, host, storage, logging, retention, auth,
 headcount, permission, monitoring, incident, patch or past action for any of them. The only
 other first-person mode is what you would check: "I would check whether the ledger...". Never
@@ -294,8 +333,8 @@ def build_prompt(mode, version, date_str):
             "it touches, using only SYSTEM FACTS or what he would check")
 
     system = f"""You are the ghostwriter for changelog.ciprari.ai, the engineering blog of Cole
-Ciprari — a Business Systems Architect in Worcester, MA who has shipped 15 production platforms
-solo. SYSTEM FACTS below lists them, from the construction ERP to keepfixcut.com.
+Ciprari — a Business Systems Architect in Worcester, MA who has shipped 20 production platforms
+solo. SYSTEM FACTS below lists them, from the construction ERP to PocketPGP.
 He runs this blog as version-numbered releases of himself.
 
 {SYSTEM_FACTS}
@@ -969,7 +1008,9 @@ DOMAIN = {"Coen ERP": r"dialers?|snow|crews?", "estimate.pro": r"estimat\w*|bids
           "JetDesk": r"flights?|NOTAMs?|EFBs?|pilots?|aviation", "North Point": r"contractors?",
           "Valhalla K9": r"dogs?|K9|training", "Hire Mariaelena": r"freelanc\w*|r[ée]sum[ée]s?|portfolios?",
           "Show It With Words": r"jewelry|beads?", "PermitSketch": r"permits?",
-          "Keep Fix Cut": r"dating|profiles?|photos?", "Base44 apps": r"smart-home|IPTV|honey|cosmetics"}
+          "Keep Fix Cut": r"dating|profiles?|photos?", "Base44 apps": r"smart-home|IPTV|honey|cosmetics",
+          "Tuner": r"TVs?|remotes?|guides?", "TMA Family App": r"booster|schools?|music|famil(?:y|ies)",
+          "AI Trader": r"trad\w*|stocks?|brokers?|brokerages?", "PocketPGP": r"PGP|GPG|encrypt\w*|keys?"}
 _NAMES = (
     ("Coen ERP", r"\bCoen\b|coenconstruction\.com|\bthe construction ERP\b|\b(?:my|our|his) (?:construction )?ERP\b",
                  r"\bthe Twilio dialer\b|\bthe snow(?:[- ]operations)? module\b|\bthe crew apps?\b"),
@@ -992,10 +1033,26 @@ _NAMES = (
                     r"\bNorthern Hardy Honey\b|\bMari' Cosmetics\b",
                     r"\bthe (?:smart-home|IPTV) (?:platform|app)\b|\bthe (?:three )?Base44 (?:apps|stack)\b|"
                     r"\bthe (?:honey|cosmetics) (?:shop|store|storefront|site)\b"),
+    ("Tuner", r"(?-i:\bTuner\b|\bTUNER\b)|\btunertv(?:\.app)?\b", r"\bthe TV (?:app|player|media player)\b"),
+    ("LumaNest TV", r"\bluma ?nest(?: TV)?\b|\blumanest\.tv\b", ""),
+    ("TMA Family App", r"\bTMA Family App\b|\bmytma\.org\b|(?-i:\bTMA\b)",
+                       r"\bthe (?:music )?booster[- ]club (?:app|PWA|site)\b"),
+    ("AI Trader", r"(?-i:\bAI Trader\b|\bAI TRADER\b)|\bdesk\.kaxo\.dev\b",
+                  r"\bthe (?:AI )?trading (?:assistant|bot|app|desk)\b"),
+    ("PocketPGP", r"\bpocket ?pgp\b", r"\bthe (?:PGP|OpenPGP) (?:app|tool|key manager)\b"),
 )
-SYSTEMS = [(name, re.compile(f"{brand}|(?:{plain}){_THEIRS}" if plain else brand, re.I)) for name, brand, plain in _NAMES]
+SYSTEMS =[(name, re.compile(f"{brand}|(?:{plain}){_THEIRS}" if plain else brand, re.I)) for name, brand, plain in _NAMES]
 BRANDS = [(name, re.compile(brand, re.I)) for name, brand, _ in _NAMES]
-NO_AI = {"Valhalla K9", "Hire Mariaelena", "Show It With Words"}
+NO_AI = {"Valhalla K9", "Hire Mariaelena", "Show It With Words", "Tuner", "LumaNest TV"}
+# AI Trader is the only Cole system on Python or a VPS; every other system denies both
+ON_PYTHON = {"AI Trader"}
+PY_VPS = re.compile(r"(?-i:\bPython\b|\bVPS(?:es)?\b)|\bvirtual private servers?\b")
+# AI Trader's results, money or trading mode: the sheet says never state them
+TRADER_RESULT = re.compile(r"\b(?:returns?|profit\w*|P&L|PnL|gain(?:s|ed)?|(?<!stop-)(?<!stop )loss(?:es)?|lost|earn(?:s|ed|ings)?|"
+                           r"beat the market|outperform\w*|account size|balance|made \$|made money|"
+                           r"paper[- ]trad\w*|paper (?:account|mode)|live (?:account|mode|trading)|trades? live|"
+                           r"goes live|went live|win rate)\b|[$€£]\s?\d|\d(?:\.\d+)?\s?%", re.I)
+TRADER_LABEL = "AI Trader's results, money or trading mode (SYSTEM FACTS: never state them)"
 # A bare "the ERP" is Cole's only when the post names his ERP and no vendor's. Otherwise it
 # counts for the soft labels alone: a news line about SAP's ERP is never cut.
 BARE_ERP = re.compile(r"\bthe ERP\b(?! (?:vendors?|makers?|market|industry|sector)\b)|"
@@ -1028,7 +1085,8 @@ WOULD = re.compile(r"(?-i:\bI)(?:'d|'ll| would| will| might| could| should| want
 GENERIC = re.compile(r"\b(?:my|our) (?:own )?(?:platforms?|systems?|apps?|sites?|stack|servers?|products?|"
                      r"codebases?|integrations?)\b|\b(?:those|these|both|all (?:three|four|five)|every one of those) "
                      r"(?:systems|platforms|apps|sites)\b|\bthe (?:systems|platforms|apps) I (?:run|built|ship)\b|"
-                     r"^(?:Each|Every) (?:platform|integration|system)\b|^None of (?:my|them)\b", re.I)
+                     r"^(?:Each|Every) (?:platform|integration|system)\b|^None of (?:my|them)\b|"
+                     r"\b(?:no|every|each|any|all) (?-i:Cole)(?:['’]s)? (?:systems?|platforms?|apps?)\b", re.I)
 ME = re.compile(r"(?-i:\bI) (?:log|store|keep|retain|monitor|run|host|patch|track|record|save|delete|rotate|use|pin)\b|"
                 r"\bmy (?:own )?(?:logs?|keys?|systems?|platforms?|apps?|sites?|stack|servers?|code(?:base)?|database|"
                 r"tables?|users|testers|customers|clients|crews?|integrations?|test suite|tests)\b", re.I)
@@ -1069,9 +1127,10 @@ LEAK = re.compile(r"\.env\b|\b(?:in|to|into) (?:the|a|my|our|that) (?:repo|repos
 # "if it leaked", "unless the key sits in": a what-if, not a story
 HYPO = re.compile(r"\b(?:if|unless|in case|suppos(?:e|ing))\b|\bwould\b", re.I)
 # "I check the PHP error logs": a first-person line that states PHP, Python, a VPS or S3 says
-# his stack uses it, though it names no system ("No Cole system uses PHP, Python, a VPS or S3"),
-# when it puts it to work (STACK_USE). "I learned Python in college" and "I read the Python SDK
-# docs" say nothing of his stack.
+# his stack uses it, though it names no system ("No Cole system uses PHP or S3. AI Trader is the
+# only Cole system on Python or a VPS"), when it puts it to work (STACK_USE). "I learned Python
+# in college" and "I read the Python SDK docs" say nothing of his stack. A clause about AI Trader
+# alone may state Python or a VPS (ON_PYTHON); the sheet checks it like any other term.
 STACK = re.compile(r"(?-i:\bPHP\b|\bPython\b|\bVPS(?:es)?\b|\bS3\b)|\bvirtual private servers?\b")
 STACK_USE = re.compile(r"\b(?:run(?:s|ning)?|ran|host(?:s|ed|ing)?|deploy(?:s|ed|ing|ments?)?|written in|"
                        r"built (?:with|in|on)|back[- ]?ends?|servers?|stack|logs?|cron|production|codebase|"
@@ -1131,7 +1190,8 @@ FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a singl
                      r"\busage (?:ledger|analytics)\b|\bhashed session id\b|\bpage memory\b|"
                      + _NO_STACK, re.I)
 # "None of my systems run PHP. ... Those systems were never vulnerable.": after a denial of
-# PHP, Python, a VPS or S3 that the sheet holds, a denial of exposure in that paragraph holds too
+# PHP, Python, a VPS or S3, a denial of exposure in that paragraph holds too (the denial itself
+# answers to the sheet: only PHP and S3 may be denied for every system at once)
 STACK_DENIED = re.compile(_NO_STACK, re.I)
 UNEXPOSED = re.compile(r"(?:\b(?:never|not)|n't)\s+(?:been\s+)?(?:vulnerable|exposed)\b", re.I)
 CLAIM = re.compile(
@@ -1235,7 +1295,8 @@ TERMS = [(key, re.compile(rx, re.I)) for key, rx in (
 # AI providers; the sheet's lists are closed, so denying one it does not list is fine
 PROVIDERS = [(key, re.compile(rx)) for key, rx in (
     ("anthropic", r"\bAnthropic\b|\bClaude\b"), ("openai", r"\bOpenAI\b|\bChatGPT\b|\bGPT\b|\bGPT-|\bCodex\b"),
-    ("google", r"\bGoogle\b(?! Cloud)|\bGemini\b"), ("vertex", r"\bVertex\b"), ("xai", r"\bxAI\b|\bGrok\b"),
+    # "Google TV" and "Google Sheet" are a TV platform and a spreadsheet, not the model provider
+    ("google", r"\bGoogle\b(?! (?:Cloud|TV|Play|Sheets?|Apps Script|Drive)\b)|\bGemini\b"), ("vertex", r"\bVertex\b"), ("xai", r"\bxAI\b|\bGrok\b"),
     ("z.ai", r"\bZ\.ai\b|\bGLM\b|\bZhipu\b"), ("deepseek", r"\bDeepSeek\b"), ("meta", r"\bMeta\b|\bLlama\b"),
     ("nvidia", r"\bNVIDIA\b|\bNvidia\b|\bNemotron\b"), ("runway", r"\bRunway\b"), ("mistral", r"\bMistral\b|\bMixtral\b"),
     ("perplexity", r"\bPerplexity\b"), ("cohere", r"\bCohere\b"), ("microsoft", r"\bMicrosoft\b|\bCopilot\b|\bAzure\b"),
@@ -1246,8 +1307,9 @@ PROVIDERS = [(key, re.compile(rx)) for key, rx in (
 # vendors read as news when they lead a clause: "When Cloudflare went down, ..."
 VENDORS = {"cloudflare", "pages", "vercel", "aws", "azure", "gcp", "other host", "base44", "stripe", "twilio", "adp",
            "linkedin", "site builder"}
-GLOBAL_NEG = {"php", "python", "vps", "s3"}  # "No Cole system uses PHP, Python, a VPS or S3."
-GLOBAL_POS = {"platform 15", "system 15"}  # "15 production platforms"
+GLOBAL_NEG = {"php", "s3"}  # "No Cole system uses PHP or S3."
+STACK_KEYS = {"php", "python", "vps", "s3"}  # what a stack denial (STACK_DENIED) denies, true or not
+GLOBAL_POS = {"platform 20", "system 20"}  # "20 production platforms"
 NUMBERS = dict(zip("two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen "
                    "seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred "
                    "dozen".split(), [*range(2, 21), 30, 40, 50, 60, 70, 80, 90, 100, 12]))
@@ -1567,7 +1629,7 @@ def _terms(m):
     VPS or S3 is denied anywhere in a denial of them (STACK_DENIED): "has never run on a VPS"."""
     out, denied = [], [x.span() for x in STACK_DENIED.finditer(m)]
     for key, rx in TERMS:
-        out += [(key, _negated(m, t.start(), t.end()) or (key in GLOBAL_NEG and any(
+        out += [(key, _negated(m, t.start(), t.end()) or (key in STACK_KEYS and any(
                     a <= t.start() and t.end() <= b for a, b in denied)), bool(LEADS.search(m[:t.start()])), t.start())
                 for t in rx.finditer(m)]
     labs, neg = sorted((t.start(), t.end(), key) for key, rx in PROVIDERS for t in rx.finditer(m)), False
@@ -1691,6 +1753,8 @@ def _support():
             sup[name]["signin"] |= {(r, way) for way, _, denied in _ways_in(m) if not denied for r in _roles(m)}
     for name in NO_AI:
         sup[name]["neg"] |= {"ai", "api"}  # no AI: no model API to call
+    for name in set(sup) - ON_PYTHON:
+        sup[name]["neg"] |= {"python", "vps"}  # "AI Trader is the only Cole system on Python or a VPS"
     for s in sup.values():
         if any(k.startswith("@") for k in s["pos"]):
             s["pos"].add("api")  # a provider it calls is an API it calls
@@ -1719,7 +1783,7 @@ def _here(c, sep, first, own, named, prev, loose=frozenset()):
 def _unsupported(c, here):
     """The terms clause c states about the systems in here that SYSTEM_FACTS does not support,
     as "system: term". With no system in here (a first-person claim about all of them), every
-    sheet term but a true denial of PHP, Python, a VPS or S3."""
+    sheet term but a true denial of PHP or S3 (AI Trader runs Python on a VPS)."""
     m = _mask(c)
     found, why = _terms(m), []
     local = bool(LOCAL_HERE.search(c)) and not any(
@@ -1838,8 +1902,12 @@ def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=F
     rest = FACT_OK.sub(" ", c)
     if denied:  # "None of my systems run PHP. ... Those systems were never vulnerable."
         rest = UNEXPOSED.sub(" ", rest)
+    if here and set(here) <= ON_PYTHON:  # "AI Trader runs Python on a VPS": the sheet checks it below
+        rest = PY_VPS.sub(" ", rest)
     if _crime(c, people) and not ATTRIBUTED.search(c):
         high = CRIME_LABEL
+    elif "AI Trader" in set(named) | set(here) and TRADER_RESULT.search(c):
+        high = TRADER_LABEL
     elif "Atelier" in named and _keeps_content(c) and not (LOCAL.search(c) and not SERVER.search(c)):
         high = ATELIER_LABEL
     elif (named or MY_SYSTEMS.search(c) or GENERIC.search(c) or (context and RUNS_ON.search(c))) and TECH.search(rest):

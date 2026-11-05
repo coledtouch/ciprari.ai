@@ -683,8 +683,9 @@ class ClaimTests(unittest.TestCase):
                   # however far the denial sits from it, and the list after it
                   "Atelier does not run on a VPS.", "Atelier doesn't run on a VPS.", "Atelier won't run on a VPS.",
                   "Atelier has never run on a VPS.", "Atelier doesn't use PHP or Python.",
-                  "My stack doesn't include Python or PHP.", "No Cole system uses PHP, Python, a VPS or S3.",
-                  "None of my systems run PHP, Python, a VPS or S3."):
+                  "My stack doesn't include S3 or PHP.", "No Cole system uses PHP or S3.",
+                  "None of my systems run PHP or S3.", "AI Trader is the only Cole system on Python or a VPS.",
+                  "Atelier, JetDesk and Tuner don't run Python or a VPS."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
         # a denial that ends before the stack word denies none of it
@@ -701,6 +702,81 @@ class ClaimTests(unittest.TestCase):
             self.assertIn(line, writer._plain(p["body_html"]), version)
             self.assertFalse(any("must not ship" in x and line[:60] in x for x in writer.claim_problems(p)), version)
             self.assertNotIn(line, [t for _, t, _ in writer.drop_high_risk(p)[1]], version)
+
+    # the five systems added on 2026-11-05 (platforms 16-20), from their SYSTEM FACTS lines
+    NEW_FIVE_TRUE = (
+        "Tuner runs on Android TV, Google TV and Fire TV.", "Tuner's Android TV app is Kotlin, Jetpack Compose and Media3.",
+        "A phone pairs Tuner by QR code, so no one types a login with the remote.",
+        "Tuner keeps logins and settings on the TV.", "Tuner has no account, ads or analytics of its own.",
+        "GitHub Actions builds the Tuner Android app.", "Tuner has no AI.", "The TV app pairs with a phone by QR code.",
+        "The site at tunertv.app is a static Cloudflare Worker with no JavaScript, cookies or analytics.",
+        "LumaNest TV runs on one Cloudflare Worker with a D1 database and an R2 bucket.",
+        "LumaNest TV verifies PayPal webhooks and deduplicates them by event ID.",
+        "On LumaNest TV, D1 stores only a hash of the device code.", "LumaNest TV has no cron jobs.",
+        "The TMA Family App is a free PWA built for the Timberlane Music Association.",
+        "The TMA Family App backend is TypeScript in Google Apps Script.",
+        "The TMA Family App has no separate database and stores no card numbers.",
+        "Two Cloudflare Workers serve the TMA Family App and send Web Push.", "The booster club app runs on test data.",
+        "AI Trader is a Python FastAPI app on a DigitalOcean VPS.", "AI Trader runs on a VPS.",
+        "AI Trader runs Python in Docker Compose on a DigitalOcean server.",
+        "AI Trader is reached only through a Cloudflare Tunnel.",
+        "In AI Trader, Claude and Grok must agree by default before it buys.",
+        "AI Trader stores every AI decision with its inputs, output and cost.",
+        "Every stock entry in AI Trader gets a stop-loss order held at the broker.",
+        "I run AI Trader on a VPS.", "The trading assistant runs on a VPS.",
+        "AI Trader trades for me. I host it on a VPS.",
+        "PocketPGP is an offline OpenPGP key manager for Android and Windows.", "PocketPGP has no network permission.",
+        "PocketPGP keeps secret keys on the device.", "PocketPGP never uploads or syncs keys itself.",
+        "PocketPGP has no server, no account and no network access.", "The PGP app has no network permission.")
+    NEW_FIVE_FALSE = (
+        ("AI Trader runs on Cloudflare Workers.", "AI Trader: worker"),
+        ("The trading assistant runs on Cloudflare Workers.", "AI Trader: worker"),
+        ("AI Trader doesn't use Python.", "AI Trader: no python"), ("AI Trader runs on PHP.", "a stack"),
+        ("AI Trader stores data in S3.", "AI Trader: s3"),
+        ("PocketPGP syncs keys to the cloud.", "PocketPGP: keeps key"),
+        ("PocketPGP uploads keys to a server.", "PocketPGP: server"),
+        ("PocketPGP keeps your keys on a server.", "PocketPGP"),
+        ("Tuner uses Claude.", "Tuner: anthropic"), ("Tuner calls the Gemini API.", "Tuner: google"),
+        ("The TV app uses OpenAI.", "Tuner: openai"), ("LumaNest TV uses Claude to pick what plays.", "LumaNest TV"),
+        ("Tuner encrypts saved logins.", "Tuner: encryption"), ("Tuner runs on AWS.", "Tuner: aws"),
+        ("LumaNest TV runs a cron job every night.", "LumaNest TV: cron"),
+        ("The TMA Family App stores data in a database.", "TMA Family App: database"),
+        # AI Trader is the only one on Python or a VPS: every other system on either stays must-not-ship
+        ("Atelier runs on a VPS.", "a stack"), ("JetDesk runs Python on a VPS.", "a stack"),
+        ("The permit app runs on a VPS.", "a stack"), ("LumaNest TV runs on a VPS.", "a stack"),
+        ("The TMA Family App runs on Python.", "a stack"), ("PocketPGP is written in Python.", "a stack"),
+        ("Atelier and AI Trader run on Python.", "a stack"),
+        ("I check the Python logs on my systems.", "a stack"),
+        # and no longer true of every system at once
+        ("None of my systems run Python.", "all of them: no python"),
+        ("My stack doesn't include Python or PHP.", "all of them: no python"),
+        ("No Cole system uses PHP, Python, a VPS or S3.", "all of them: no python"),
+        ("None of my systems run PHP, Python, a VPS or S3.", "all of them: no python"),
+        # AI Trader's results, money and trading mode are never stated
+        ("AI Trader made 12% last month.", "AI Trader's results"),
+        ("AI Trader trades live money now.", "AI Trader's results"),
+        ("AI Trader beat the market in October.", "AI Trader's results"),
+        ("The trading assistant turned a profit this week.", "AI Trader's results"),
+        ("AI Trader runs on a paper account.", "AI Trader's results"))
+
+    def test_the_five_new_systems_keep_their_sheet_lines(self):
+        for s in self.NEW_FIVE_TRUE:
+            found = writer.claim_problems(post(f"<p>{s}</p>"))
+            self.assertFalse(any("must not ship" in p for p in found), (s, found))
+            self.assertEqual(writer.drop_high_risk(post(f"<p>{s}</p>"))[1], [], s)
+        # each new SYSTEM FACTS entry, whole, as a paragraph: no line of it is cut
+        facts = writer.SYSTEM_FACTS.split("\nDOES NOT")[0]
+        entries = [" ".join(e.split()) for e in re.split(r"\n- ", facts)
+                   if re.match(r"(?:Tuner|LumaNest TV|TMA Family App|AI Trader|PocketPGP)\b", e)]
+        self.assertEqual(len(entries), 5)
+        for e in entries:
+            self.assertEqual(writer.drop_high_risk(post(f"<p>{e}</p>"))[1], [], e)
+
+    def test_false_claims_about_the_five_are_must_not_ship(self):
+        for s, why in self.NEW_FIVE_FALSE:
+            found = writer.claim_problems(post(f"<p>{s}</p>"))
+            self.assertTrue(any("must not ship" in p and why in p for p in found), (s, found))
+            self.assertEqual([c[1] for c in writer.drop_high_risk(post(f"<p>{s}</p>"))[1]], [s], s)
 
     def test_a_first_person_line_is_about_his_systems_only_with_a_system_thing(self):
         for s in ("I monitor the news for agent incidents.", "I monitor my inbox for client requests.",
@@ -1396,11 +1472,13 @@ class EmitTests(unittest.TestCase):
 
 
 class PromptTests(unittest.TestCase):
-    def test_prompt_knows_fifteen_platforms_and_the_rules(self):
+    def test_prompt_knows_twenty_platforms_and_the_rules(self):
         for mode in ("post", "rollout"):
             system, user = writer.build_prompt(mode, "v9.9.9", "2026-10-12")
-            self.assertIn("shipped 15 production platforms", system)
-            self.assertIn("keepfixcut.com", system)
+            self.assertIn("shipped 20 production platforms", system)
+            self.assertNotIn("15 production platforms", system)
+            for site in ("keepfixcut.com", "tunertv.app", "lumanest.tv", "mytma.org", "desk.kaxo.dev", "PocketPGP"):
+                self.assertIn(site, system)
             self.assertIn("HUMANIZER", system)
             self.assertIn("Never paste", system)
             self.assertNotIn("retired two-sentence", user)
@@ -1417,7 +1495,11 @@ class PromptTests(unittest.TestCase):
                      "Uploads and reports are not saved", "kept 30 days", "4 scans a minute",
                      "It runs on Cloudflare Pages. Three Pages Functions serve its weather, winds-aloft and fuel-price APIs.",
                      "Fuel prices sync between phones behind a PIN", "Trips are saved in local storage on the device",
-                     "No Cole system uses PHP, Python, a VPS or S3", "Atelier has no D1 database",
+                     "No Cole system uses PHP or S3. AI Trader is the only Cole system on Python or a VPS",
+                     "Atelier has no D1 database", "Claude and Grok must agree by default",
+                     "Tuner and LumaNest TV have no AI", "Never state its trades, results, returns, profit",
+                     "PocketPGP has no server, no account and no network access",
+                     "It runs on test data. Never write that families use it",
                      "JetDesk has no NOTAMs", "CurbScript has no service routes", "what you would check",
                      "Name at most three of Cole's systems", "charged but not convicted", "calendar dates",
                      "quotes both", "No page counts", "Source link text is a 2–6 word noun phrase",
@@ -1425,8 +1507,29 @@ class PromptTests(unittest.TestCase):
             self.assertIn(fact, flat, fact)
         self.assertIn("Atelier logs no prompts or answers. Its usage ledger records what each request cost and when.", flat)
         for stale in ("seven providers", "stores nothing", "D1 databases", "cost and time only",
-                      "never holds prompts or answers"):
+                      "never holds prompts or answers", "PHP, Python, a VPS or S3"):
             self.assertNotIn(stale, flat, stale)
+
+    def test_the_five_new_lines_keep_to_coles_calls(self):
+        # Tuner and LumaNest TV are engineering only; AI Trader states no results, mode or server
+        # details; PocketPGP makes no audit claim; the TMA app is on test data and is not called MIT
+        facts, denials = writer.SYSTEM_FACTS.split("\nDOES NOT")
+        new = " ".join(e for e in re.split(r"\n- ", facts + "\n- " + denials)
+                       if re.match(r"(?:Tuner|LumaNest|TMA|AI Trader|PocketPGP|The TMA)\b", e))
+        new = " ".join(new.split())
+        self.assertEqual(len(re.findall(r"(?:^|\s)(?:Tuner|LumaNest TV|TMA Family App|AI Trader|PocketPGP) \(|"
+                                        r"PocketPGP: ", " ".join(facts.split()))), 5)
+        for word in ("IPTV", "channel", "lineup", "reseller", "provider", "movie", "series", "content",
+                     "streaming", "live TV", "MyBunny", "Torrentio", "torrent", "debrid", "TMDB", "OpenSubtitles",
+                     "watch", "droplet", "paper account", "live account", "secure", "audited", "MIT", "open source",
+                     "open-source"):
+            self.assertIsNone(re.search(rf"\b{word}", new, re.I), word)
+        for fact in ("Android TV, Google TV and Fire TV", "install in developer mode", "Samsung (Tizen) and Apple TV",
+                     "in progress", "QR code", "Multi View", "PayPal checkout and renewals", "D1 database",
+                     "R2 bucket", "GitHub Actions", "Timberlane Music Association", "It still runs on test data",
+                     "Python FastAPI", "a VPS", "Claude and Grok must agree by default", "no network permission",
+                     "personal software, not a product"):
+            self.assertIn(fact, new, fact)
 
     def test_user_prompt_carries_the_week_and_catalog_descs(self):
         _, user = writer.build_prompt("rollout", "v9.9.9", "2026-11-01")
