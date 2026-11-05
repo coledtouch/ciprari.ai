@@ -292,8 +292,8 @@ SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may s
 - PocketPGP: an offline OpenPGP key manager for Android and Windows, from one codebase. It runs
   as an Android app and as one HTML file in its own Edge window on Windows. Through OpenPGP.js
   it encrypts, decrypts, signs and verifies text and files, and it works with GnuPG. The Android
-  app has no network permission. Secret keys are kept on the device, passphrase-protected, and
-  unlocked copies live only in memory. Phone and PC trade keys through one password-encrypted
+  app has no network permission. Secret keys are kept on the device. It asks for a passphrase to
+  protect each one, and unlocked copies live only in memory. Phone and PC trade keys through one password-encrypted
   file that the user's own cloud app moves.
 - Three Base44 apps: Aurora (IPTV and smart-home control), Northern Hardy Honey (an apiary
   storefront) and Mari' Cosmetics (a shade-matching storefront).
