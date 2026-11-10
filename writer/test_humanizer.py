@@ -779,12 +779,30 @@ class ClaimTests(unittest.TestCase):
         ("Families use the TMA Family App every week.", "the TMA Family App in use"),
         ("The TMA Family App is live for the club.", "the TMA Family App in use"),
         ("PocketPGP is secure.", "a security verdict on PocketPGP"),
+        # the same claims in other words
+        ("PocketPGP is safe.", "a security verdict on PocketPGP"),
+        ("PocketPGP is hardened and tamper-proof.", "a security verdict on PocketPGP"),
+        ("PocketPGP was pentested.", "a security verdict on PocketPGP"),
+        ("Tuner plays television.", "what plays on Tuner"),
+        ("Tuner lets you watch TV.", "what plays on Tuner"),
+        ("Tuner shows what's on tonight.", "what plays on Tuner"),
+        ("LumaNest TV sells subscriptions.", "what plays on Tuner"),
+        ("The TMA Family App launched for the club.", "the TMA Family App in use"),
+        ("The TMA Family App has real families on it.", "the TMA Family App in use"),
+        ("Students check their balance in the TMA Family App.", "the TMA Family App in use"),
+        ("AI Trader is in autopilot.", "AI Trader's results"),
+        ("AI Trader trades for real.", "AI Trader's results"),
+        ("AI Trader had a drawdown.", "AI Trader's results"),
+        ("AI Trader has a good Sharpe ratio.", "AI Trader's results"),
+        ("AI Trader's VPS runs Ubuntu.", "where or how AI Trader is hosted"),
+        ("AI Trader lives at desk.example.dev.", "where or how AI Trader is hosted"),
         ("PocketPGP was audited.", "a security verdict on PocketPGP"))
 
     def test_the_five_new_systems_keep_their_sheet_lines(self):
         for s in self.NEW_FIVE_TRUE:
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
+            self.assertEqual(found, [], s)  # nor is a sheet line sent back as "outside SYSTEM FACTS"
             self.assertEqual(writer.drop_high_risk(post(f"<p>{s}</p>"))[1], [], s)
         # each new SYSTEM FACTS entry, whole, as a paragraph: no line of it is cut
         facts = writer.SYSTEM_FACTS.split("\nDOES NOT")[0]

@@ -1053,27 +1053,33 @@ TRADER_RESULT = re.compile(r"\b(?:returns?(?! (?:an?|the|no|nothing)\b)|profit\w
                            r"beat the market|outperform\w*|account size|balance|made \$|made money|"
                            r"paper[- ]trad\w*|paper (?:account|mode|money)|on paper|live (?:account|mode|trading|money)|trades? live|"
                            r"(?:trades?|trading) (?:with )?real money|real[- ]money|for real|(?:is|runs?|went|goes) (?:now )?live|win rate|"
-                           r"simulat\w*|sandbox\w*|staged|test modes?|drawdowns?|Sharpe)\b|"
+                           r"simulat\w*|sandbox\w*|staged|test modes?|drawdowns?|Sharpe|(?:in|on) autopilot|autopilot is (?:now )?on)\b|"
                            r"[$€£]\s?\d|\d(?:\.\d+)?\s?%", re.I)
 TRADER_LABEL = "AI Trader's results, money or trading mode (SYSTEM FACTS: never state them)"
 # where or how AI Trader is hosted: the sheet says never state it
 TRADER_HOST = re.compile(r"(?-i:\bVPS(?:es)?\b)|\b(?:virtual private servers?|servers?|host(?:s|ed|ing)?|self-hosted|Docker|Compose|"
                          r"containers?|tunnels?|droplets?|data ?cent(?:er|re)s?|ports?|firewalls?|networks?|IP address(?:es)?|"
-                         r"Ubuntu|Linux|cloud)\b", re.I)
+                         r"Ubuntu|Linux|cloud)\b|"
+                         r"\b(?:[a-z0-9-]+\.)+(?:dev|com|net|org|io|app|ai|co|xyz|cloud|sh)\b|\bhttps?://", re.I)
 TRADER_HOST_LABEL = "where or how AI Trader is hosted (SYSTEM FACTS: never state it)"
 # Tuner and LumaNest TV are engineering only: what a viewer watches on them is never stated
 TV_CONTENT = re.compile(r"\b(?:IPTV|channels?|line-?ups?|live TV|movies?|films?|series|episodes?|content|"
                         r"stream(?:s|ed|ing)?|playlists?|M3U|Xtream|EPG|VOD|resell\w*|(?<!AI )providers?|subscribers?|"
-                        r"MyBunny|Torrentio|torrents?|debrid|TMDB|OpenSubtitles|catalog(?:ue)?s?|sports?)\b", re.I)
+                        r"MyBunny|Torrentio|torrents?|debrid|TMDB|OpenSubtitles|catalog(?:ue)?s?|sports?|"
+                        r"television|watch(?:es|ed|ing)?|what's on|on tonight|subscriptions?|viewers?|binge\w*|"
+                        r"program(?:me)?s|broadcasts?|networks|titles)\b", re.I)
 TV_LABEL = "what plays on Tuner or LumaNest TV (SYSTEM FACTS: engineering only)"
 # the TMA Family App runs on test data: no one uses it yet
-TMA_LIVE = re.compile(r"\b(?:famil(?:y|ies)|parents?|households?|members|users)\b[^.;]*?\b(?:use[sd]?|using|rel(?:y|ies|ied)|"
+TMA_LIVE = re.compile(r"\b(?:famil(?:y|ies)|parents?|households?|members|users|students?|kids|children)\b[^.;]*?\b(?:use[sd]?|using|rel(?:y|ies|ied)|"
                       r"log(?:s|ged)? in|sign(?:s|ed)? in|pa(?:y|ys|id)|check(?:s|ed)?|open(?:s|ed)?)\b|"
-                      r"\b(?:is|went|goes|now) live\b|\blive for\b|\bin (?:production|use)\b|\breal (?:data|spreadsheet|sheet)\b", re.I)
+                      r"\b(?:is|went|goes|now) live\b|\blive for\b|\bin (?:production|use)\b|\breal (?:data|spreadsheet|sheet|famil(?:y|ies)|users)\b|"
+                      r"\blaunch(?:ed|es)?\b|\broll(?:ed|s)? out\b|\badopt(?:ed|s|ion)\b|\bserves? (?:the|its|our) (?:club|famil(?:y|ies))\b|"
+                      r"\bin the hands of\b", re.I)
 TMA_LABEL = "the TMA Family App in use (SYSTEM FACTS: it runs on test data)"
 # PocketPGP: only what the code does, never a security verdict
 PGP_CLAIM = re.compile(r"\b(?:secur(?:e|ed|ely)|unbreakable|uncrackable|hack-?proof|bullet-?proof|military-grade|"
-                       r"(?:security[- ])?audit(?:s|ed)?)\b", re.I)
+                       r"(?:security[- ])?audit(?:s|ed)?|safe(?:r|st|ly)?|harden(?:ed|ing)|vetted|tamper-?proof|"
+                       r"pen(?:etration)?[- ]?test\w*|trustworthy|certified|battle-tested|impenetrable|bank-grade)\b", re.I)
 PGP_LABEL = "a security verdict on PocketPGP (SYSTEM FACTS: say only what it does)"
 TMA_NOT = re.compile(r"\b(?:not|never|no one|nobody|no famil(?:y|ies))\b|n't\b|\btest data\b", re.I)
 OFF_SHEET = (({"AI Trader"}, TRADER_RESULT, TRADER_LABEL), ({"AI Trader"}, TRADER_HOST, TRADER_HOST_LABEL), ({"Tuner", "LumaNest TV"}, TV_CONTENT, TV_LABEL),
@@ -1214,6 +1220,20 @@ FACT_OK = re.compile(r"\b(?:runs? on |on |behind |served by |in )?(?:one|a singl
                      r"\bIndexedDB\b|\bin (?:the|your) browser\b|\bon (?:the|your) device\b|"
                      r"\busage (?:ledger|analytics)\b|\bhashed session id\b|\bpage memory\b|"
                      + _NO_STACK, re.I)
+# What SYSTEM FACTS says of one system, in words CLAIM would otherwise read as a new claim.
+# Scoped by system: "Atelier runs on Android TV" still answers to CLAIM.
+_TVS = r"(?:Android TV|Google TV|Fire TV)"
+SHEET_OK = {
+    "Tuner": re.compile(r"\bruns? on " + _TVS + r"(?:(?:,| and|, and) " + _TVS + r")*", re.I),
+    "LumaNest TV": re.compile(r"\b(?:with |and )?(?:an? )?(?:D1 database|R2 bucket)\b|\bPayPal webhooks?\b|"
+                              r"(?:(?-i:\bD1\b) )?\bstores? only a hash of the device code\b|\bno cron(?: jobs?)?\b", re.I),
+    "TMA Family App": re.compile(r"\bno separate database\b|\bstores? no card numbers?\b|"
+                                 r"\b(?:still )?runs? on (?:test data|a test spreadsheet)\b", re.I),
+    "AI Trader": re.compile(r"\bstores? every AI decision\b|\bevery AI decision is stored\b", re.I),
+    "PocketPGP": re.compile(r"\bno (?:network|internet) permission\b", re.I),
+}
+# "Tuner has no AI": the denial is the sheet's own line
+NO_AI_DENIED = re.compile(r"(?:\b(?:no|not|never|without|zero)\b|n't\b)[^.?!;]{0,25}?(?-i:\bAI\b|\bLLM\b)", re.I)
 # "None of my systems run PHP. ... Those systems were never vulnerable.": after a denial of
 # PHP, Python, a VPS or S3, a denial of exposure in that paragraph holds too (the denial itself
 # answers to the sheet: only PHP and S3 may be denied for every system at once)
@@ -1925,6 +1945,9 @@ def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=F
     high = soft = None
     why = []
     rest = FACT_OK.sub(" ", c)
+    for name in set(named) | set(here):
+        if name in SHEET_OK:
+            rest = SHEET_OK[name].sub(" ", rest)
     if denied:  # "None of my systems run PHP. ... Those systems were never vulnerable."
         rest = UNEXPOSED.sub(" ", rest)
     if here and set(here) <= ON_PYTHON:  # "AI Trader runs Python on a VPS": the sheet checks it below
@@ -1962,7 +1985,7 @@ def _clause(c, named, story, people, loose, context, here=frozenset(), keeping=F
         soft = "a provider Atelier does not use (its nine are in SYSTEM FACTS)"
     elif "Atelier" in named and ATELIER_DETAIL.search(rest):
         soft = "an Atelier detail outside SYSTEM FACTS"
-    elif about and (DOES_NOT.search(rest) or (named & NO_AI and AI_WORDS.search(c))):
+    elif about and (DOES_NOT.search(rest) or (named & NO_AI and AI_WORDS.search(c) and not NO_AI_DENIED.search(c))):
         soft = "something SYSTEM FACTS says it does not do"
     elif told:
         soft = "a first-person story about Cole's systems"
