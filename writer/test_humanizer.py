@@ -684,7 +684,7 @@ class ClaimTests(unittest.TestCase):
                   "Atelier does not run on a VPS.", "Atelier doesn't run on a VPS.", "Atelier won't run on a VPS.",
                   "Atelier has never run on a VPS.", "Atelier doesn't use PHP or Python.",
                   "My stack doesn't include S3 or PHP.", "No Cole system uses PHP or S3.",
-                  "None of my systems run PHP or S3.", "AI Trader is the only Cole system on Python or a VPS.",
+                  "None of my systems run PHP or S3.", "AI Trader is the only Cole system on Python.",
                   "Atelier, JetDesk and Tuner don't run Python or a VPS."):
             found = writer.claim_problems(post(f"<p>{s}</p>"))
             self.assertFalse(any("must not ship" in p for p in found), (s, found))
@@ -717,13 +717,11 @@ class ClaimTests(unittest.TestCase):
         "The TMA Family App backend is TypeScript in Google Apps Script.",
         "The TMA Family App has no separate database and stores no card numbers.",
         "Two Cloudflare Workers serve the TMA Family App and send Web Push.", "The booster club app runs on test data.",
-        "AI Trader is a Python FastAPI app on a VPS.", "AI Trader runs on a VPS.",
-        "AI Trader runs Python in Docker Compose on a VPS.",
+        "AI Trader is a Python FastAPI app.",
+        "In AI Trader, autopilot is off by default, so each new order waits for approval.",
         "In AI Trader, Claude and Grok must agree by default before it buys.",
         "AI Trader stores every AI decision with its inputs, output and cost.",
         "Every stock entry in AI Trader gets a stop-loss order held at the broker.",
-        "I run AI Trader on a VPS.", "The trading assistant runs on a VPS.",
-        "AI Trader trades for me. I host it on a VPS.",
         "PocketPGP is an offline OpenPGP key manager for Android and Windows.", "PocketPGP has no network permission.",
         "PocketPGP keeps secret keys on the device.", "PocketPGP never uploads or syncs keys itself.",
         "PocketPGP has no server, no account and no network access.", "The PGP app has no network permission.",
@@ -735,8 +733,17 @@ class ClaimTests(unittest.TestCase):
         ("AI Trader doesn't use Python.", "AI Trader: no python"), ("AI Trader runs on PHP.", "a stack"),
         ("AI Trader stores data in S3.", "AI Trader: s3"),
         # its hosting company and network setup are off the sheet now (the repo is public)
-        ("AI Trader is a Python FastAPI app on a DigitalOcean VPS.", "AI Trader: other host"),
-        ("AI Trader runs Python in Docker Compose on a DigitalOcean server.", "AI Trader: other host"),
+        ("AI Trader is a Python FastAPI app on a DigitalOcean VPS.", "where or how AI Trader is hosted"),
+        ("AI Trader runs Python in Docker Compose on a DigitalOcean server.", "where or how AI Trader is hosted"),
+        # nor is anything else about where or how it runs (Cole, 2026-11-10)
+        ("AI Trader runs on a VPS.", "where or how AI Trader is hosted"),
+        ("AI Trader runs Python in Docker Compose on a VPS.", "where or how AI Trader is hosted"),
+        ("I run AI Trader on a VPS.", "where or how AI Trader is hosted"),
+        ("The trading assistant runs on a VPS.", "where or how AI Trader is hosted"),
+        ("AI Trader is reached only through a Cloudflare Tunnel.", "where or how AI Trader is hosted"),
+        ("AI Trader's server listens on port 8000.", "where or how AI Trader is hosted"),
+        ("Real-money orders in AI Trader need a server flag.", "AI Trader"),
+        ("AI Trader is in simulation mode.", "AI Trader's results"),
         ("PocketPGP syncs keys to the cloud.", "PocketPGP: keeps key"),
         ("PocketPGP uploads keys to a server.", "PocketPGP: server"),
         ("PocketPGP keeps your keys on a server.", "PocketPGP"),
@@ -1512,7 +1519,7 @@ class PromptTests(unittest.TestCase):
                      "Uploads and reports are not saved", "kept 30 days", "4 scans a minute",
                      "It runs on Cloudflare Pages. Three Pages Functions serve its weather, winds-aloft and fuel-price APIs.",
                      "Fuel prices sync between phones behind a PIN", "Trips are saved in local storage on the device",
-                     "No Cole system uses PHP or S3. AI Trader is the only Cole system on Python or a VPS",
+                     "No Cole system uses PHP or S3. AI Trader is the only Cole system on Python",
                      "Atelier has no D1 database", "Claude and Grok must agree by default",
                      "Tuner and LumaNest TV have no AI", "Never state its trades, results, returns, profit",
                      "PocketPGP has no server, no account and no network access",
@@ -1544,7 +1551,7 @@ class PromptTests(unittest.TestCase):
         for fact in ("Android TV, Google TV and Fire TV", "install in developer mode", "Samsung (Tizen) and Apple TV",
                      "in progress", "QR code", "Multi View", "PayPal checkout and renewals", "D1 database",
                      "R2 bucket", "GitHub Actions", "Timberlane Music Association", "It still runs on test data",
-                     "Python FastAPI", "a VPS", "Claude and Grok must agree by default", "no network permission",
+                     "Python FastAPI", "Autopilot is off by default", "Claude and Grok must agree by default", "no network permission",
                      "personal software, not a product"):
             self.assertIn(fact, new, fact)
 

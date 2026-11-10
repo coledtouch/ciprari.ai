@@ -284,11 +284,12 @@ SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may s
   code sent by email, with no passwords. The treasurer verifies each household. Two Cloudflare
   Workers serve the site and send Web Push. It still runs on test data.
 - AI Trader (private, no public link): Cole's own trading assistant for one brokerage
-  account. A Python FastAPI app in Docker Compose on a VPS. Never name its host, broker,
-  hosting company or network setup. Claude and Grok must agree by default
+  account, a Python FastAPI app. Never say where or how it is hosted, and never name its
+  broker. Claude and Grok must agree by default
   before it buys. Risk limits are hard caps in code, and every stock entry gets a stop-loss
-  order held at the broker. Real-money orders need a server flag and a fresh 2FA code. Every AI
-  decision is stored with its inputs, output and cost. It is personal software, not a product.
+  order held at the broker. Autopilot is off by default, so each new order waits for approval.
+  Every AI decision is stored with its inputs, output and cost. It is personal software, not a
+  product.
 - PocketPGP: an offline OpenPGP key manager for Android and Windows, from one codebase. It runs
   as an Android app and as one HTML file in its own Edge window on Windows. Through OpenPGP.js
   it encrypts, decrypts, signs and verifies text and files, and it works with GnuPG. The Android
@@ -298,7 +299,7 @@ SYSTEM_FACTS = """SYSTEM FACTS — the only facts about Cole's systems you may s
 - Three Base44 apps: Aurora (IPTV and smart-home control), Northern Hardy Honey (an apiary
   storefront) and Mari' Cosmetics (a shade-matching storefront).
 DOES NOT — never write otherwise:
-- No Cole system uses PHP or S3. AI Trader is the only Cole system on Python or a VPS. Atelier
+- No Cole system uses PHP or S3. AI Trader is the only Cole system on Python. Atelier
   has no D1 database.
 - Atelier logs no prompts or answers. Its usage ledger records what each request cost and
   when. Keep Fix Cut saves no uploads or reports.
@@ -1051,9 +1052,15 @@ PY_VPS = re.compile(r"(?-i:\bPython\b|\bVPS(?:es)?\b)|\bvirtual private servers?
 TRADER_RESULT = re.compile(r"\b(?:returns?(?! (?:an?|the|no|nothing)\b)|profit\w*|P&L|PnL|gain(?:s|ed)?|(?<!stop-)(?<!stop )loss(?:es)?|lost|earn(?:s|ed|ings)?|"
                            r"beat the market|outperform\w*|account size|balance|made \$|made money|"
                            r"paper[- ]trad\w*|paper (?:account|mode|money)|on paper|live (?:account|mode|trading|money)|trades? live|"
-                           r"(?:trades?|trading) (?:with )?real money|(?:is|runs?|went|goes) (?:now )?live|win rate)\b|"
+                           r"(?:trades?|trading) (?:with )?real money|real[- ]money|for real|(?:is|runs?|went|goes) (?:now )?live|win rate|"
+                           r"simulat\w*|sandbox\w*|staged|test modes?|drawdowns?|Sharpe)\b|"
                            r"[$€£]\s?\d|\d(?:\.\d+)?\s?%", re.I)
 TRADER_LABEL = "AI Trader's results, money or trading mode (SYSTEM FACTS: never state them)"
+# where or how AI Trader is hosted: the sheet says never state it
+TRADER_HOST = re.compile(r"(?-i:\bVPS(?:es)?\b)|\b(?:virtual private servers?|servers?|host(?:s|ed|ing)?|self-hosted|Docker|Compose|"
+                         r"containers?|tunnels?|droplets?|data ?cent(?:er|re)s?|ports?|firewalls?|networks?|IP address(?:es)?|"
+                         r"Ubuntu|Linux|cloud)\b", re.I)
+TRADER_HOST_LABEL = "where or how AI Trader is hosted (SYSTEM FACTS: never state it)"
 # Tuner and LumaNest TV are engineering only: what a viewer watches on them is never stated
 TV_CONTENT = re.compile(r"\b(?:IPTV|channels?|line-?ups?|live TV|movies?|films?|series|episodes?|content|"
                         r"stream(?:s|ed|ing)?|playlists?|M3U|Xtream|EPG|VOD|resell\w*|(?<!AI )providers?|subscribers?|"
@@ -1069,7 +1076,7 @@ PGP_CLAIM = re.compile(r"\b(?:secur(?:e|ed|ely)|unbreakable|uncrackable|hack-?pr
                        r"(?:security[- ])?audit(?:s|ed)?)\b", re.I)
 PGP_LABEL = "a security verdict on PocketPGP (SYSTEM FACTS: say only what it does)"
 TMA_NOT = re.compile(r"\b(?:not|never|no one|nobody|no famil(?:y|ies))\b|n't\b|\btest data\b", re.I)
-OFF_SHEET = (({"AI Trader"}, TRADER_RESULT, TRADER_LABEL), ({"Tuner", "LumaNest TV"}, TV_CONTENT, TV_LABEL),
+OFF_SHEET = (({"AI Trader"}, TRADER_RESULT, TRADER_LABEL), ({"AI Trader"}, TRADER_HOST, TRADER_HOST_LABEL), ({"Tuner", "LumaNest TV"}, TV_CONTENT, TV_LABEL),
              ({"TMA Family App"}, TMA_LIVE, TMA_LABEL), ({"PocketPGP"}, PGP_CLAIM, PGP_LABEL))
 # A bare "the ERP" is Cole's only when the post names his ERP and no vendor's. Otherwise it
 # counts for the soft labels alone: a news line about SAP's ERP is never cut.
